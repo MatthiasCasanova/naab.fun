@@ -472,6 +472,151 @@ test("le timer ajoute une réponse vide puis change de manche", async () => {
   }
 });
 
+test("le timer valide les brouillons en temps réel", async () => {
+  const { game, url } = await startTestServer({ roundDurationMs: 180 });
+  let clients = [];
+
+  try {
+    const setup = await createRoomWithPlayers(url, ["Alice", "Bob"]);
+    clients = setup.clients;
+    const [alice, bob] = clients;
+    await emitAck(alice, "updateGameSettings", {
+      roundCount: 1,
+      inputTypeCount: 3
+    });
+
+    const firstStatesPromise = Promise.all(
+      clients.map((client) =>
+        waitForEvent(
+          client,
+          "gameState",
+          (state) => state.phase === "playing" && state.roundIndex === 0
+        )
+      )
+    );
+    await emitAck(alice, "startGame");
+    const states = await firstStatesPromise;
+    assert.equal(states[0].assignment.expectedType, "text");
+    assert.equal(states[1].assignment.expectedType, "text");
+
+    const resultsPromise = waitForEvent(
+      alice,
+      "gameState",
+      (state) => state.phase === "results",
+      2000
+    );
+    const aliceDraft = await emitAck(alice, "saveDraft", {
+      roundIndex: 0,
+      type: "text",
+      content: "Phrase Alice encore en cours"
+    });
+    const bobDraft = await emitAck(bob, "saveDraft", {
+      roundIndex: 0,
+      type: "text",
+      content: "Phrase Bob pas encore validée"
+    });
+    assert.equal(aliceDraft.ok, true);
+    assert.equal(bobDraft.ok, true);
+
+    const results = await resultsPromise;
+    const contributions = results.chains.flatMap(
+      (chain) => chain.contributions
+    );
+    assert.deepEqual(
+      contributions.map((contribution) => contribution.content).sort(),
+      [
+        "Phrase Alice encore en cours",
+        "Phrase Bob pas encore validée"
+      ].sort()
+    );
+    assert.ok(contributions.every((contribution) => !contribution.empty));
+  } finally {
+    await cleanup(game, clients);
+  }
+});
+
+test("les brouillons de dessin et d'audio survivent aussi au timeout", async () => {
+  const scenarios = [
+    {
+      type: "drawing",
+      randomInt: (maximum) => (maximum > 1 ? 1 : 0),
+      content: DRAWING
+    },
+    {
+      type: "audio",
+      randomInt: (maximum) => maximum - 1,
+      content: AUDIO
+    }
+  ];
+
+  for (const scenario of scenarios) {
+    const { game, url } = await startTestServer({
+      roundDurationMs: 180,
+      randomInt: scenario.randomInt
+    });
+    let clients = [];
+
+    try {
+      const setup = await createRoomWithPlayers(url, ["Alice", "Bob"]);
+      clients = setup.clients;
+      const [alice, bob] = clients;
+      await emitAck(alice, "updateGameSettings", {
+        roundCount: 1,
+        inputTypeCount: 1
+      });
+
+      const statesPromise = Promise.all(
+        clients.map((client) =>
+          waitForEvent(
+            client,
+            "gameState",
+            (state) => state.phase === "playing" && state.roundIndex === 0
+          )
+        )
+      );
+      await emitAck(alice, "startGame");
+      const states = await statesPromise;
+      assert.ok(
+        states.every(
+          (state) => state.assignment.expectedType === scenario.type
+        )
+      );
+
+      const resultsPromise = waitForEvent(
+        alice,
+        "gameState",
+        (state) => state.phase === "results",
+        2000
+      );
+      await emitAck(alice, "saveDraft", {
+        roundIndex: 0,
+        type: scenario.type,
+        content: scenario.content
+      });
+      await emitAck(bob, "saveDraft", {
+        roundIndex: 0,
+        type: scenario.type,
+        content: scenario.content
+      });
+
+      const results = await resultsPromise;
+      const contributions = results.chains.flatMap(
+        (chain) => chain.contributions
+      );
+      assert.ok(
+        contributions.every(
+          (contribution) =>
+            contribution.type === scenario.type &&
+            contribution.content === scenario.content &&
+            !contribution.empty
+        )
+      );
+    } finally {
+      await cleanup(game, clients);
+    }
+  }
+});
+
 test("une déconnexion est enregistrée vide et ne bloque pas la manche", async () => {
   const { game, url } = await startTestServer();
   let clients = [];

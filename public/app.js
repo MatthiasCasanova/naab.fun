@@ -39,10 +39,23 @@
   const AUDIO_OUTPUT_SCALE = 0.5;
   const MAX_DRAWING_HISTORY = 30;
   const WAVEFORM_BAR_COUNT = 72;
+  const DRAFT_SAVE_DEBOUNCE_MS = 450;
+  const DRAWING_DRAFT_SAVE_DEBOUNCE_MS = 650;
+  const AUDIO_DRAFT_SAVE_INTERVAL_MS = 800;
 
   const elements = {
     playLayout: document.querySelector("#play-layout"),
     playersSidebar: document.querySelector("#players-sidebar"),
+    playersSidebarTitle: document.querySelector("#players-sidebar-title"),
+    chatSidebar: document.querySelector("#chat-sidebar"),
+    chatToggleButton: document.querySelector("#chat-toggle-button"),
+    chatCloseButton: document.querySelector("#chat-close-button"),
+    chatMessages: document.querySelector("#chat-messages"),
+    chatForm: document.querySelector("#chat-form"),
+    chatInput: document.querySelector("#chat-input"),
+    chatSendButton: document.querySelector("#chat-send-button"),
+    chatMessage: document.querySelector("#chat-message"),
+    emoteButtons: Array.from(document.querySelectorAll(".emote-option")),
     homeView: document.querySelector("#home-view"),
     roomView: document.querySelector("#room-view"),
     gameView: document.querySelector("#game-view"),
@@ -194,6 +207,10 @@
   let effectsAudioContext = null;
   let effectsUnlocked = false;
   let lastTimerSoundSlot = null;
+  let draftSaveTimer = null;
+  let draftSaveGeneration = 0;
+  let lastDraftSaveAt = 0;
+  let chatOpen = false;
 
   function setMessage(element, message, type = "") {
     element.textContent = message;
@@ -790,7 +807,21 @@
 
   function setSidebarVisible(isVisible) {
     elements.playersSidebar.classList.toggle("hidden", !isVisible);
+    elements.chatSidebar.classList.toggle("hidden", !isVisible);
+    elements.chatToggleButton.classList.toggle("hidden", !isVisible);
     elements.playLayout.classList.toggle("with-sidebar", isVisible);
+    if (!isVisible) {
+      setChatOpen(false);
+    }
+  }
+
+  function setChatOpen(isOpen) {
+    chatOpen = Boolean(isOpen);
+    elements.chatSidebar.classList.toggle("mobile-open", chatOpen);
+    elements.chatToggleButton.setAttribute(
+      "aria-expanded",
+      String(chatOpen)
+    );
   }
 
   function showOnly(view) {
@@ -845,6 +876,7 @@
   function showHome() {
     stopTimer();
     stopRoundIntro();
+    cancelDraftSave();
     stopAudioRecording(true);
     currentRoom = null;
     currentGame = null;
@@ -858,11 +890,14 @@
 
   function renderPlayerList(room) {
     elements.playerList.replaceChildren();
+    elements.playersSidebarTitle.textContent =
+      room.name || "Kamoulox's Room";
 
     room.players.forEach((player) => {
       const item = document.createElement("li");
       const avatar = document.createElement("div");
       const copy = document.createElement("div");
+      const nameLine = document.createElement("div");
       const name = document.createElement("span");
       const status = document.createElement("span");
 
@@ -875,13 +910,22 @@
       avatar.textContent = AVATARS[player.avatarId] || AVATARS.comet;
       avatar.setAttribute("aria-hidden", "true");
       copy.className = "player-copy";
+      nameLine.className = "player-name-line";
       name.className = "player-name";
       name.textContent = player.nickname;
+      nameLine.append(name);
+      if (player.emote) {
+        const emote = document.createElement("span");
+        emote.className = "player-emote";
+        emote.textContent = player.emote;
+        emote.setAttribute("aria-label", `Emote de ${player.nickname}`);
+        nameLine.append(emote);
+      }
       status.className =
         `player-state status-${player.status || "ready"}`;
       status.textContent =
         PLAYER_STATUS_LABELS[player.status] || PLAYER_STATUS_LABELS.ready;
-      copy.append(name, status);
+      copy.append(nameLine, status);
       item.append(avatar, copy);
 
       if (player.isHost) {
@@ -894,6 +938,66 @@
 
       elements.playerList.append(item);
     });
+
+    const self = socket
+      ? room.players.find((player) => player.id === socket.id)
+      : null;
+    elements.emoteButtons.forEach((button) => {
+      button.classList.toggle(
+        "active",
+        Boolean(self && button.dataset.emote === self.emote)
+      );
+      button.disabled = !self;
+    });
+  }
+
+  function renderChatMessages(messages) {
+    const shouldStickToBottom =
+      elements.chatMessages.scrollHeight -
+        elements.chatMessages.scrollTop -
+        elements.chatMessages.clientHeight <
+      40;
+    elements.chatMessages.replaceChildren();
+
+    if (!messages || messages.length === 0) {
+      const empty = document.createElement("li");
+      empty.className = "chat-empty";
+      empty.textContent =
+        "Le chat est vide. Quelqu'un doit prendre une mauvaise décision.";
+      elements.chatMessages.append(empty);
+      return;
+    }
+
+    messages.forEach((message) => {
+      const item = document.createElement("li");
+      const author = document.createElement("div");
+      const avatar = document.createElement("span");
+      const nickname = document.createElement("span");
+      const content = document.createElement("p");
+
+      item.className = "chat-item";
+      item.classList.toggle(
+        "is-self",
+        message.nickname === currentNickname
+      );
+      author.className = "chat-author";
+      avatar.className =
+        `chat-author-avatar avatar-${message.avatarId || "comet"}`;
+      avatar.textContent = AVATARS[message.avatarId] || AVATARS.comet;
+      nickname.textContent = message.nickname;
+      content.className = "chat-content";
+      content.textContent = message.content;
+      author.append(avatar, nickname);
+      item.append(author, content);
+      elements.chatMessages.append(item);
+    });
+
+    if (shouldStickToBottom) {
+      window.requestAnimationFrame(() => {
+        elements.chatMessages.scrollTop =
+          elements.chatMessages.scrollHeight;
+      });
+    }
   }
 
   function renderRoomCode() {
@@ -977,6 +1081,7 @@
     renderedRoundKey = null;
     stopTimer();
     stopRoundIntro();
+    cancelDraftSave();
     stopAudioRecording(true);
     setGameSettingsOpen(false);
 
@@ -987,6 +1092,7 @@
     elements.playerCount.textContent =
       `${room.playerCount} / ${room.maxPlayers}`;
     renderPlayerList(room);
+    renderChatMessages(room.chatMessages);
 
     const isHost = Boolean(socket && room.hostId === socket.id);
     renderGameSettings(room, isHost);
@@ -1313,6 +1419,7 @@
       elements.playerCount.textContent =
         `${room.playerCount} / ${room.maxPlayers}`;
       renderPlayerList(room);
+      renderChatMessages(room.chatMessages);
       if (room.phase === "lobby") {
         showRoom(room);
       } else if (!currentGame) {
@@ -1327,6 +1434,21 @@
       } else {
         showGame(gameState);
       }
+    });
+
+    socket.on("chatMessage", (message) => {
+      if (!currentRoom || !message) {
+        return;
+      }
+
+      const messages = Array.isArray(currentRoom.chatMessages)
+        ? currentRoom.chatMessages
+        : [];
+      if (!messages.some((candidate) => candidate.id === message.id)) {
+        messages.push(message);
+      }
+      currentRoom.chatMessages = messages.slice(-100);
+      renderChatMessages(currentRoom.chatMessages);
     });
 
     socket.on("roomError", (payload) => {
@@ -1495,6 +1617,62 @@
     });
   }
 
+  async function sendChatMessage() {
+    const content = elements.chatInput.value.trim();
+    if (!content || !currentRoom || !socket) {
+      return;
+    }
+
+    elements.chatInput.disabled = true;
+    elements.chatSendButton.disabled = true;
+    setMessage(elements.chatMessage, "");
+    try {
+      const response = await emitWithAcknowledgment("sendChatMessage", {
+        content
+      });
+      if (!response || !response.ok) {
+        throw new Error(
+          (response && response.error) || "Message refusé."
+        );
+      }
+      elements.chatInput.value = "";
+    } catch (error) {
+      setMessage(elements.chatMessage, error.message, "error");
+    } finally {
+      elements.chatInput.disabled = false;
+      elements.chatSendButton.disabled = false;
+      elements.chatInput.focus();
+    }
+  }
+
+  async function setPlayerEmote(emote) {
+    if (!currentRoom || !socket) {
+      return;
+    }
+
+    elements.emoteButtons.forEach((button) => {
+      button.disabled = true;
+    });
+    try {
+      const response = await emitWithAcknowledgment("setPlayerEmote", {
+        emote
+      });
+      if (!response || !response.ok) {
+        throw new Error(
+          (response && response.error) || "Emote refusée."
+        );
+      }
+    } catch (error) {
+      const target = currentGame
+        ? elements.gameMessage
+        : elements.roomMessage;
+      setMessage(target, error.message, "error");
+      if (currentRoom) {
+        renderPlayerList(currentRoom);
+      }
+    }
+  }
+
   async function updateRoomSettings() {
     if (!currentRoom || !socket || currentRoom.hostId !== socket.id) {
       return;
@@ -1530,6 +1708,146 @@
       elements.roundCountSelect.disabled = false;
       elements.inputTypeCountSelect.disabled = false;
     }
+  }
+
+  function cancelDraftSave() {
+    draftSaveGeneration += 1;
+    lastDraftSaveAt = 0;
+    if (draftSaveTimer) {
+      window.clearTimeout(draftSaveTimer);
+      draftSaveTimer = null;
+    }
+  }
+
+  function sendDraft(type, content, roundIndex) {
+    if (
+      !socket ||
+      !socket.connected ||
+      !currentGame ||
+      currentGame.submitted ||
+      currentGame.roundIndex !== roundIndex
+    ) {
+      return;
+    }
+
+    socket.emit(
+      "saveDraft",
+      { roundIndex, type, content },
+      (response) => {
+        if (
+          response &&
+          !response.ok &&
+          currentGame &&
+          currentGame.roundIndex === roundIndex
+        ) {
+          console.warn("[draft] Brouillon refusé :", response.error);
+        }
+      }
+    );
+  }
+
+  function buildCurrentDraft() {
+    if (!currentGame || currentGame.submitted) {
+      return null;
+    }
+
+    if (selectedType === "text") {
+      return {
+        type: "text",
+        content: elements.textContribution.value
+      };
+    }
+
+    if (selectedType === "drawing") {
+      return {
+        type: "drawing",
+        content: drawingDirty
+          ? elements.drawingCanvas.toDataURL("image/png")
+          : ""
+      };
+    }
+
+    return {
+      type: "audio",
+      content: audioDataUrl
+    };
+  }
+
+  function flushDraftSave() {
+    if (draftSaveTimer) {
+      window.clearTimeout(draftSaveTimer);
+      draftSaveTimer = null;
+    }
+
+    const draft = buildCurrentDraft();
+    if (draft && currentGame) {
+      lastDraftSaveAt = Date.now();
+      sendDraft(draft.type, draft.content, currentGame.roundIndex);
+    }
+  }
+
+  function scheduleDraftSave(delay = DRAFT_SAVE_DEBOUNCE_MS) {
+    if (!currentGame || currentGame.submitted) {
+      return;
+    }
+
+    const generation = draftSaveGeneration;
+    const remainingDelay = Math.max(
+      0,
+      delay - (Date.now() - lastDraftSaveAt)
+    );
+    if (remainingDelay === 0) {
+      flushDraftSave();
+      return;
+    }
+    if (draftSaveTimer) {
+      return;
+    }
+    draftSaveTimer = window.setTimeout(() => {
+      draftSaveTimer = null;
+      if (generation === draftSaveGeneration) {
+        flushDraftSave();
+      }
+    }, remainingDelay);
+  }
+
+  async function saveAudioSessionDraft(session) {
+    if (
+      !session ||
+      session.discard ||
+      session.draftEncoding ||
+      session.chunks.length === 0 ||
+      !currentGame ||
+      currentGame.roundIndex !== session.roundIndex
+    ) {
+      return;
+    }
+
+    session.draftEncoding = true;
+    try {
+      const blob = new Blob(session.chunks, {
+        type: session.recorder.mimeType || "audio/webm"
+      });
+      const dataUrl = await readBlobAsDataUrl(blob);
+      if (dataUrl.length <= MAX_AUDIO_DATA_LENGTH) {
+        sendDraft("audio", dataUrl, session.roundIndex);
+      }
+    } catch (error) {
+      console.info("[draft] Fragment audio non sauvegardé :", error);
+    } finally {
+      session.draftEncoding = false;
+    }
+  }
+
+  function scheduleAudioSessionDraft(session) {
+    if (!session || session.draftTimer) {
+      return;
+    }
+
+    session.draftTimer = window.setTimeout(() => {
+      session.draftTimer = null;
+      saveAudioSessionDraft(session);
+    }, AUDIO_DRAFT_SAVE_INTERVAL_MS);
   }
 
   function resetDrawing() {
@@ -1591,6 +1909,7 @@
     drawingHistoryIndex = drawingHistory.length - 1;
     drawingDirty = dirty;
     updateDrawingHistoryButtons();
+    scheduleDraftSave(DRAWING_DRAFT_SAVE_DEBOUNCE_MS);
   }
 
   function restoreDrawingHistory(index) {
@@ -1603,6 +1922,7 @@
     drawingHistoryIndex = index;
     drawingDirty = state.dirty;
     updateDrawingHistoryButtons();
+    scheduleDraftSave(DRAWING_DRAFT_SAVE_DEBOUNCE_MS);
   }
 
   function undoDrawing() {
@@ -1799,6 +2119,8 @@
     );
     if (drawingTool === "pencil" || drawingTool === "eraser") {
       drawDot(point);
+      drawingDirty = true;
+      scheduleDraftSave(DRAWING_DRAFT_SAVE_DEBOUNCE_MS);
     }
     elements.drawingCanvas.setPointerCapture(event.pointerId);
   }
@@ -1816,6 +2138,8 @@
     } else {
       drawShapePreview(point);
     }
+    drawingDirty = true;
+    scheduleDraftSave(DRAWING_DRAFT_SAVE_DEBOUNCE_MS);
     lastDrawingPoint = point;
   }
 
@@ -1890,6 +2214,10 @@
     if (recordingSession.autoStopTimer) {
       window.clearTimeout(recordingSession.autoStopTimer);
       recordingSession.autoStopTimer = null;
+    }
+    if (recordingSession.draftTimer) {
+      window.clearTimeout(recordingSession.draftTimer);
+      recordingSession.draftTimer = null;
     }
     if (recordingSession.recorder.state !== "inactive") {
       recordingSession.recorder.stop();
@@ -2073,17 +2401,24 @@
         discard: false,
         startedAt: Date.now(),
         timer: null,
-        autoStopTimer: null
+        autoStopTimer: null,
+        draftTimer: null,
+        draftEncoding: false
       };
       recordingSession = session;
 
       recorder.addEventListener("dataavailable", (event) => {
         if (event.data.size > 0) {
           session.chunks.push(event.data);
+          scheduleAudioSessionDraft(session);
         }
       });
 
       recorder.addEventListener("stop", async () => {
+        if (session.draftTimer) {
+          window.clearTimeout(session.draftTimer);
+          session.draftTimer = null;
+        }
         stopStream(session.stream);
         if (recordingSession === session) {
           recordingSession = null;
@@ -2109,6 +2444,7 @@
           }
 
           audioDataUrl = dataUrl;
+          sendDraft("audio", dataUrl, session.roundIndex);
           elements.audioPreview.src = dataUrl;
           applyVolumeToAudio(elements.audioPreview);
           showRecordedAudio();
@@ -2340,6 +2676,7 @@
   }
 
   function resetRoundEditors() {
+    cancelDraftSave();
     stopAudioRecording(true);
     elements.textContribution.value = "";
     elements.textCounter.textContent = "0 / 500";
@@ -2558,6 +2895,7 @@
         );
       }
 
+      cancelDraftSave();
       setMessage(elements.gameMessage, "");
     } catch (error) {
       console.error("[jeu] Contribution impossible :", error);
@@ -2860,6 +3198,24 @@
     elements.retryButton.addEventListener("click", runPendingAction);
     elements.leaveButton.addEventListener("click", leaveCurrentRoom);
     elements.gameLeaveButton.addEventListener("click", leaveCurrentRoom);
+    elements.chatToggleButton.addEventListener("click", () => {
+      setChatOpen(!chatOpen);
+      if (chatOpen) {
+        elements.chatInput.focus();
+      }
+    });
+    elements.chatCloseButton.addEventListener("click", () => {
+      setChatOpen(false);
+    });
+    elements.chatForm.addEventListener("submit", (event) => {
+      event.preventDefault();
+      sendChatMessage();
+    });
+    elements.emoteButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        setPlayerEmote(button.dataset.emote || "");
+      });
+    });
 
     elements.startGameButton.addEventListener("click", async () => {
       elements.startGameButton.disabled = true;
@@ -2954,6 +3310,7 @@
     elements.textContribution.addEventListener("input", () => {
       elements.textCounter.textContent =
         `${Array.from(elements.textContribution.value).length} / 500`;
+      scheduleDraftSave();
     });
 
     elements.settingsButton.addEventListener("click", () => {
@@ -2979,6 +3336,9 @@
         !elements.gameSettingsModal.classList.contains("hidden")
       ) {
         setGameSettingsOpen(false);
+      }
+      if (event.key === "Escape" && chatOpen) {
+        setChatOpen(false);
       }
     });
     elements.volumeSlider.addEventListener("input", () => {
@@ -3037,7 +3397,12 @@
       "click",
       toggleRecordedAudioPlayback
     );
-    elements.resetAudioButton.addEventListener("click", resetAudio);
+    elements.resetAudioButton.addEventListener("click", () => {
+      resetAudio();
+      if (currentGame) {
+        sendDraft("audio", "", currentGame.roundIndex);
+      }
+    });
     elements.validateAudioButton.addEventListener(
       "click",
       submitContribution

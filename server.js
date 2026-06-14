@@ -14,6 +14,8 @@ const MIN_PLAYERS_TO_START = 2;
 const ROUND_DURATION_MS = 60000;
 const MAX_TEXT_LENGTH = 500;
 const MAX_MEDIA_DATA_LENGTH = 1500000;
+const MAX_CHAT_MESSAGE_LENGTH = 200;
+const MAX_CHAT_MESSAGES = 100;
 const ROOM_CODE_LENGTH = 6;
 const DEFAULT_INPUT_TYPE_COUNT = 3;
 const DEFAULT_AVATAR_ID = "comet";
@@ -39,6 +41,7 @@ const CONTRIBUTION_TYPES = Object.freeze({
 const CONTRIBUTION_TYPE_VALUES = Object.freeze(
   Object.values(CONTRIBUTION_TYPES)
 );
+const ROOM_EMOTES = Object.freeze(["😂", "🔥", "👏", "💀", "❤️", "🤯"]);
 
 function normalizeConfiguredOrigin(value) {
   const trimmedValue = value.trim();
@@ -340,6 +343,7 @@ function createGameServer(options = {}) {
       participantId,
       nickname,
       avatarId,
+      emote: "",
       joinedAt: Date.now(),
       joinOrder: joinSequence++
     };
@@ -364,9 +368,11 @@ function createGameServer(options = {}) {
       1,
       Math.min(room.players.size, MAX_PLAYERS)
     );
+    const host = room.players.get(room.hostId);
 
     return {
       code: room.code,
+      name: `${host ? host.nickname : "Kamoulox"}'s Room`,
       hostId: room.hostId,
       phase: room.game ? room.game.status : "lobby",
       playerCount: room.players.size,
@@ -386,9 +392,11 @@ function createGameServer(options = {}) {
           id: player.id,
           nickname: player.nickname,
           avatarId: player.avatarId,
+          emote: player.emote,
           isHost: player.id === room.hostId,
           status: getPlayerStatus(room, player)
-        }))
+        })),
+      chatMessages: room.chatMessages.map((message) => ({ ...message }))
     };
   }
 
@@ -621,8 +629,19 @@ function createGameServer(options = {}) {
     };
   }
 
-  function addEmptySubmission(game, participantId) {
+  function addFallbackSubmission(game, participantId) {
     if (game.roundSubmissions.has(participantId)) {
+      return;
+    }
+
+    const draft = game.roundDrafts.get(participantId);
+    if (draft && draft.content) {
+      game.roundSubmissions.set(participantId, {
+        ...draft,
+        empty: false,
+        autoSubmitted: true,
+        submittedAt: Date.now()
+      });
       return;
     }
 
@@ -646,12 +665,13 @@ function createGameServer(options = {}) {
     game.status = "playing";
     game.finalizing = false;
     game.roundSubmissions = new Map();
+    game.roundDrafts = new Map();
     game.roundStartedAt = Date.now();
     game.roundEndsAt = game.roundStartedAt + roundDurationMs;
 
     game.participants.forEach((participant) => {
       if (!participant.connected) {
-        addEmptySubmission(game, participant.id);
+        addFallbackSubmission(game, participant.id);
       }
     });
 
@@ -677,7 +697,7 @@ function createGameServer(options = {}) {
     clearGameTimers(game);
 
     game.participantOrder.forEach((participantId) => {
-      addEmptySubmission(game, participantId);
+      addFallbackSubmission(game, participantId);
     });
 
     game.roundSubmissions.forEach((contribution) => {
@@ -713,6 +733,7 @@ function createGameServer(options = {}) {
       id: player.participantId,
       nickname: player.nickname,
       avatarId: player.avatarId,
+      emote: player.emote,
       connected: true,
       socketId: player.id
     }));
@@ -758,6 +779,7 @@ function createGameServer(options = {}) {
       roundStartedAt: null,
       roundEndsAt: null,
       roundSubmissions: new Map(),
+      roundDrafts: new Map(),
       roundTimer: null,
       finalizing: false,
       resultChainIndex: 0,
@@ -805,7 +827,12 @@ function createGameServer(options = {}) {
     return { roundCount, inputTypeCount };
   }
 
-  function normalizeContribution(payload, expectedType, roundIndex) {
+  function normalizeContribution(
+    payload,
+    expectedType,
+    roundIndex,
+    allowEmpty = false
+  ) {
     if (!payload || typeof payload !== "object") {
       return { error: "Contribution invalide." };
     }
@@ -833,12 +860,16 @@ function createGameServer(options = {}) {
     if (type === CONTRIBUTION_TYPES.TEXT) {
       const content = payload.content.trim();
       const length = Array.from(content).length;
-      if (length < 1 || length > MAX_TEXT_LENGTH) {
+      if ((!allowEmpty && length < 1) || length > MAX_TEXT_LENGTH) {
         return {
           error: `Le texte doit contenir entre 1 et ${MAX_TEXT_LENGTH} caractères.`
         };
       }
       return { type, content };
+    }
+
+    if (allowEmpty && payload.content === "") {
+      return { type, content: "" };
     }
 
     if (payload.content.length > MAX_MEDIA_DATA_LENGTH) {
@@ -897,7 +928,7 @@ function createGameServer(options = {}) {
         room.game.status === "playing" &&
         !room.game.roundSubmissions.has(participantId)
       ) {
-        addEmptySubmission(room.game, participantId);
+        addFallbackSubmission(room.game, participantId);
       }
     }
 
@@ -986,7 +1017,8 @@ function createGameServer(options = {}) {
           roundCount: null,
           inputTypeCount: DEFAULT_INPUT_TYPE_COUNT
         },
-        game: null
+        game: null,
+        chatMessages: []
       };
 
       rooms.set(roomCode, room);
@@ -1080,6 +1112,7 @@ function createGameServer(options = {}) {
           participant.avatarId,
           participant.id
         );
+        player.emote = participant.emote || "";
         participant.connected = true;
         participant.socketId = socket.id;
       } else {
@@ -1245,6 +1278,7 @@ function createGameServer(options = {}) {
         empty: false,
         submittedAt: Date.now()
       });
+      game.roundDrafts.delete(participantId);
 
       answer(socket, acknowledgment, { ok: true });
       emitRoomState(room);
@@ -1253,6 +1287,147 @@ function createGameServer(options = {}) {
       if (allPlayersSubmitted(game)) {
         finalizeRound(room, "all-submitted");
       }
+    });
+
+    socket.on("saveDraft", (payload, acknowledgment) => {
+      const room = rooms.get(socket.data.roomCode);
+      const game = room && room.game;
+      const participantId = socket.data.participantId;
+
+      if (!room || !game || game.status !== "playing") {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Aucune manche n'est en cours."
+        });
+        return;
+      }
+
+      if (
+        !game.participantOrder.includes(participantId) ||
+        game.roundSubmissions.has(participantId)
+      ) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Ce brouillon ne peut plus être enregistré."
+        });
+        return;
+      }
+
+      const assignment = getAssignment(game, participantId);
+      const normalized = normalizeContribution(
+        payload,
+        assignment.expectedType,
+        game.roundIndex,
+        true
+      );
+
+      if (normalized.error) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: normalized.error
+        });
+        return;
+      }
+
+      if (!normalized.content) {
+        game.roundDrafts.delete(participantId);
+      } else {
+        const participant = getGameParticipant(game, participantId);
+        game.roundDrafts.set(participantId, {
+          roundIndex: game.roundIndex,
+          participantId,
+          nickname: participant.nickname,
+          avatarId: participant.avatarId,
+          chainId: assignment.chain.id,
+          type: normalized.type,
+          content: normalized.content,
+          empty: false,
+          savedAt: Date.now()
+        });
+      }
+
+      answer(socket, acknowledgment, { ok: true });
+    });
+
+    socket.on("sendChatMessage", (payload, acknowledgment) => {
+      const room = rooms.get(socket.data.roomCode);
+      const player = room && room.players.get(socket.id);
+      const content =
+        payload && typeof payload.content === "string"
+          ? payload.content.trim()
+          : "";
+      const length = Array.from(content).length;
+
+      if (!room || !player) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "La room n'existe plus."
+        });
+        return;
+      }
+
+      if (length < 1 || length > MAX_CHAT_MESSAGE_LENGTH) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: `Le message doit contenir entre 1 et ${MAX_CHAT_MESSAGE_LENGTH} caractères.`
+        });
+        return;
+      }
+
+      const message = {
+        id: crypto.randomUUID(),
+        nickname: player.nickname,
+        avatarId: player.avatarId,
+        content,
+        sentAt: Date.now()
+      };
+      room.chatMessages.push(message);
+      if (room.chatMessages.length > MAX_CHAT_MESSAGES) {
+        room.chatMessages.splice(
+          0,
+          room.chatMessages.length - MAX_CHAT_MESSAGES
+        );
+      }
+
+      answer(socket, acknowledgment, { ok: true, message });
+      io.to(room.code).emit("chatMessage", message);
+    });
+
+    socket.on("setPlayerEmote", (payload, acknowledgment) => {
+      const room = rooms.get(socket.data.roomCode);
+      const player = room && room.players.get(socket.id);
+      const emote =
+        payload && typeof payload.emote === "string" ? payload.emote : "";
+
+      if (!room || !player) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "La room n'existe plus."
+        });
+        return;
+      }
+
+      if (emote && !ROOM_EMOTES.includes(emote)) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Cette emote n'est pas disponible."
+        });
+        return;
+      }
+
+      player.emote = emote;
+      if (room.game) {
+        const participant = getGameParticipant(
+          room.game,
+          player.participantId
+        );
+        if (participant) {
+          participant.emote = emote;
+        }
+      }
+
+      answer(socket, acknowledgment, { ok: true });
+      emitRoomState(room);
     });
 
     socket.on("navigateResults", (payload, acknowledgment) => {

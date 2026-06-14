@@ -205,6 +205,8 @@ test("la création valide les pseudonymes et génère un code non ambigu", async
     assert.equal(created.room.players[0].isHost, true);
     assert.equal(created.room.players[0].avatarId, "robot");
     assert.equal(created.room.players[0].status, "ready");
+    assert.equal(created.room.name, "Alice's Room");
+    assert.deepEqual(created.room.chatMessages, []);
     assert.deepEqual(AVATAR_IDS, [
       "comet",
       "robot",
@@ -346,6 +348,7 @@ test("le rôle d'hôte est transféré et une room vide est supprimée", async (
       stateAfterDisconnect.players.find((player) => player.isHost).nickname,
       "First"
     );
+    assert.equal(stateAfterDisconnect.name, "First's Room");
 
     const secondTransfer = waitForEvent(
       secondGuest,
@@ -359,10 +362,80 @@ test("le rôle d'hôte est transféré et une room vide est supprimée", async (
       stateAfterLeave.players.find((player) => player.isHost).nickname,
       "Second"
     );
+    assert.equal(stateAfterLeave.name, "Second's Room");
 
     secondGuest.disconnect();
     await waitUntil(() => game.rooms.size === 0);
     assert.equal(game.rooms.size, 0);
+  } finally {
+    await cleanup(game, clients);
+  }
+});
+
+test("le chat et les emotes sont synchronisés dans toute la room", async () => {
+  const { game, url } = await startTestServer();
+  const clients = [];
+
+  try {
+    const host = await connectClient(url);
+    const guest = await connectClient(url);
+    const lateGuest = await connectClient(url);
+    clients.push(host, guest, lateGuest);
+
+    const created = await emitAck(host, "createRoom", {
+      nickname: "Alice",
+      avatarId: "wizard"
+    });
+    await emitAck(guest, "joinRoom", {
+      code: created.room.code,
+      nickname: "Bob"
+    });
+
+    const receivedMessage = waitForEvent(
+      guest,
+      "chatMessage",
+      (message) => message.content === "Salut la room"
+    );
+    const sent = await emitAck(host, "sendChatMessage", {
+      content: "  Salut la room  "
+    });
+    assert.equal(sent.ok, true);
+    const message = await receivedMessage;
+    assert.equal(message.nickname, "Alice");
+    assert.equal(message.avatarId, "wizard");
+    assert.equal(message.content, "Salut la room");
+
+    const joinedLate = await emitAck(lateGuest, "joinRoom", {
+      code: created.room.code,
+      nickname: "Claire"
+    });
+    assert.equal(joinedLate.ok, true);
+    assert.equal(joinedLate.room.chatMessages.length, 1);
+    assert.equal(joinedLate.room.chatMessages[0].content, "Salut la room");
+
+    const emoteUpdate = waitForEvent(
+      guest,
+      "roomState",
+      (room) =>
+        room.players.some(
+          (player) => player.nickname === "Alice" && player.emote === "🔥"
+        )
+    );
+    const emote = await emitAck(host, "setPlayerEmote", { emote: "🔥" });
+    assert.equal(emote.ok, true);
+    await emoteUpdate;
+
+    const invalidEmote = await emitAck(host, "setPlayerEmote", {
+      emote: "🐉"
+    });
+    assert.equal(invalidEmote.ok, false);
+    assert.match(invalidEmote.error, /emote/);
+
+    const tooLong = await emitAck(host, "sendChatMessage", {
+      content: "x".repeat(201)
+    });
+    assert.equal(tooLong.ok, false);
+    assert.match(tooLong.error, /200/);
   } finally {
     await cleanup(game, clients);
   }

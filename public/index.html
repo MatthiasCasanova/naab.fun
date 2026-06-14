@@ -101,6 +101,14 @@
         <circle cx="9" cy="8" r="3"/>
         <path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1"/>
       </symbol>
+      <symbol id="icon-chat" viewBox="0 0 24 24">
+        <path d="M4 5h16v11H9l-5 4V5Z"/>
+        <path d="M8 9h8M8 12h5"/>
+      </symbol>
+      <symbol id="icon-send" viewBox="0 0 24 24">
+        <path d="m3 4 18 8-18 8 3-8-3-8Z"/>
+        <path d="M6 12h15"/>
+      </symbol>
     </svg>
 
     <div id="settings-modal" class="modal-backdrop hidden">
@@ -210,21 +218,66 @@
             <p>Écris, dessine, fais du bruit.</p>
           </div>
         </div>
-        <button id="settings-button" class="topbar-button" type="button" aria-label="Ouvrir les paramètres">
-          <svg class="icon"><use href="#icon-settings"></use></svg>
-        </button>
+        <div class="topbar-actions">
+          <button id="chat-toggle-button" class="topbar-button hidden" type="button" aria-label="Ouvrir le chat" aria-expanded="false">
+            <svg class="icon"><use href="#icon-chat"></use></svg>
+          </button>
+          <button id="settings-button" class="topbar-button" type="button" aria-label="Ouvrir les paramètres">
+            <svg class="icon"><use href="#icon-settings"></use></svg>
+          </button>
+        </div>
       </header>
 
       <div id="play-layout" class="play-layout">
+        <aside id="chat-sidebar" class="chat-sidebar hidden" aria-labelledby="chat-title">
+          <div class="sidebar-heading chat-heading">
+            <svg class="icon"><use href="#icon-chat"></use></svg>
+            <div>
+              <strong id="chat-title">Chat de la room</strong>
+              <span>Les bêtises restent ici</span>
+            </div>
+            <button id="chat-close-button" class="icon-button chat-close-button" type="button" aria-label="Fermer le chat">
+              <svg class="icon"><use href="#icon-close"></use></svg>
+            </button>
+          </div>
+          <ol id="chat-messages" class="chat-messages" aria-live="polite"></ol>
+          <form id="chat-form" class="chat-form">
+            <input
+              id="chat-input"
+              type="text"
+              maxlength="200"
+              autocomplete="off"
+              placeholder="Écris un message..."
+              aria-label="Message du chat"
+            >
+            <button id="chat-send-button" class="icon-action" type="submit" aria-label="Envoyer le message">
+              <svg class="icon"><use href="#icon-send"></use></svg>
+            </button>
+          </form>
+          <div id="chat-message" class="message chat-feedback" role="status" aria-live="polite"></div>
+        </aside>
+
         <aside id="players-sidebar" class="players-sidebar hidden" aria-labelledby="players-sidebar-title">
           <div class="sidebar-heading">
             <svg class="icon"><use href="#icon-users"></use></svg>
             <div>
-              <strong id="players-sidebar-title">La bande</strong>
+              <strong id="players-sidebar-title">Kamoulox's Room</strong>
               <span id="player-count">0 / 10</span>
             </div>
           </div>
           <ul id="player-list" class="player-list"></ul>
+          <div class="emote-panel">
+            <span>Ton humeur officielle</span>
+            <div id="emote-picker" class="emote-picker" aria-label="Choisir une emote">
+              <button class="emote-option" type="button" data-emote="😂" aria-label="Rire">😂</button>
+              <button class="emote-option" type="button" data-emote="🔥" aria-label="Feu">🔥</button>
+              <button class="emote-option" type="button" data-emote="👏" aria-label="Applaudir">👏</button>
+              <button class="emote-option" type="button" data-emote="💀" aria-label="Crâne">💀</button>
+              <button class="emote-option" type="button" data-emote="❤️" aria-label="Cœur">❤️</button>
+              <button class="emote-option" type="button" data-emote="🤯" aria-label="Explosion">🤯</button>
+              <button class="emote-option emote-clear" type="button" data-emote="" aria-label="Retirer l'emote">×</button>
+            </div>
+          </div>
           <div id="connection-status" class="sidebar-connection">
             <span class="status-dot" aria-hidden="true"></span>
             <span id="connection-label">Connexion...</span>

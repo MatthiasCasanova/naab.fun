@@ -266,6 +266,37 @@ test("l'accueil propose les avatars et la room conserve une liste laterale", () 
   assert.match(html, /<span>📝<\/span><span>🎙️<\/span><span>🎨<\/span>/);
 });
 
+test("la room expose le chat, les emotes et son nom d'hôte", () => {
+  const html = readPublicFile("index.html");
+  const app = readPublicFile("app.js");
+  const css = readPublicFile("styles.css");
+
+  assert.match(html, /id="chat-sidebar"/);
+  assert.match(html, /id="chat-messages"/);
+  assert.match(html, /id="chat-form"/);
+  assert.match(html, /id="chat-toggle-button"/);
+  assert.match(html, /class="emote-option"/);
+  assert.match(html, /id="players-sidebar-title">Kamoulox's Room</);
+  assert.doesNotMatch(html, />La bande</);
+  assert.match(app, /room\.name \|\| "Kamoulox's Room"/);
+  assert.match(app, /socket\.on\("chatMessage"/);
+  assert.match(app, /emitWithAcknowledgment\("sendChatMessage"/);
+  assert.match(app, /emitWithAcknowledgment\("setPlayerEmote"/);
+  assert.match(css, /grid-template-areas:\s*"chat main players"/);
+  assert.match(css, /\.chat-sidebar\.mobile-open/);
+});
+
+test("les trois éditeurs sauvegardent un brouillon avant validation", () => {
+  const app = readPublicFile("app.js");
+
+  assert.match(app, /socket\.emit\(\s*"saveDraft"/);
+  assert.match(app, /elements\.textContribution\.value/);
+  assert.match(app, /drawingCanvas\.toDataURL\("image\/png"\)/);
+  assert.match(app, /scheduleAudioSessionDraft\(session\)/);
+  assert.match(app, /sendDraft\("audio", dataUrl, session\.roundIndex\)/);
+  assert.match(app, /scheduleDraftSave\(DRAWING_DRAFT_SAVE_DEBOUNCE_MS\)/);
+});
+
 test("les sélecteurs d'identifiants de app.js existent dans index.html", () => {
   const html = readPublicFile("index.html");
   const app = readPublicFile("app.js");
