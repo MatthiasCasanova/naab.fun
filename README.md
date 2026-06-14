@@ -1,7 +1,9 @@
 # Kamoulox 30000
 
-Petit lobby multijoueur sans compte ni base de données. Les rooms et les joueurs
-sont conservés uniquement en mémoire par le processus Node.js.
+Jeu multijoueur de chaînes créatives inspiré du téléphone arabe dessiné. Chaque
+joueur alterne entre texte, audio et dessin pendant autant de manches qu'il y a
+de participants. Les rooms, contributions et enregistrements restent uniquement
+en mémoire dans le processus Node.js.
 
 ## Lancer en local
 
@@ -12,9 +14,24 @@ npm install
 npm run dev
 ```
 
-Ouvrez ensuite `http://localhost:3000`. Pour tester à deux joueurs, ouvrez deux
-fenêtres de navigation (ou une fenêtre normale et une fenêtre privée), créez une
-partie dans la première, puis rejoignez son code dans la seconde.
+Ouvrez ensuite `http://localhost:3000`. Pour tester à plusieurs joueurs, ouvrez
+plusieurs fenêtres de navigation, créez une partie dans la première, rejoignez
+son code dans les autres, puis utilisez le bouton **Lancer la partie** de l'hôte.
+Le navigateur demande l'autorisation d'utiliser le microphone lors d'une
+contribution audio. Le microphone fonctionne sur `localhost` et en HTTPS.
+
+## Règles du jeu
+
+- L'hôte peut lancer la partie dès que 2 joueurs sont connectés.
+- La partie contient autant de manches que de joueurs.
+- Chaque manche dure 60 secondes et se termine plus tôt si tout le monde valide.
+- La première contribution de chaque chaîne peut être un texte, un dessin ou
+  un son.
+- Les contributions suivantes suivent la boucle Texte → Audio → Dessin → Texte.
+- Chaque joueur participe une fois à chaque chaîne.
+- Les absences et déconnexions deviennent des contributions vides afin de ne
+  jamais bloquer la partie.
+- À la fin, chaque chaîne peut être parcourue dans son ordre complet.
 
 Les tests automatisés se lancent avec :
 

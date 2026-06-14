@@ -81,3 +81,17 @@ test("app.js désactive le cache et journalise l'URL health", () => {
   assert.match(app, /console\.info\(`\[health\] GET \$\{healthUrl\}`\)/);
   assert.match(app, /transports:\s*\["polling", "websocket"\]/);
 });
+
+test("l'interface contient le lobby, le canvas, l'audio et les résultats", () => {
+  const html = fs.readFileSync(
+    path.join(__dirname, "..", "public", "index.html"),
+    "utf8"
+  );
+
+  assert.match(html, /id="start-game-button"/);
+  assert.match(html, /id="drawing-canvas"/);
+  assert.match(html, /id="record-audio-button"/);
+  assert.match(html, /id="play-audio-button"/);
+  assert.match(html, /id="results-view"/);
+  assert.match(html, /id="return-lobby-button"/);
+});

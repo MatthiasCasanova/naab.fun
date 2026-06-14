@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta
       name="description"
-      content="Créez ou rejoignez une partie multijoueur avec un simple code."
+      content="Un jeu multijoueur de chaînes créatives avec textes, dessins et sons."
     >
     <title>Kamoulox 30000</title>
     <link rel="stylesheet" href="./styles.css">
@@ -13,12 +13,12 @@
   <body>
     <main class="app-shell">
       <header class="brand">
-        <p class="eyebrow">Jeu multijoueur</p>
+        <p class="eyebrow">Téléphone créatif multijoueur</p>
         <h1>Kamoulox 30000</h1>
-        <p class="subtitle">Créez une room, partagez le code, jouez ensemble.</p>
+        <p class="subtitle">Écris, dessine, enregistre, puis découvre les chaînes.</p>
       </header>
 
-      <section id="home-view" class="card" aria-labelledby="home-title">
+      <section id="home-view" class="card narrow-card" aria-labelledby="home-title">
         <h2 id="home-title">Rejoindre le lobby</h2>
 
         <label for="nickname">Votre pseudonyme</label>
@@ -63,7 +63,7 @@
 
       <section
         id="room-view"
-        class="card room-card hidden"
+        class="card narrow-card room-card hidden"
         aria-labelledby="room-title"
       >
         <div class="room-heading">
@@ -87,9 +87,173 @@
         <h3>Joueurs connectés</h3>
         <ul id="player-list" class="player-list"></ul>
 
+        <div class="lobby-rules">
+          <strong>Comment ça marche ?</strong>
+          <p>
+            Chaque joueur lance une chaîne. À chaque manche, le texte devient
+            son, le son devient dessin et le dessin redevient texte.
+          </p>
+        </div>
+
+        <button
+          id="start-game-button"
+          class="button button-primary hidden"
+          type="button"
+        >
+          Lancer la partie
+        </button>
+        <p id="start-help" class="help-text"></p>
         <div id="room-message" class="message" role="status" aria-live="polite"></div>
         <button id="leave-button" class="button button-danger" type="button">
           Quitter la partie
+        </button>
+      </section>
+
+      <section id="game-view" class="card game-card hidden" aria-labelledby="game-title">
+        <div class="game-header">
+          <div>
+            <p id="round-label" class="eyebrow">Manche 1 / 2</p>
+            <h2 id="game-title">À toi de jouer</h2>
+          </div>
+          <div class="timer" aria-label="Temps restant">
+            <span id="timer-label">60</span>
+            <span class="timer-unit">s</span>
+          </div>
+        </div>
+        <div class="timer-track" aria-hidden="true">
+          <div id="timer-progress" class="timer-progress"></div>
+        </div>
+
+        <section id="previous-panel" class="previous-panel hidden">
+          <p class="section-label">Contribution reçue</p>
+          <div id="previous-content" class="previous-content"></div>
+        </section>
+
+        <div class="prompt-panel">
+          <p id="game-prompt">Commence ta chaîne.</p>
+        </div>
+
+        <div id="type-picker" class="type-picker">
+          <button class="type-button active" data-type="text" type="button">
+            Texte
+          </button>
+          <button class="type-button" data-type="drawing" type="button">
+            Dessin
+          </button>
+          <button class="type-button" data-type="audio" type="button">
+            Audio
+          </button>
+        </div>
+
+        <div id="editor-panel" class="editor-panel">
+          <div id="text-editor" class="contribution-editor">
+            <label for="text-contribution">Votre texte</label>
+            <textarea
+              id="text-contribution"
+              maxlength="500"
+              rows="6"
+              placeholder="Écrivez une idée, une scène ou une phrase..."
+            ></textarea>
+            <span id="text-counter" class="counter">0 / 500</span>
+          </div>
+
+          <div id="drawing-editor" class="contribution-editor hidden">
+            <div class="drawing-toolbar">
+              <label>
+                Couleur
+                <input id="drawing-color" type="color" value="#182034">
+              </label>
+              <label>
+                Épaisseur
+                <input
+                  id="drawing-size"
+                  type="range"
+                  min="2"
+                  max="30"
+                  value="8"
+                >
+              </label>
+              <button id="clear-drawing-button" class="button button-compact" type="button">
+                Effacer
+              </button>
+            </div>
+            <canvas
+              id="drawing-canvas"
+              width="800"
+              height="500"
+              aria-label="Zone de dessin"
+            ></canvas>
+          </div>
+
+          <div id="audio-editor" class="contribution-editor hidden">
+            <p id="audio-status" class="audio-status">
+              Aucun enregistrement.
+            </p>
+            <div class="audio-actions">
+              <button id="record-audio-button" class="button button-primary" type="button">
+                Enregistrer
+              </button>
+              <button id="stop-audio-button" class="button button-secondary" type="button" disabled>
+                Arrêter
+              </button>
+              <button id="play-audio-button" class="button button-secondary" type="button" disabled>
+                Écouter
+              </button>
+              <button id="reset-audio-button" class="button button-link" type="button" disabled>
+                Recommencer
+              </button>
+            </div>
+            <audio id="audio-preview" class="audio-player hidden" controls></audio>
+          </div>
+        </div>
+
+        <div id="waiting-panel" class="waiting-panel hidden">
+          <div class="waiting-pulse" aria-hidden="true"></div>
+          <h3>Contribution validée</h3>
+          <p id="waiting-progress">En attente des autres joueurs...</p>
+        </div>
+
+        <div id="game-message" class="message" role="status" aria-live="polite"></div>
+        <button id="submit-contribution-button" class="button button-primary" type="button">
+          Valider ma contribution
+        </button>
+        <button id="game-leave-button" class="button button-link danger-link" type="button">
+          Quitter la partie
+        </button>
+      </section>
+
+      <section
+        id="results-view"
+        class="card results-card hidden"
+        aria-labelledby="results-title"
+      >
+        <div class="results-heading">
+          <div>
+            <p class="eyebrow">Résultats</p>
+            <h2 id="results-title">Les chaînes sont terminées</h2>
+          </div>
+          <span id="result-chain-count" class="result-count">1 / 2</span>
+        </div>
+
+        <div class="chain-title">
+          <span>Chaîne commencée par</span>
+          <strong id="result-owner">Joueur</strong>
+        </div>
+
+        <ol id="result-contributions" class="result-contributions"></ol>
+
+        <div class="result-navigation">
+          <button id="previous-chain-button" class="button button-secondary" type="button">
+            Chaîne précédente
+          </button>
+          <button id="next-chain-button" class="button button-primary" type="button">
+            Chaîne suivante
+          </button>
+        </div>
+
+        <div id="results-message" class="message" role="status" aria-live="polite"></div>
+        <button id="return-lobby-button" class="button button-link" type="button">
+          Revenir au lobby
         </button>
       </section>
     </main>
