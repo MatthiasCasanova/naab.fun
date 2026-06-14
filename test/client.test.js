@@ -337,6 +337,12 @@ test("le resume revele verticalement, defile et lance les audios", () => {
   assert.match(app, /current-reveal/);
   assert.match(app, /function scrollToCurrentResult/);
   assert.match(app, /container\.scrollTo\(/);
+  assert.match(app, /emitWithAcknowledgment\("restartGame"\)/);
+  assert.match(app, /restartGameButton\.classList\.toggle/);
+  assert.match(
+    readPublicFile("index.html"),
+    /id="restart-game-button"[\s\S]*href="#icon-refresh"/
+  );
   assert.match(css, /\.result-contributions[\s\S]*flex-direction:\s*column/);
   assert.match(css, /\.result-contributions[\s\S]*overflow-y:\s*auto/);
   assert.match(css, /#text-contribution::selection/);

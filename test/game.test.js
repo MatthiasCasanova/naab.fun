@@ -636,6 +636,80 @@ test("le contrôle du résumé suit le transfert d'hôte", async () => {
   }
 });
 
+test("seul l'hôte peut relancer immédiatement une partie terminée", async () => {
+  const { game, url } = await startTestServer();
+  let clients = [];
+
+  try {
+    const setup = await createRoomWithPlayers(url, ["Alice", "Bob"]);
+    clients = setup.clients;
+    const [alice, bob] = clients;
+    await emitAck(alice, "updateGameSettings", {
+      roundCount: 1,
+      inputTypeCount: 2
+    });
+
+    const firstStatesPromise = Promise.all(
+      clients.map((client) =>
+        waitForEvent(
+          client,
+          "gameState",
+          (state) => state.phase === "playing"
+        )
+      )
+    );
+    await emitAck(alice, "startGame");
+    const firstStates = await firstStatesPromise;
+    const firstChainIds = firstStates.map(
+      (state) => state.assignment.chainId
+    );
+
+    const resultsPromise = Promise.all(
+      clients.map((client) =>
+        waitForEvent(
+          client,
+          "gameState",
+          (state) => state.phase === "results"
+        )
+      )
+    );
+    await submitExpected(alice, firstStates[0], "Premier Alice");
+    await submitExpected(bob, firstStates[1], "Premier Bob");
+    const results = await resultsPromise;
+    assert.equal(results[0].canRestartGame, true);
+    assert.equal(results[1].canRestartGame, false);
+
+    const guestRestart = await emitAck(bob, "restartGame");
+    assert.equal(guestRestart.ok, false);
+    assert.match(guestRestart.error, /Seul l'hôte/);
+
+    const restartedStatesPromise = Promise.all(
+      clients.map((client) =>
+        waitForEvent(
+          client,
+          "gameState",
+          (state) => state.phase === "playing" && state.roundIndex === 0
+        )
+      )
+    );
+    const restarted = await emitAck(alice, "restartGame");
+    assert.equal(restarted.ok, true);
+    const restartedStates = await restartedStatesPromise;
+
+    restartedStates.forEach((state, index) => {
+      assert.equal(state.totalRounds, 1);
+      assert.notEqual(state.assignment.chainId, firstChainIds[index]);
+      assert.ok(state.assignment.expectedType);
+    });
+    const room = game.rooms.get(setup.code);
+    assert.equal(room.settings.roundCount, 1);
+    assert.equal(room.settings.inputTypeCount, 2);
+    assert.ok(room.game.chains.every((chain) => chain.contributions.length === 0));
+  } finally {
+    await cleanup(game, clients);
+  }
+});
+
 test("une contribution reste unique par manche", async () => {
   const { game, url } = await startTestServer();
   let clients = [];

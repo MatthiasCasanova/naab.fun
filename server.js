@@ -517,6 +517,11 @@ function createGameServer(options = {}) {
       canGoPrevious: resultStepNumber > 1,
       canGoNext: resultStepNumber < resultStepCount,
       canControlResults: Boolean(player && player.id === room.hostId),
+      canRestartGame: Boolean(
+        player &&
+          player.id === room.hostId &&
+          room.players.size >= MIN_PLAYERS_TO_START
+      ),
       chains: game.chains.map((chain) => ({
         id: chain.id,
         ownerNickname: chain.ownerNickname,
@@ -1327,6 +1332,38 @@ function createGameServer(options = {}) {
       room.game = null;
       answer(socket, acknowledgment, { ok: true });
       emitRoomState(room);
+    });
+
+    socket.on("restartGame", (acknowledgment) => {
+      const room = rooms.get(socket.data.roomCode);
+      if (!room || !room.game || room.game.status !== "results") {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Les résultats ne sont pas disponibles."
+        });
+        return;
+      }
+
+      if (room.hostId !== socket.id) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Seul l'hôte peut relancer une partie."
+        });
+        return;
+      }
+
+      if (room.players.size < MIN_PLAYERS_TO_START) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Il faut au moins 2 joueurs pour relancer une partie."
+        });
+        return;
+      }
+
+      clearGameTimers(room.game);
+      room.game = createGame(room);
+      answer(socket, acknowledgment, { ok: true });
+      beginRound(room);
     });
 
     socket.on("leaveRoom", (acknowledgment) => {

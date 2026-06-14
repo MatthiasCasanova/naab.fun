@@ -1868,6 +1868,13 @@ label,
   min-width: 120px;
 }
 
+.result-end-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
 .results-observer-message {
   margin: 0;
   border-radius: 10px;
@@ -2262,6 +2269,11 @@ label,
 
   .result-image {
     max-height: 155px;
+  }
+
+  .result-end-actions .button {
+    min-width: 0;
+    padding-inline: 11px;
   }
 }
 

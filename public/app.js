@@ -147,6 +147,7 @@
     resultsObserverMessage: document.querySelector(
       "#results-observer-message"
     ),
+    restartGameButton: document.querySelector("#restart-game-button"),
     returnLobbyButton: document.querySelector("#return-lobby-button")
   };
 
@@ -2700,6 +2701,14 @@
       "hidden",
       !currentGame.canControlResults
     );
+    elements.restartGameButton.classList.toggle(
+      "hidden",
+      !currentGame.canControlResults
+    );
+    elements.restartGameButton.disabled = !currentGame.canRestartGame;
+    elements.restartGameButton.title = currentGame.canRestartGame
+      ? "Relancer immédiatement avec les mêmes joueurs et réglages"
+      : "Il faut au moins 2 joueurs connectés pour relancer";
 
     const revealKey = `${chain.id}:${resultContributionIndex}`;
     if (lastResultRevealKey !== revealKey) {
@@ -3086,6 +3095,26 @@
     elements.nextChainButton.addEventListener("click", () =>
       navigateResults(1)
     );
+    elements.restartGameButton.addEventListener("click", async () => {
+      elements.restartGameButton.disabled = true;
+      elements.returnLobbyButton.disabled = true;
+      setMessage(elements.resultsMessage, "On remélange les catastrophes...");
+      try {
+        const response = await emitWithAcknowledgment("restartGame");
+        if (!response || !response.ok) {
+          throw new Error(
+            (response && response.error) || "Relance impossible."
+          );
+        }
+      } catch (error) {
+        setMessage(elements.resultsMessage, error.message, "error");
+        if (currentGame && currentGame.phase === "results") {
+          renderCurrentResultChain();
+        }
+      } finally {
+        elements.returnLobbyButton.disabled = false;
+      }
+    });
     elements.returnLobbyButton.addEventListener("click", async () => {
       elements.returnLobbyButton.disabled = true;
       try {
