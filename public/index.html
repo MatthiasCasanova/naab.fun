@@ -22,37 +22,96 @@
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <button
-      id="settings-button"
-      class="settings-button"
-      type="button"
-      aria-haspopup="dialog"
-      aria-controls="settings-modal"
-      aria-label="Ouvrir les paramètres"
-    >
-      <span aria-hidden="true">⚙</span>
-      <span class="settings-button-label">Paramètres</span>
-    </button>
+    <svg class="icon-sprite" aria-hidden="true">
+      <symbol id="icon-settings" viewBox="0 0 24 24">
+        <path d="M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5Z"/>
+        <path d="M19.4 13.5a7.8 7.8 0 0 0 0-3l2-1.6-2-3.4-2.4 1a8 8 0 0 0-2.6-1.5L14 2.5h-4L9.6 5A8 8 0 0 0 7 6.5l-2.4-1-2 3.4 2 1.6a7.8 7.8 0 0 0 0 3l-2 1.6 2 3.4 2.4-1A8 8 0 0 0 9.6 19l.4 2.5h4l.4-2.5a8 8 0 0 0 2.6-1.5l2.4 1 2-3.4-2-1.6Z"/>
+      </symbol>
+      <symbol id="icon-close" viewBox="0 0 24 24">
+        <path d="m6 6 12 12M18 6 6 18"/>
+      </symbol>
+      <symbol id="icon-volume" viewBox="0 0 24 24">
+        <path d="M4 10v4h4l5 4V6l-5 4H4ZM17 9a4 4 0 0 1 0 6M19.5 6.5a8 8 0 0 1 0 11"/>
+      </symbol>
+      <symbol id="icon-muted" viewBox="0 0 24 24">
+        <path d="M4 10v4h4l5 4V6l-5 4H4ZM17 9l5 6M22 9l-5 6"/>
+      </symbol>
+      <symbol id="icon-moon" viewBox="0 0 24 24">
+        <path d="M20 15.2A8.5 8.5 0 0 1 8.8 4 8.7 8.7 0 1 0 20 15.2Z"/>
+      </symbol>
+      <symbol id="icon-sun" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="4"/>
+        <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M19.1 4.9l-1.4 1.4M6.3 17.7l-1.4 1.4"/>
+      </symbol>
+      <symbol id="icon-eye" viewBox="0 0 24 24">
+        <path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/>
+        <circle cx="12" cy="12" r="2.8"/>
+      </symbol>
+      <symbol id="icon-eye-off" viewBox="0 0 24 24">
+        <path d="m3 3 18 18M10.6 6.2A9.8 9.8 0 0 1 12 6c6.5 0 10 6 10 6a17 17 0 0 1-3 3.6M6.2 6.2C3.5 8 2 12 2 12s3.5 6 10 6a9.8 9.8 0 0 0 3.8-.8M9.9 9.9a3 3 0 0 0 4.2 4.2"/>
+      </symbol>
+      <symbol id="icon-copy" viewBox="0 0 24 24">
+        <rect x="8" y="8" width="12" height="12" rx="2"/>
+        <path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>
+      </symbol>
+      <symbol id="icon-plus" viewBox="0 0 24 24">
+        <path d="M12 5v14M5 12h14"/>
+      </symbol>
+      <symbol id="icon-enter" viewBox="0 0 24 24">
+        <path d="M14 5h5v14h-5M10 8l4 4-4 4M14 12H3"/>
+      </symbol>
+      <symbol id="icon-refresh" viewBox="0 0 24 24">
+        <path d="M20 7v5h-5M4 17v-5h5M18.5 12a7 7 0 0 0-12-4.5L4 10M5.5 12a7 7 0 0 0 12 4.5L20 14"/>
+      </symbol>
+      <symbol id="icon-play" viewBox="0 0 24 24">
+        <path d="m8 5 11 7-11 7V5Z"/>
+      </symbol>
+      <symbol id="icon-pause" viewBox="0 0 24 24">
+        <path d="M8 5v14M16 5v14"/>
+      </symbol>
+      <symbol id="icon-check" viewBox="0 0 24 24">
+        <path d="m5 12 4 4L19 6"/>
+      </symbol>
+      <symbol id="icon-exit" viewBox="0 0 24 24">
+        <path d="M10 5H5v14h5M14 8l4 4-4 4M18 12H9"/>
+      </symbol>
+      <symbol id="icon-trash" viewBox="0 0 24 24">
+        <path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/>
+      </symbol>
+      <symbol id="icon-back" viewBox="0 0 24 24">
+        <path d="m15 5-7 7 7 7"/>
+      </symbol>
+      <symbol id="icon-next" viewBox="0 0 24 24">
+        <path d="m9 5 7 7-7 7"/>
+      </symbol>
+      <symbol id="icon-home" viewBox="0 0 24 24">
+        <path d="m3 11 9-8 9 8M5 10v10h14V10M9 20v-6h6v6"/>
+      </symbol>
+      <symbol id="icon-text" viewBox="0 0 24 24">
+        <path d="M5 6V4h14v2M12 4v16M8 20h8"/>
+      </symbol>
+      <symbol id="icon-draw" viewBox="0 0 24 24">
+        <path d="m4 20 4.5-1 10-10a2.1 2.1 0 0 0-3-3l-10 10L4 20ZM13.5 8l3 3"/>
+      </symbol>
+      <symbol id="icon-mic" viewBox="0 0 24 24">
+        <rect x="9" y="3" width="6" height="12" rx="3"/>
+        <path d="M5 11a7 7 0 0 0 14 0M12 18v3M8 21h8"/>
+      </symbol>
+      <symbol id="icon-users" viewBox="0 0 24 24">
+        <circle cx="9" cy="8" r="3"/>
+        <path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6M17 14a5 5 0 0 1 4 5v1"/>
+      </symbol>
+    </svg>
 
     <div id="settings-modal" class="modal-backdrop hidden">
-      <section
-        class="settings-panel"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
-      >
+      <section class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="settings-title">
         <div class="settings-heading">
           <div>
-            <p class="eyebrow">Réglages très sérieux</p>
+            <p class="eyebrow">Réglages du site</p>
             <h2 id="settings-title">Paramètres</h2>
           </div>
-          <button
-            id="close-settings-button"
-            class="icon-button"
-            type="button"
-            aria-label="Fermer les paramètres"
-          >
-            ×
+          <button id="close-settings-button" class="icon-button" type="button" aria-label="Fermer">
+            <svg class="icon"><use href="#icon-close"></use></svg>
           </button>
         </div>
 
@@ -60,377 +119,410 @@
           Volume général
           <strong id="volume-value">100 %</strong>
         </label>
-        <input
-          id="volume-slider"
-          class="volume-slider"
-          type="range"
-          min="0"
-          max="100"
-          value="100"
-        >
-        <button id="mute-button" class="button button-secondary" type="button">
-          Couper le son
-        </button>
+        <input id="volume-slider" class="volume-slider" type="range" min="0" max="100" value="100">
+
+        <div class="settings-icon-row">
+          <div>
+            <strong>Son du site</strong>
+            <p>Tous les lecteurs utilisent ce volume.</p>
+          </div>
+          <button id="mute-button" class="round-control" type="button" aria-label="Couper le son" aria-pressed="false">
+            <svg class="icon"><use id="mute-icon-use" href="#icon-volume"></use></svg>
+          </button>
+        </div>
 
         <div class="settings-divider"></div>
-        <div class="setting-toggle-row">
+        <div class="settings-icon-row">
           <div>
-            <strong>Mode sombre</strong>
-            <p>Recommandé pour préserver les rétines.</p>
+            <strong>Thème</strong>
+            <p>Le mode sombre reste activé par défaut.</p>
           </div>
-          <button
-            id="theme-toggle"
-            class="toggle-button"
-            type="button"
-            role="switch"
-            aria-checked="true"
-          >
-            <span class="toggle-knob"></span>
+          <button id="theme-toggle" class="round-control" type="button" aria-label="Changer le thème" aria-pressed="true">
+            <svg class="icon"><use id="theme-icon-use" href="#icon-moon"></use></svg>
           </button>
         </div>
       </section>
     </div>
 
+    <div id="game-settings-modal" class="modal-backdrop hidden">
+      <section id="game-settings-panel" class="settings-panel" role="dialog" aria-modal="true" aria-labelledby="game-settings-title">
+        <div class="settings-heading">
+          <div>
+            <p class="eyebrow">Réglages de l'hôte</p>
+            <h2 id="game-settings-title">La recette du désastre</h2>
+          </div>
+          <button id="close-game-settings-button" class="icon-button" type="button" aria-label="Fermer">
+            <svg class="icon"><use href="#icon-close"></use></svg>
+          </button>
+        </div>
+
+        <label for="round-count-select">Nombre de manches</label>
+        <select id="round-count-select">
+          <option value="auto">Automatique</option>
+        </select>
+
+        <label for="input-type-count-select">Types possibles</label>
+        <select id="input-type-count-select">
+          <option value="1">1 type aléatoire</option>
+          <option value="2">2 types aléatoires</option>
+          <option value="3">Les 3 types</option>
+        </select>
+        <p class="settings-help">
+          Avec plusieurs types actifs, le serveur évite les répétitions immédiates.
+        </p>
+      </section>
+    </div>
+
     <main class="app-shell">
-      <header class="brand">
-        <p class="eyebrow">Téléphone créatif multijoueur</p>
-        <h1>Kamoulox 30000</h1>
-        <p class="subtitle">Écris, dessine, fais du bruit. Assume ensuite.</p>
+      <header class="topbar">
+        <div class="brand">
+          <span class="brand-mark">K3</span>
+          <div>
+            <h1>Kamoulox 30000</h1>
+            <p>Écris, dessine, fais du bruit.</p>
+          </div>
+        </div>
+        <button id="settings-button" class="topbar-button" type="button" aria-label="Ouvrir les paramètres">
+          <svg class="icon"><use href="#icon-settings"></use></svg>
+        </button>
       </header>
 
-      <section id="home-view" class="card narrow-card" aria-labelledby="home-title">
-        <h2 id="home-title">Entrer dans la zone de turbulence</h2>
-
-        <label for="nickname">Votre pseudonyme</label>
-        <input
-          id="nickname"
-          name="nickname"
-          type="text"
-          minlength="2"
-          maxlength="20"
-          autocomplete="nickname"
-          placeholder="2 à 20 caractères, pas un roman"
-        >
-
-        <button id="create-button" class="button button-primary" type="button">
-          Créer une partie
-        </button>
-
-        <div class="separator" aria-hidden="true"><span>ou</span></div>
-
-        <label for="room-code">Code de partie</label>
-        <input
-          id="room-code"
-          name="room-code"
-          class="code-input"
-          type="text"
-          maxlength="6"
-          autocomplete="off"
-          autocapitalize="characters"
-          spellcheck="false"
-          placeholder="ABC234"
-        >
-
-        <button id="join-button" class="button button-secondary" type="button">
-          Rejoindre la catastrophe
-        </button>
-
-        <div id="home-message" class="message" role="status" aria-live="polite"></div>
-        <button id="retry-button" class="button button-link hidden" type="button">
-          Réessayer sans paniquer
-        </button>
-      </section>
-
-      <section
-        id="room-view"
-        class="card narrow-card room-card hidden"
-        aria-labelledby="room-title"
-      >
-        <div class="room-heading">
-          <div>
-            <p class="eyebrow">Code ultra-secret</p>
-            <h2 id="room-title" class="room-code">******</h2>
+      <div id="play-layout" class="play-layout">
+        <aside id="players-sidebar" class="players-sidebar hidden" aria-labelledby="players-sidebar-title">
+          <div class="sidebar-heading">
+            <svg class="icon"><use href="#icon-users"></use></svg>
+            <div>
+              <strong id="players-sidebar-title">La bande</strong>
+              <span id="player-count">0 / 10</span>
+            </div>
           </div>
-          <div class="room-code-actions">
-            <button id="toggle-code-button" class="button button-compact" type="button">
-              Afficher
-            </button>
-            <button id="copy-button" class="button button-compact" type="button">
-              Copier
-            </button>
-          </div>
-        </div>
-
-        <div class="room-meta">
-          <span id="player-count">0 / 10 joueurs</span>
-          <span id="connection-status" class="connection-status">
+          <ul id="player-list" class="player-list"></ul>
+          <div id="connection-status" class="sidebar-connection">
             <span class="status-dot" aria-hidden="true"></span>
             <span id="connection-label">Connexion...</span>
-          </span>
-        </div>
+          </div>
+        </aside>
 
-        <h3>Artistes présumés</h3>
-        <ul id="player-list" class="player-list"></ul>
-
-        <div class="lobby-rules">
-          <strong>Le plan, si on peut appeler ça un plan</strong>
-          <p>
-            Texte, son, dessin, puis on recommence jusqu’à ce que le sens
-            original ait officiellement disparu.
-          </p>
-        </div>
-
-        <section id="game-settings-panel" class="game-settings-panel hidden">
-          <div class="game-settings-heading">
-            <div>
-              <p class="section-label">Réglages de l'hôte</p>
-              <h3>Dosage de la catastrophe</h3>
+        <div class="view-stack">
+          <section id="home-view" class="card home-card" aria-labelledby="home-title">
+            <div class="home-intro">
+              <p class="eyebrow">Téléphone créatif multijoueur</p>
+              <h2 id="home-title">Choisis ta tête et entre dans l'histoire</h2>
+              <p>Un pseudo, une photo de profil très officielle, puis la confusion.</p>
             </div>
-          </div>
 
-          <label for="round-count-select">Nombre de manches</label>
-          <select id="round-count-select">
-            <option value="auto">Automatique</option>
-          </select>
+            <div class="home-grid">
+              <div class="profile-setup">
+                <label for="nickname">Pseudonyme</label>
+                <input
+                  id="nickname"
+                  name="nickname"
+                  type="text"
+                  minlength="2"
+                  maxlength="20"
+                  autocomplete="nickname"
+                  placeholder="2 à 20 caractères"
+                >
 
-          <label for="input-type-count-select">Nombre de types possibles</label>
-          <select id="input-type-count-select">
-            <option value="1">1 type aléatoire</option>
-            <option value="2">2 types aléatoires</option>
-            <option value="3">Les 3 types</option>
-          </select>
-          <p class="settings-help">
-            Le serveur choisit les types disponibles et, lorsqu'il en a
-            plusieurs, évite de demander deux fois le même à la suite.
-          </p>
-        </section>
+                <span class="field-label">Photo de profil</span>
+                <div id="avatar-picker" class="avatar-picker" role="radiogroup" aria-label="Choisir une photo de profil">
+                  <button class="avatar-option active avatar-comet" data-avatar="comet" type="button" role="radio" aria-checked="true" aria-label="Comète">☄️</button>
+                  <button class="avatar-option avatar-robot" data-avatar="robot" type="button" role="radio" aria-checked="false" aria-label="Robot">🤖</button>
+                  <button class="avatar-option avatar-wizard" data-avatar="wizard" type="button" role="radio" aria-checked="false" aria-label="Mage">🧙</button>
+                  <button class="avatar-option avatar-alien" data-avatar="alien" type="button" role="radio" aria-checked="false" aria-label="Alien">👽</button>
+                  <button class="avatar-option avatar-ninja" data-avatar="ninja" type="button" role="radio" aria-checked="false" aria-label="Ninja">🥷</button>
+                  <button class="avatar-option avatar-ghost" data-avatar="ghost" type="button" role="radio" aria-checked="false" aria-label="Fantôme">👻</button>
+                  <button class="avatar-option avatar-cat" data-avatar="cat" type="button" role="radio" aria-checked="false" aria-label="Chat">😺</button>
+                  <button class="avatar-option avatar-frog" data-avatar="frog" type="button" role="radio" aria-checked="false" aria-label="Grenouille">🐸</button>
+                </div>
+              </div>
 
-        <p id="game-settings-summary" class="game-settings-summary"></p>
+              <div class="home-actions">
+                <article class="action-card">
+                  <div class="action-icon">
+                    <svg class="icon"><use href="#icon-plus"></use></svg>
+                  </div>
+                  <div>
+                    <h3>Nouvelle room</h3>
+                    <p>Crée un code et invite jusqu'à dix personnes.</p>
+                  </div>
+                  <button id="create-button" class="button button-primary action-button" type="button">
+                    <svg class="icon"><use href="#icon-plus"></use></svg>
+                    <span>Créer</span>
+                  </button>
+                </article>
 
-        <button
-          id="start-game-button"
-          class="button button-primary hidden"
-          type="button"
-        >
-          Lancer les hostilités
-        </button>
-        <p id="start-help" class="help-text"></p>
-        <div id="room-message" class="message" role="status" aria-live="polite"></div>
-        <button id="leave-button" class="button button-danger" type="button">
-          Fuir cette partie
-        </button>
-      </section>
+                <article class="action-card">
+                  <div class="action-icon">
+                    <svg class="icon"><use href="#icon-enter"></use></svg>
+                  </div>
+                  <div>
+                    <h3>Rejoindre</h3>
+                    <p>Entre le code transmis par l'hôte.</p>
+                  </div>
+                  <div class="join-row">
+                    <input
+                      id="room-code"
+                      name="room-code"
+                      class="code-input"
+                      type="text"
+                      maxlength="6"
+                      autocomplete="off"
+                      autocapitalize="characters"
+                      spellcheck="false"
+                      placeholder="ABC234"
+                      aria-label="Code de partie"
+                    >
+                    <button id="join-button" class="button button-secondary icon-action" type="button" aria-label="Rejoindre">
+                      <svg class="icon"><use href="#icon-enter"></use></svg>
+                    </button>
+                  </div>
+                </article>
+              </div>
+            </div>
 
-      <section id="game-view" class="card game-card hidden" aria-labelledby="game-title">
-        <div id="round-intro" class="round-intro hidden" aria-live="assertive">
-          <div class="round-intro-content">
-            <span class="round-intro-spark" aria-hidden="true">✦</span>
-            <p id="round-intro-text">Prépare ton chef-d’œuvre douteux.</p>
-            <button
-              id="intro-audio-play-button"
-              class="button button-primary intro-play-button hidden"
-              type="button"
-            >
-              ▶ Écouter le mystérieux son
+            <div id="home-message" class="message" role="status" aria-live="polite"></div>
+            <button id="retry-button" class="button button-link hidden" type="button">
+              <svg class="icon"><use href="#icon-refresh"></use></svg>
+              <span>Réessayer</span>
             </button>
-          </div>
-        </div>
-
-        <div class="game-header">
-          <div>
-            <p id="round-label" class="eyebrow">Manche 1 / 2</p>
-            <h2 id="game-title">À toi de jouer, le destin tremble</h2>
-          </div>
-          <div id="game-clock" class="game-clock" aria-label="Temps restant">
-            <span class="clock-icon" aria-hidden="true">◷</span>
-            <span id="timer-label">01:00</span>
-          </div>
-        </div>
-
-        <div id="game-stage">
-          <section id="previous-panel" class="previous-panel hidden">
-            <p class="section-label">Le chef-d’œuvre reçu</p>
-            <div id="previous-content" class="previous-content"></div>
           </section>
 
-          <div class="prompt-panel">
-            <p id="game-prompt">Commence ta chaîne, personne ne te jugera. Enfin presque.</p>
-          </div>
-
-          <div id="type-picker" class="type-picker">
-            <button class="type-button active" data-type="text" type="button">
-              Texte
-            </button>
-            <button class="type-button" data-type="drawing" type="button">
-              Dessin
-            </button>
-            <button class="type-button" data-type="audio" type="button">
-              Audio
-            </button>
-          </div>
-
-          <div id="editor-panel" class="editor-panel">
-            <div id="text-editor" class="contribution-editor">
-              <label for="text-contribution">Votre prose immortelle</label>
-              <textarea
-                id="text-contribution"
-                maxlength="500"
-                rows="6"
-                placeholder="Écrivez quelque chose que les autres pourront mal comprendre..."
-              ></textarea>
-              <span id="text-counter" class="counter">0 / 500</span>
-            </div>
-
-            <div id="drawing-editor" class="contribution-editor hidden">
-              <div class="paint-panel">
-                <div class="paint-row">
-                  <span class="paint-label">Couleurs</span>
-                  <div id="color-palette" class="color-palette" aria-label="Palette de couleurs">
-                    <button class="color-swatch active" data-color="#182034" style="--swatch:#182034" type="button" aria-label="Bleu nuit"></button>
-                    <button class="color-swatch" data-color="#ffffff" style="--swatch:#ffffff" type="button" aria-label="Blanc"></button>
-                    <button class="color-swatch" data-color="#ef4444" style="--swatch:#ef4444" type="button" aria-label="Rouge"></button>
-                    <button class="color-swatch" data-color="#f97316" style="--swatch:#f97316" type="button" aria-label="Orange"></button>
-                    <button class="color-swatch" data-color="#facc15" style="--swatch:#facc15" type="button" aria-label="Jaune"></button>
-                    <button class="color-swatch" data-color="#22c55e" style="--swatch:#22c55e" type="button" aria-label="Vert"></button>
-                    <button class="color-swatch" data-color="#06b6d4" style="--swatch:#06b6d4" type="button" aria-label="Cyan"></button>
-                    <button class="color-swatch" data-color="#3b82f6" style="--swatch:#3b82f6" type="button" aria-label="Bleu"></button>
-                    <button class="color-swatch" data-color="#8b5cf6" style="--swatch:#8b5cf6" type="button" aria-label="Violet"></button>
-                    <button class="color-swatch" data-color="#ec4899" style="--swatch:#ec4899" type="button" aria-label="Rose"></button>
-                  </div>
-                  <label class="custom-color-label" title="Couleur personnalisée">
-                    <span aria-hidden="true">+</span>
-                    <input id="drawing-color" type="color" value="#182034" aria-label="Couleur personnalisée">
-                  </label>
-                </div>
-
-                <div class="paint-row paint-scroll-row">
-                  <span class="paint-label">Outils</span>
-                  <div id="drawing-tools" class="tool-group">
-                    <button class="paint-tool active" data-tool="pencil" type="button" title="Crayon">✎<span>Crayon</span></button>
-                    <button class="paint-tool" data-tool="line" type="button" title="Ligne droite">╱<span>Ligne</span></button>
-                    <button class="paint-tool" data-tool="circle" type="button" title="Cercle">○<span>Cercle</span></button>
-                    <button class="paint-tool" data-tool="fill" type="button" title="Pot de peinture">▣<span>Pot</span></button>
-                    <button class="paint-tool" data-tool="eraser" type="button" title="Gomme">◇<span>Gomme</span></button>
-                  </div>
-                </div>
-
-                <div class="paint-row paint-scroll-row">
-                  <span class="paint-label">Taille</span>
-                  <div id="brush-sizes" class="brush-sizes">
-                    <button class="brush-size" data-size="3" type="button" aria-label="Pinceau fin"><span style="--brush-size:3px"></span></button>
-                    <button class="brush-size active" data-size="8" type="button" aria-label="Pinceau moyen"><span style="--brush-size:8px"></span></button>
-                    <button class="brush-size" data-size="15" type="button" aria-label="Pinceau large"><span style="--brush-size:15px"></span></button>
-                    <button class="brush-size" data-size="26" type="button" aria-label="Pinceau très large"><span style="--brush-size:26px"></span></button>
-                  </div>
-                  <div class="history-actions">
-                    <button id="undo-drawing-button" class="paint-action" type="button" disabled title="Annuler">↶</button>
-                    <button id="redo-drawing-button" class="paint-action" type="button" disabled title="Rétablir">↷</button>
-                    <button id="clear-drawing-button" class="paint-action paint-action-danger" type="button" title="Effacer tout">Tout effacer</button>
-                  </div>
-                </div>
+          <section id="room-view" class="card room-card hidden" aria-labelledby="room-title">
+            <div class="room-hero">
+              <div>
+                <p class="eyebrow">Code ultra-secret</p>
+                <h2 id="room-title" class="room-code">******</h2>
               </div>
-
-              <div class="canvas-shell">
-                <canvas
-                  id="drawing-canvas"
-                  width="800"
-                  height="500"
-                  aria-label="Zone de dessin"
-                ></canvas>
-              </div>
-            </div>
-
-            <div id="audio-editor" class="contribution-editor hidden">
-              <div id="audio-empty-state" class="audio-empty-state">
-                <button id="record-audio-button" class="record-button" type="button">
-                  <span class="record-dot" aria-hidden="true"></span>
-                  <span id="record-button-label">Enregistrer pendant 10 secondes</span>
+              <div class="room-code-actions">
+                <button id="toggle-code-button" class="round-control" type="button" aria-label="Afficher le code" aria-pressed="false">
+                  <svg class="icon"><use id="code-icon-use" href="#icon-eye"></use></svg>
                 </button>
-                <p id="audio-status" class="audio-status" aria-live="polite"></p>
+                <button id="copy-button" class="round-control" type="button" aria-label="Copier le code">
+                  <svg class="icon"><use href="#icon-copy"></use></svg>
+                </button>
+                <button id="game-settings-button" class="round-control hidden" type="button" aria-label="Paramètres de la partie">
+                  <svg class="icon"><use href="#icon-settings"></use></svg>
+                </button>
               </div>
+            </div>
 
-              <div id="audio-ready-state" class="audio-ready-state hidden">
-                <audio id="audio-preview" class="hidden" preload="metadata"></audio>
-                <div class="audio-player-card">
-                  <button id="play-audio-button" class="audio-play-button" type="button" aria-label="Lire l'enregistrement">▶</button>
-                  <div class="audio-timeline">
-                    <input
-                      id="audio-progress"
-                      class="audio-progress"
-                      type="range"
-                      min="0"
-                      max="1000"
-                      value="0"
-                      aria-label="Progression audio"
-                    >
-                    <div class="audio-time-row">
-                      <span id="audio-current-time">00:00</span>
-                      <span id="audio-duration">00:00</span>
+            <div class="lobby-center">
+              <div class="lobby-orbit" aria-hidden="true">
+                <span>TXT</span><span>SND</span><span>IMG</span>
+              </div>
+              <h3>En attente du signal de l'hôte</h3>
+              <p id="game-settings-summary" class="game-settings-summary"></p>
+              <p id="start-help" class="help-text"></p>
+            </div>
+
+            <div class="room-actions">
+              <button id="start-game-button" class="button button-primary hidden" type="button">
+                <svg class="icon"><use href="#icon-play"></use></svg>
+                <span>Lancer</span>
+              </button>
+              <button id="leave-button" class="round-control danger-control" type="button" aria-label="Quitter la partie">
+                <svg class="icon"><use href="#icon-exit"></use></svg>
+              </button>
+            </div>
+            <div id="room-message" class="message" role="status" aria-live="polite"></div>
+          </section>
+
+          <section id="game-view" class="card game-card hidden" aria-labelledby="game-title">
+            <div id="round-intro" class="round-intro hidden" aria-live="assertive">
+              <div class="round-intro-content">
+                <span class="round-intro-spark" aria-hidden="true">✦</span>
+                <p id="round-intro-text">Prépare ton chef-d'œuvre douteux.</p>
+                <button id="intro-audio-play-button" class="round-control intro-play-button hidden" type="button" aria-label="Écouter le son">
+                  <svg class="icon"><use href="#icon-play"></use></svg>
+                </button>
+              </div>
+            </div>
+
+            <div class="game-header">
+              <div>
+                <p id="round-label" class="eyebrow">Manche 1 / 2</p>
+                <h2 id="game-title">À toi de jouer</h2>
+              </div>
+              <div id="game-clock" class="game-clock" aria-label="Temps restant">
+                <span class="clock-icon" aria-hidden="true">◷</span>
+                <span id="timer-label">01:00</span>
+              </div>
+            </div>
+
+            <div id="game-stage" class="game-stage">
+              <section id="previous-panel" class="previous-panel">
+                <p class="section-label">Ce que tu as reçu</p>
+                <div id="previous-content" class="previous-content">
+                  <p class="empty-contribution">Début de chaîne : aucune preuve compromettante.</p>
+                </div>
+              </section>
+
+              <div class="workspace-panel">
+                <div class="prompt-panel">
+                  <p id="game-prompt">Commence ta chaîne.</p>
+                </div>
+
+                <div id="type-picker" class="type-picker hidden">
+                  <button class="type-button active" data-type="text" type="button" aria-label="Texte">
+                    <svg class="icon"><use href="#icon-text"></use></svg>
+                  </button>
+                  <button class="type-button" data-type="drawing" type="button" aria-label="Dessin">
+                    <svg class="icon"><use href="#icon-draw"></use></svg>
+                  </button>
+                  <button class="type-button" data-type="audio" type="button" aria-label="Audio">
+                    <svg class="icon"><use href="#icon-mic"></use></svg>
+                  </button>
+                </div>
+
+                <div id="editor-panel" class="editor-panel">
+                  <div id="text-editor" class="contribution-editor">
+                    <label for="text-contribution">Votre prose immortelle</label>
+                    <textarea id="text-contribution" maxlength="500" rows="6" placeholder="Écrivez quelque chose que les autres pourront mal comprendre..."></textarea>
+                    <span id="text-counter" class="counter">0 / 500</span>
+                  </div>
+
+                  <div id="drawing-editor" class="contribution-editor hidden">
+                    <div class="paint-panel">
+                      <div class="paint-row colors-row">
+                        <div id="color-palette" class="color-palette" aria-label="Palette de couleurs">
+                          <button class="color-swatch active" data-color="#182034" style="--swatch:#182034" type="button" aria-label="Bleu nuit"></button>
+                          <button class="color-swatch" data-color="#ffffff" style="--swatch:#ffffff" type="button" aria-label="Blanc"></button>
+                          <button class="color-swatch" data-color="#ef4444" style="--swatch:#ef4444" type="button" aria-label="Rouge"></button>
+                          <button class="color-swatch" data-color="#f97316" style="--swatch:#f97316" type="button" aria-label="Orange"></button>
+                          <button class="color-swatch" data-color="#facc15" style="--swatch:#facc15" type="button" aria-label="Jaune"></button>
+                          <button class="color-swatch" data-color="#22c55e" style="--swatch:#22c55e" type="button" aria-label="Vert"></button>
+                          <button class="color-swatch" data-color="#06b6d4" style="--swatch:#06b6d4" type="button" aria-label="Cyan"></button>
+                          <button class="color-swatch" data-color="#3b82f6" style="--swatch:#3b82f6" type="button" aria-label="Bleu"></button>
+                          <button class="color-swatch" data-color="#8b5cf6" style="--swatch:#8b5cf6" type="button" aria-label="Violet"></button>
+                          <button class="color-swatch" data-color="#ec4899" style="--swatch:#ec4899" type="button" aria-label="Rose"></button>
+                        </div>
+                        <label class="custom-color-label" title="Couleur personnalisée">
+                          <span aria-hidden="true">+</span>
+                          <input id="drawing-color" type="color" value="#182034" aria-label="Couleur personnalisée">
+                        </label>
+                      </div>
+
+                      <div id="drawing-tools" class="tool-group">
+                        <button class="paint-tool active" data-tool="pencil" type="button" aria-label="Crayon">✎</button>
+                        <button class="paint-tool" data-tool="line" type="button" aria-label="Ligne">╱</button>
+                        <button class="paint-tool" data-tool="circle" type="button" aria-label="Cercle">○</button>
+                        <button class="paint-tool" data-tool="fill" type="button" aria-label="Pot de peinture">▣</button>
+                        <button class="paint-tool" data-tool="eraser" type="button" aria-label="Gomme">◇</button>
+                      </div>
+
+                      <div id="brush-sizes" class="brush-sizes">
+                        <button class="brush-size" data-size="3" type="button" aria-label="Fin"><span style="--brush-size:3px"></span></button>
+                        <button class="brush-size active" data-size="8" type="button" aria-label="Moyen"><span style="--brush-size:8px"></span></button>
+                        <button class="brush-size" data-size="15" type="button" aria-label="Large"><span style="--brush-size:15px"></span></button>
+                        <button class="brush-size" data-size="26" type="button" aria-label="Très large"><span style="--brush-size:26px"></span></button>
+                      </div>
+
+                      <div class="history-actions">
+                        <button id="undo-drawing-button" class="paint-action" type="button" disabled aria-label="Annuler">↶</button>
+                        <button id="redo-drawing-button" class="paint-action" type="button" disabled aria-label="Rétablir">↷</button>
+                        <button id="clear-drawing-button" class="paint-action paint-action-danger" type="button" aria-label="Effacer tout">
+                          <svg class="icon"><use href="#icon-trash"></use></svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div class="canvas-shell">
+                      <canvas id="drawing-canvas" width="800" height="500" aria-label="Zone de dessin"></canvas>
                     </div>
                   </div>
-                  <button id="reset-audio-button" class="audio-delete-button" type="button" aria-label="Supprimer et recommencer">■</button>
+
+                  <div id="audio-editor" class="contribution-editor hidden">
+                    <div id="audio-empty-state" class="audio-empty-state">
+                      <button id="record-audio-button" class="record-button" type="button">
+                        <svg class="icon"><use href="#icon-mic"></use></svg>
+                        <span id="record-button-label">10 secondes de bruit</span>
+                      </button>
+                      <p id="audio-status" class="audio-status" aria-live="polite"></p>
+                    </div>
+
+                    <div id="audio-ready-state" class="audio-ready-state hidden">
+                      <audio id="audio-preview" class="hidden" preload="metadata"></audio>
+                      <div class="audio-player-card">
+                        <button id="play-audio-button" class="audio-play-button" type="button" aria-label="Lire">
+                          <svg class="icon"><use id="audio-play-icon-use" href="#icon-play"></use></svg>
+                        </button>
+                        <div class="audio-timeline">
+                          <input id="audio-progress" class="audio-progress" type="range" min="0" max="1000" value="0" aria-label="Progression audio">
+                          <div class="audio-time-row">
+                            <span id="audio-current-time">00:00</span>
+                            <span id="audio-duration">00:00</span>
+                          </div>
+                        </div>
+                        <button id="reset-audio-button" class="audio-delete-button" type="button" aria-label="Supprimer">
+                          <svg class="icon"><use href="#icon-trash"></use></svg>
+                        </button>
+                      </div>
+                      <button id="validate-audio-button" class="button button-primary" type="button">
+                        <svg class="icon"><use href="#icon-check"></use></svg>
+                        <span>Valider</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <button id="validate-audio-button" class="button button-primary" type="button">
-                  Valider ce magnifique bruit
-                </button>
+
+                <div id="waiting-panel" class="waiting-panel hidden">
+                  <div class="waiting-pulse" aria-hidden="true"></div>
+                  <h3>Contribution envoyée</h3>
+                  <p id="waiting-progress">En attente des autres génies...</p>
+                </div>
+
+                <div class="workspace-actions">
+                  <button id="submit-contribution-button" class="button button-primary" type="button">
+                    <svg class="icon"><use href="#icon-check"></use></svg>
+                    <span>Valider</span>
+                  </button>
+                  <button id="game-leave-button" class="round-control danger-control" type="button" aria-label="Quitter">
+                    <svg class="icon"><use href="#icon-exit"></use></svg>
+                  </button>
+                </div>
+                <div id="game-message" class="message" role="status" aria-live="polite"></div>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div id="waiting-panel" class="waiting-panel hidden">
-            <div class="waiting-pulse" aria-hidden="true"></div>
-            <h3>Contribution envoyée dans le grand inconnu</h3>
-            <p id="waiting-progress">En attente des autres génies...</p>
-          </div>
+          <section id="results-view" class="card results-card hidden" aria-labelledby="results-title">
+            <div class="results-heading">
+              <div>
+                <p class="eyebrow">Résumé synchronisé</p>
+                <h2 id="results-title">Voici comment tout a dérapé</h2>
+              </div>
+              <span id="result-chain-count" class="result-count">1 / 2</span>
+            </div>
 
-          <div id="game-message" class="message" role="status" aria-live="polite"></div>
-          <button id="submit-contribution-button" class="button button-primary" type="button">
-            Valider ce chef-d’œuvre
-          </button>
-          <button id="game-leave-button" class="button button-link danger-link" type="button">
-            Abandonner lâchement
-          </button>
+            <div class="chain-title">
+              <span>Catastrophe initiée par</span>
+              <strong id="result-owner">Joueur</strong>
+            </div>
+            <ol id="result-contributions" class="result-contributions"></ol>
+
+            <p id="results-observer-message" class="results-observer-message hidden">
+              L'hôte pilote le résumé. Observe les dégâts.
+            </p>
+
+            <div class="results-footer">
+              <div id="result-navigation" class="result-navigation">
+                <button id="previous-chain-button" class="round-control" type="button" aria-label="Chaîne précédente">
+                  <svg class="icon"><use href="#icon-back"></use></svg>
+                </button>
+                <button id="next-chain-button" class="round-control primary-control" type="button" aria-label="Chaîne suivante">
+                  <svg class="icon"><use href="#icon-next"></use></svg>
+                </button>
+              </div>
+              <button id="return-lobby-button" class="button button-secondary" type="button">
+                <svg class="icon"><use href="#icon-home"></use></svg>
+                <span>Lobby</span>
+              </button>
+            </div>
+            <div id="results-message" class="message" role="status" aria-live="polite"></div>
+          </section>
         </div>
-      </section>
-
-      <section
-        id="results-view"
-        class="card results-card hidden"
-        aria-labelledby="results-title"
-      >
-        <div class="results-heading">
-          <div>
-            <p class="eyebrow">Résultats scientifiquement discutables</p>
-            <h2 id="results-title">Voici comment tout a dérapé</h2>
-          </div>
-          <span id="result-chain-count" class="result-count">1 / 2</span>
-        </div>
-
-        <div class="chain-title">
-          <span>Catastrophe initiée par</span>
-          <strong id="result-owner">Joueur</strong>
-        </div>
-
-        <ol id="result-contributions" class="result-contributions"></ol>
-
-        <p id="results-observer-message" class="results-observer-message hidden">
-          L'hôte pilote le résumé. Installe-toi confortablement et observe.
-        </p>
-
-        <div id="result-navigation" class="result-navigation">
-          <button id="previous-chain-button" class="button button-secondary" type="button">
-            Chaîne précédente
-          </button>
-          <button id="next-chain-button" class="button button-primary" type="button">
-            Chaîne suivante
-          </button>
-        </div>
-
-        <div id="results-message" class="message" role="status" aria-live="polite"></div>
-        <button id="return-lobby-button" class="button button-link" type="button">
-          Revenir au lobby, comme si de rien n’était
-        </button>
-      </section>
+      </div>
     </main>
 
     <script src="./socket.io.min.js" defer></script>

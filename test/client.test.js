@@ -165,9 +165,25 @@ test("le lobby masque le code et expose les réglages de l'hôte", () => {
 
   assert.match(html, /id="room-title" class="room-code">\*{6}</);
   assert.match(html, /id="toggle-code-button"/);
+  assert.match(html, /id="game-settings-button"/);
+  assert.match(html, /id="game-settings-modal"/);
   assert.match(html, /id="game-settings-panel"/);
   assert.match(html, /id="round-count-select"/);
   assert.match(html, /id="input-type-count-select"/);
+});
+
+test("l'accueil propose les avatars et la room conserve une liste laterale", () => {
+  const html = readPublicFile("index.html");
+  const avatars = html.match(/class="avatar-option[^"]*"/g) || [];
+
+  assert.equal(avatars.length, 8);
+  assert.match(html, /id="avatar-picker"/);
+  assert.match(html, /data-avatar="comet"/);
+  assert.match(html, /data-avatar="robot"/);
+  assert.match(html, /data-avatar="frog"/);
+  assert.match(html, /id="players-sidebar"/);
+  assert.match(html, /id="player-list"/);
+  assert.match(html, /id="player-count"/);
 });
 
 test("les sélecteurs d'identifiants de app.js existent dans index.html", () => {
@@ -206,8 +222,43 @@ test("le frontend conserve le volume et utilise le timer du serveur", () => {
   assert.match(app, /emitWithAcknowledgment\("navigateResults"/);
   assert.match(app, /emitWithAcknowledgment\(\s*"updateGameSettings"/);
   assert.match(css, /#drawing-canvas[\s\S]*touch-action:\s*none/);
-  assert.match(css, /@media \(max-width:\s*640px\)/);
+  assert.match(css, /@media \(max-width:\s*820px\)/);
+  assert.match(css, /@media \(max-width:\s*560px\)/);
   assert.match(css, /\.game-clock\.warning/);
   assert.match(css, /\.game-clock\.danger/);
   assert.match(css, /html\[data-theme="dark"\]/);
+});
+
+test("la mise en page reste dans le viewport et stabilise le canvas", () => {
+  const css = readPublicFile("styles.css");
+
+  assert.match(css, /html,\s*body\s*\{[\s\S]*height:\s*100%/);
+  assert.match(css, /body\s*\{[\s\S]*overflow:\s*hidden/);
+  assert.match(css, /\.app-shell\s*\{[\s\S]*height:\s*100dvh/);
+  assert.match(
+    css,
+    /\.play-layout\.with-sidebar\s*\{[\s\S]*grid-template-columns/
+  );
+  assert.match(css, /\.canvas-shell\s*\{[\s\S]*aspect-ratio:\s*8\s*\/\s*5/);
+  assert.match(
+    css,
+    /\.canvas-shell\s*\{[\s\S]*height:\s*min\(100%,\s*430px\)/
+  );
+  assert.doesNotMatch(css, /overflow-(?:x|y):\s*(?:auto|scroll)/);
+});
+
+test("les commandes utilisent le sprite d'icones et des animations coherentes", () => {
+  const html = readPublicFile("index.html");
+  const css = readPublicFile("styles.css");
+
+  assert.match(html, /id="icon-settings"/);
+  assert.match(html, /id="icon-muted"/);
+  assert.match(html, /id="icon-moon"/);
+  assert.match(
+    html,
+    /id="game-settings-button"[\s\S]*href="#icon-settings"/
+  );
+  assert.match(css, /button,\s*\.button\s*\{[\s\S]*transition:/);
+  assert.match(css, /\.icon-button:hover:not\(:disabled\)/);
+  assert.match(css, /button:active:not\(:disabled\)/);
 });

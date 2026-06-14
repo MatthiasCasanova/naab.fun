@@ -13,6 +13,22 @@
     drawing: "Dessin",
     audio: "Audio"
   };
+  const AVATARS = Object.freeze({
+    comet: "☄️",
+    robot: "🤖",
+    wizard: "🧙",
+    alien: "👽",
+    ninja: "🥷",
+    ghost: "👻",
+    cat: "😺",
+    frog: "🐸"
+  });
+  const PLAYER_STATUS_LABELS = Object.freeze({
+    ready: "Prêt",
+    playing: "En création",
+    done: "Validé",
+    watching: "Spectateur"
+  });
   const VOLUME_STORAGE_KEY = "kamoulox-volume";
   const MUTED_STORAGE_KEY = "kamoulox-muted";
   const THEME_STORAGE_KEY = "kamoulox-theme";
@@ -21,6 +37,8 @@
   const MAX_DRAWING_HISTORY = 30;
 
   const elements = {
+    playLayout: document.querySelector("#play-layout"),
+    playersSidebar: document.querySelector("#players-sidebar"),
     homeView: document.querySelector("#home-view"),
     roomView: document.querySelector("#room-view"),
     gameView: document.querySelector("#game-view"),
@@ -31,8 +49,15 @@
     volumeSlider: document.querySelector("#volume-slider"),
     volumeValue: document.querySelector("#volume-value"),
     muteButton: document.querySelector("#mute-button"),
+    muteIconUse: document.querySelector("#mute-icon-use"),
     themeToggle: document.querySelector("#theme-toggle"),
+    themeIconUse: document.querySelector("#theme-icon-use"),
+    gameSettingsModal: document.querySelector("#game-settings-modal"),
+    closeGameSettingsButton: document.querySelector(
+      "#close-game-settings-button"
+    ),
     nickname: document.querySelector("#nickname"),
+    avatarButtons: Array.from(document.querySelectorAll(".avatar-option")),
     roomCodeInput: document.querySelector("#room-code"),
     createButton: document.querySelector("#create-button"),
     joinButton: document.querySelector("#join-button"),
@@ -45,6 +70,8 @@
     connectionLabel: document.querySelector("#connection-label"),
     copyButton: document.querySelector("#copy-button"),
     toggleCodeButton: document.querySelector("#toggle-code-button"),
+    codeIconUse: document.querySelector("#code-icon-use"),
+    gameSettingsButton: document.querySelector("#game-settings-button"),
     gameSettingsPanel: document.querySelector("#game-settings-panel"),
     roundCountSelect: document.querySelector("#round-count-select"),
     inputTypeCountSelect: document.querySelector(
@@ -92,6 +119,7 @@
     resetAudioButton: document.querySelector("#reset-audio-button"),
     validateAudioButton: document.querySelector("#validate-audio-button"),
     audioPreview: document.querySelector("#audio-preview"),
+    audioPlayIconUse: document.querySelector("#audio-play-icon-use"),
     audioProgress: document.querySelector("#audio-progress"),
     audioCurrentTime: document.querySelector("#audio-current-time"),
     audioDuration: document.querySelector("#audio-duration"),
@@ -123,6 +151,7 @@
   let currentRoom = null;
   let currentGame = null;
   let currentNickname = "";
+  let currentAvatarId = "comet";
   let shouldRejoin = false;
   let timerInterval = null;
   let introTimeout = null;
@@ -181,10 +210,16 @@
     const percentage = Math.round(siteVolume * 100);
     elements.volumeSlider.value = String(percentage);
     elements.volumeValue.textContent = `${percentage} %`;
-    elements.muteButton.textContent = siteMuted
-      ? "Réactiver le son"
-      : "Couper le son";
-    elements.muteButton.classList.toggle("button-danger", siteMuted);
+    elements.muteButton.setAttribute("aria-pressed", String(siteMuted));
+    elements.muteButton.setAttribute(
+      "aria-label",
+      siteMuted ? "Réactiver le son" : "Couper le son"
+    );
+    elements.muteIconUse.setAttribute(
+      "href",
+      siteMuted ? "#icon-muted" : "#icon-volume"
+    );
+    elements.muteButton.classList.toggle("danger-control", siteMuted);
     applyVolumeToAllAudio();
   }
 
@@ -218,12 +253,16 @@
     document.documentElement.dataset.theme = siteTheme;
     const darkModeEnabled = siteTheme === "dark";
     elements.themeToggle.setAttribute(
-      "aria-checked",
+      "aria-pressed",
       String(darkModeEnabled)
     );
     elements.themeToggle.setAttribute(
       "aria-label",
       darkModeEnabled ? "Désactiver le mode sombre" : "Activer le mode sombre"
+    );
+    elements.themeIconUse.setAttribute(
+      "href",
+      darkModeEnabled ? "#icon-moon" : "#icon-sun"
     );
   }
 
@@ -254,6 +293,31 @@
     }
   }
 
+  function setGameSettingsOpen(isOpen) {
+    const wasOpen = !elements.gameSettingsModal.classList.contains("hidden");
+    const canOpen =
+      Boolean(
+        currentRoom &&
+          socket &&
+          currentRoom.hostId === socket.id &&
+          currentRoom.phase === "lobby"
+      );
+    elements.gameSettingsModal.classList.toggle(
+      "hidden",
+      !isOpen || !canOpen
+    );
+    if (isOpen && canOpen) {
+      elements.closeGameSettingsButton.focus();
+    } else if (wasOpen && canOpen) {
+      elements.gameSettingsButton.focus();
+    }
+  }
+
+  function setSidebarVisible(isVisible) {
+    elements.playersSidebar.classList.toggle("hidden", !isVisible);
+    elements.playLayout.classList.toggle("with-sidebar", isVisible);
+  }
+
   function showOnly(view) {
     [
       elements.homeView,
@@ -263,6 +327,7 @@
     ].forEach((candidate) => {
       candidate.classList.toggle("hidden", candidate !== view);
     });
+    setSidebarVisible(view !== elements.homeView);
   }
 
   function setHomeBusy(isBusy) {
@@ -270,6 +335,9 @@
     elements.joinButton.disabled = isBusy;
     elements.nickname.disabled = isBusy;
     elements.roomCodeInput.disabled = isBusy;
+    elements.avatarButtons.forEach((button) => {
+      button.disabled = isBusy;
+    });
   }
 
   function setConnectionState(isConnected, label) {
@@ -307,6 +375,7 @@
     shouldRejoin = false;
     renderedRoundKey = null;
     codeVisible = false;
+    setGameSettingsOpen(false);
     showOnly(elements.homeView);
     setConnectionState(Boolean(socket && socket.connected), "Connecté");
   }
@@ -316,17 +385,34 @@
 
     room.players.forEach((player) => {
       const item = document.createElement("li");
+      const avatar = document.createElement("div");
+      const copy = document.createElement("div");
       const name = document.createElement("span");
+      const status = document.createElement("span");
 
       item.className = "player-row";
+      item.classList.toggle(
+        "is-self",
+        Boolean(socket && player.id === socket.id)
+      );
+      avatar.className = `player-avatar avatar-${player.avatarId || "comet"}`;
+      avatar.textContent = AVATARS[player.avatarId] || AVATARS.comet;
+      avatar.setAttribute("aria-hidden", "true");
+      copy.className = "player-copy";
       name.className = "player-name";
       name.textContent = player.nickname;
-      item.append(name);
+      status.className =
+        `player-state status-${player.status || "ready"}`;
+      status.textContent =
+        PLAYER_STATUS_LABELS[player.status] || PLAYER_STATUS_LABELS.ready;
+      copy.append(name, status);
+      item.append(avatar, copy);
 
       if (player.isHost) {
         const badge = document.createElement("span");
         badge.className = "host-badge";
-        badge.textContent = "Hôte";
+        badge.textContent = "★";
+        badge.title = "Hôte";
         item.append(badge);
       }
 
@@ -342,12 +428,17 @@
     elements.roomTitle.textContent = codeVisible
       ? currentRoom.code
       : "*".repeat(currentRoom.code.length);
-    elements.toggleCodeButton.textContent = codeVisible
-      ? "Masquer"
-      : "Afficher";
     elements.toggleCodeButton.setAttribute(
       "aria-pressed",
       String(codeVisible)
+    );
+    elements.toggleCodeButton.setAttribute(
+      "aria-label",
+      codeVisible ? "Masquer le code" : "Afficher le code"
+    );
+    elements.codeIconUse.setAttribute(
+      "href",
+      codeVisible ? "#icon-eye-off" : "#icon-eye"
     );
   }
 
@@ -388,7 +479,10 @@
     elements.inputTypeCountSelect.value = String(
       room.settings.inputTypeCount
     );
-    elements.gameSettingsPanel.classList.toggle("hidden", !isHost);
+    elements.gameSettingsButton.classList.toggle("hidden", !isHost);
+    if (!isHost) {
+      setGameSettingsOpen(false);
+    }
 
     const rounds = room.settings.effectiveRoundCount;
     const typeCount = room.settings.inputTypeCount;
@@ -407,13 +501,14 @@
     stopTimer();
     stopRoundIntro();
     stopAudioRecording(true);
+    setGameSettingsOpen(false);
 
     if (roomChanged) {
       codeVisible = false;
     }
     renderRoomCode();
     elements.playerCount.textContent =
-      `${room.playerCount} / ${room.maxPlayers} joueurs`;
+      `${room.playerCount} / ${room.maxPlayers}`;
     renderPlayerList(room);
 
     const isHost = Boolean(socket && room.hostId === socket.id);
@@ -679,7 +774,8 @@
       try {
         const response = await emitWithAcknowledgment("joinRoom", {
           code: reconnectingRoom.code,
-          nickname: currentNickname
+          nickname: currentNickname,
+          avatarId: currentAvatarId
         });
 
         if (!response || !response.ok) {
@@ -737,9 +833,13 @@
 
     socket.on("roomState", (room) => {
       currentRoom = room;
+      elements.playerCount.textContent =
+        `${room.playerCount} / ${room.maxPlayers}`;
+      renderPlayerList(room);
       if (room.phase === "lobby") {
         showRoom(room);
       } else if (!currentGame) {
+        setSidebarVisible(true);
         setMessage(elements.roomMessage, "La partie démarre...");
       }
     });
@@ -846,6 +946,11 @@
 
       currentNickname = action.payload.nickname;
       currentRoom = response.room;
+      const ownPlayer = response.room.players.find(
+        (player) => socket && player.id === socket.id
+      );
+      currentAvatarId =
+        (ownPlayer && ownPlayer.avatarId) || action.payload.avatarId;
       shouldRejoin = false;
       pendingAction = null;
 
@@ -894,10 +999,23 @@
       type,
       payload:
         type === "create"
-          ? { nickname }
-          : { nickname, code: roomCode }
+          ? { nickname, avatarId: currentAvatarId }
+          : { nickname, code: roomCode, avatarId: currentAvatarId }
     };
     runPendingAction();
+  }
+
+  function selectAvatar(avatarId) {
+    if (!AVATARS[avatarId]) {
+      return;
+    }
+
+    currentAvatarId = avatarId;
+    elements.avatarButtons.forEach((button) => {
+      const selected = button.dataset.avatar === avatarId;
+      button.classList.toggle("active", selected);
+      button.setAttribute("aria-checked", String(selected));
+    });
   }
 
   async function updateRoomSettings() {
@@ -1320,7 +1438,7 @@
     elements.validateAudioButton.disabled = false;
     elements.recordButtonLabel.textContent =
       "Enregistrer pendant 10 secondes";
-    elements.playAudioButton.textContent = "▶";
+    elements.audioPlayIconUse.setAttribute("href", "#icon-play");
     elements.playAudioButton.setAttribute(
       "aria-label",
       "Lire l'enregistrement"
@@ -1335,7 +1453,7 @@
     elements.audioReadyState.classList.remove("hidden");
     elements.audioProgress.value = "0";
     elements.audioCurrentTime.textContent = "00:00";
-    elements.playAudioButton.textContent = "▶";
+    elements.audioPlayIconUse.setAttribute("href", "#icon-play");
     applyVolumeToAudio(elements.audioPreview);
   }
 
@@ -1357,7 +1475,10 @@
 
   function updateAudioPlayButton() {
     const isPlaying = !elements.audioPreview.paused;
-    elements.playAudioButton.textContent = isPlaying ? "Ⅱ" : "▶";
+    elements.audioPlayIconUse.setAttribute(
+      "href",
+      isPlaying ? "#icon-pause" : "#icon-play"
+    );
     elements.playAudioButton.setAttribute(
       "aria-label",
       isPlaying ? "Mettre en pause" : "Lire l'enregistrement"
@@ -1722,18 +1843,20 @@
     elements.gamePrompt.textContent = getHumorousPrompt(gameState);
 
     const previous = gameState.assignment.previousContribution;
-    elements.previousPanel.classList.toggle("hidden", !previous);
     let previousAudio = null;
     if (isNewRound) {
       if (previous) {
         previousAudio = renderContribution(elements.previousContent, previous);
       } else {
-        elements.previousContent.replaceChildren();
+        const empty = document.createElement("p");
+        empty.className = "empty-contribution";
+        empty.textContent =
+          "Début de chaîne : aucune preuve compromettante.";
+        elements.previousContent.replaceChildren(empty);
       }
     }
 
-    const freeChoice = !gameState.assignment.expectedType;
-    elements.typePicker.classList.toggle("hidden", !freeChoice);
+    elements.typePicker.classList.add("hidden");
     selectContributionType(
       gameState.assignment.expectedType || selectedType || "text"
     );
@@ -2085,6 +2208,17 @@
       codeVisible = !codeVisible;
       renderRoomCode();
     });
+    elements.gameSettingsButton.addEventListener("click", () => {
+      setGameSettingsOpen(true);
+    });
+    elements.closeGameSettingsButton.addEventListener("click", () => {
+      setGameSettingsOpen(false);
+    });
+    elements.gameSettingsModal.addEventListener("click", (event) => {
+      if (event.target === elements.gameSettingsModal) {
+        setGameSettingsOpen(false);
+      }
+    });
     elements.roundCountSelect.addEventListener(
       "change",
       updateRoomSettings
@@ -2097,6 +2231,11 @@
     elements.typeButtons.forEach((button) => {
       button.addEventListener("click", () => {
         selectContributionType(button.dataset.type);
+      });
+    });
+    elements.avatarButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        selectAvatar(button.dataset.avatar);
       });
     });
 
@@ -2122,6 +2261,12 @@
         !elements.settingsModal.classList.contains("hidden")
       ) {
         setSettingsOpen(false);
+      }
+      if (
+        event.key === "Escape" &&
+        !elements.gameSettingsModal.classList.contains("hidden")
+      ) {
+        setGameSettingsOpen(false);
       }
     });
     elements.volumeSlider.addEventListener("input", () => {

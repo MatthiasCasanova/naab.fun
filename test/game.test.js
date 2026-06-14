@@ -622,3 +622,49 @@ test("une contribution reste unique par manche", async () => {
     await cleanup(game, clients);
   }
 });
+
+test("la liste laterale recoit les etats de validation en direct", async () => {
+  const { game, url } = await startTestServer();
+  let clients = [];
+
+  try {
+    const setup = await createRoomWithPlayers(url, ["Alice", "Bob"]);
+    clients = setup.clients;
+    const [alice, bob] = clients;
+
+    const firstStatesPromise = Promise.all(
+      clients.map((client) =>
+        waitForEvent(
+          client,
+          "gameState",
+          (state) => state.phase === "playing" && state.roundIndex === 0
+        )
+      )
+    );
+    await emitAck(alice, "startGame");
+    const firstStates = await firstStatesPromise;
+
+    const statusUpdate = waitForEvent(
+      bob,
+      "roomState",
+      (room) =>
+        room.phase === "playing" &&
+        room.players.some(
+          (player) => player.nickname === "Alice" && player.status === "done"
+        )
+    );
+    await submitExpected(alice, firstStates[0], "Alice a termine");
+    const roomState = await statusUpdate;
+
+    assert.equal(
+      roomState.players.find((player) => player.nickname === "Alice").status,
+      "done"
+    );
+    assert.equal(
+      roomState.players.find((player) => player.nickname === "Bob").status,
+      "playing"
+    );
+  } finally {
+    await cleanup(game, clients);
+  }
+});

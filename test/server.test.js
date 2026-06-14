@@ -4,6 +4,7 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { io: createClient } = require("socket.io-client");
 const {
+  AVATAR_IDS,
   MAX_PLAYERS,
   ROOM_CODE_CHARACTERS,
   createGameServer
@@ -184,7 +185,17 @@ test("la création valide les pseudonymes et génère un code non ambigu", async
     });
     assert.equal(tooLong.ok, false);
 
-    const created = await emitAck(host, "createRoom", { nickname: "Alice" });
+    const invalidAvatar = await emitAck(host, "createRoom", {
+      nickname: "Alice",
+      avatarId: "dragon"
+    });
+    assert.equal(invalidAvatar.ok, false);
+    assert.match(invalidAvatar.error, /avatar/);
+
+    const created = await emitAck(host, "createRoom", {
+      nickname: "Alice",
+      avatarId: "robot"
+    });
     assert.equal(created.ok, true);
     assert.match(
       created.room.code,
@@ -192,6 +203,18 @@ test("la création valide les pseudonymes et génère un code non ambigu", async
     );
     assert.equal(created.room.playerCount, 1);
     assert.equal(created.room.players[0].isHost, true);
+    assert.equal(created.room.players[0].avatarId, "robot");
+    assert.equal(created.room.players[0].status, "ready");
+    assert.deepEqual(AVATAR_IDS, [
+      "comet",
+      "robot",
+      "wizard",
+      "alien",
+      "ninja",
+      "ghost",
+      "cat",
+      "frog"
+    ]);
     assert.equal(game.rooms.size, 1);
   } finally {
     await cleanup(game, clients);
@@ -216,7 +239,8 @@ test("les arrivées sont diffusées et les erreurs de room sont refusées", asyn
     );
     const joined = await emitAck(guest, "joinRoom", {
       code: created.room.code.toLowerCase(),
-      nickname: "Bob"
+      nickname: "Bob",
+      avatarId: "frog"
     });
     const hostState = await updateForHost;
 
@@ -224,6 +248,10 @@ test("les arrivées sont diffusées et les erreurs de room sont refusées", asyn
     assert.deepEqual(
       hostState.players.map((player) => player.nickname),
       ["Alice", "Bob"]
+    );
+    assert.equal(
+      hostState.players.find((player) => player.nickname === "Bob").avatarId,
+      "frog"
     );
 
     const duplicatedName = await emitAck(duplicate, "joinRoom", {

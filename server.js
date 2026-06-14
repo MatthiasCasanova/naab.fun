@@ -16,6 +16,17 @@ const MAX_TEXT_LENGTH = 500;
 const MAX_MEDIA_DATA_LENGTH = 1500000;
 const ROOM_CODE_LENGTH = 6;
 const DEFAULT_INPUT_TYPE_COUNT = 3;
+const DEFAULT_AVATAR_ID = "comet";
+const AVATAR_IDS = Object.freeze([
+  "comet",
+  "robot",
+  "wizard",
+  "alien",
+  "ninja",
+  "ghost",
+  "cat",
+  "frog"
+]);
 const ROOM_CODE_CHARACTERS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const ROOM_CODE_PATTERN = new RegExp(
   `^[${ROOM_CODE_CHARACTERS}]{${ROOM_CODE_LENGTH}}$`
@@ -286,6 +297,16 @@ function createGameServer(options = {}) {
     return nickname;
   }
 
+  function normalizeAvatarId(value, allowDefault = true) {
+    if ((value === undefined || value === null || value === "") && allowDefault) {
+      return DEFAULT_AVATAR_ID;
+    }
+
+    return typeof value === "string" && AVATAR_IDS.includes(value)
+      ? value
+      : null;
+  }
+
   function normalizeRoomCode(value) {
     if (typeof value !== "string") {
       return null;
@@ -308,14 +329,34 @@ function createGameServer(options = {}) {
     return roomCode;
   }
 
-  function createPlayer(socket, nickname, participantId = crypto.randomUUID()) {
+  function createPlayer(
+    socket,
+    nickname,
+    avatarId,
+    participantId = crypto.randomUUID()
+  ) {
     return {
       id: socket.id,
       participantId,
       nickname,
+      avatarId,
       joinedAt: Date.now(),
       joinOrder: joinSequence++
     };
+  }
+
+  function getPlayerStatus(room, player) {
+    if (!room.game) {
+      return "ready";
+    }
+
+    if (room.game.status === "results") {
+      return "watching";
+    }
+
+    return room.game.roundSubmissions.has(player.participantId)
+      ? "done"
+      : "playing";
   }
 
   function serializeRoom(room) {
@@ -344,7 +385,9 @@ function createGameServer(options = {}) {
         .map((player) => ({
           id: player.id,
           nickname: player.nickname,
-          isHost: player.id === room.hostId
+          avatarId: player.avatarId,
+          isHost: player.id === room.hostId,
+          status: getPlayerStatus(room, player)
         }))
     };
   }
@@ -437,6 +480,7 @@ function createGameServer(options = {}) {
     return {
       roundIndex: contribution.roundIndex,
       nickname: contribution.nickname,
+      avatarId: contribution.avatarId,
       type: contribution.type,
       content: contribution.content,
       empty: contribution.empty
@@ -458,6 +502,7 @@ function createGameServer(options = {}) {
       chains: game.chains.map((chain) => ({
         id: chain.id,
         ownerNickname: chain.ownerNickname,
+        ownerAvatarId: chain.ownerAvatarId,
         contributions: chain.contributions.map(serializeContribution)
       }))
     };
@@ -544,6 +589,7 @@ function createGameServer(options = {}) {
       roundIndex: game.roundIndex,
       participantId,
       nickname: participant.nickname,
+      avatarId: participant.avatarId,
       chainId: assignment.chain.id,
       type,
       content: "",
@@ -643,6 +689,7 @@ function createGameServer(options = {}) {
     const participants = orderedPlayers.map((player) => ({
       id: player.participantId,
       nickname: player.nickname,
+      avatarId: player.avatarId,
       connected: true,
       socketId: player.id
     }));
@@ -650,6 +697,7 @@ function createGameServer(options = {}) {
       id: crypto.randomUUID(),
       ownerId: participant.id,
       ownerNickname: participant.nickname,
+      ownerAvatarId: participant.avatarId,
       contributions: []
     }));
     const totalRounds = Math.max(
@@ -803,6 +851,7 @@ function createGameServer(options = {}) {
     const participantId = socket.data.participantId;
     socket.data.roomCode = null;
     socket.data.nickname = null;
+    socket.data.avatarId = null;
     socket.data.participantId = null;
 
     if (shouldLeaveSocketRoom) {
@@ -874,6 +923,7 @@ function createGameServer(options = {}) {
   io.on("connection", (socket) => {
     socket.data.roomCode = null;
     socket.data.nickname = null;
+    socket.data.avatarId = null;
     socket.data.participantId = null;
 
     socket.on("createRoom", async (payload, acknowledgment) => {
@@ -893,9 +943,17 @@ function createGameServer(options = {}) {
         });
         return;
       }
+      const avatarId = normalizeAvatarId(payload && payload.avatarId);
+      if (!avatarId) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Cet avatar n'est pas disponible."
+        });
+        return;
+      }
 
       const roomCode = generateRoomCode();
-      const player = createPlayer(socket, nickname);
+      const player = createPlayer(socket, nickname, avatarId);
       const room = {
         code: roomCode,
         hostId: socket.id,
@@ -910,6 +968,7 @@ function createGameServer(options = {}) {
       rooms.set(roomCode, room);
       socket.data.roomCode = roomCode;
       socket.data.nickname = nickname;
+      socket.data.avatarId = player.avatarId;
       socket.data.participantId = player.participantId;
       await socket.join(roomCode);
 
@@ -932,6 +991,16 @@ function createGameServer(options = {}) {
         answer(socket, acknowledgment, {
           ok: false,
           error: "Le pseudonyme doit contenir entre 2 et 20 caractères."
+        });
+        return;
+      }
+      const requestedAvatarId = normalizeAvatarId(
+        payload && payload.avatarId
+      );
+      if (!requestedAvatarId) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Cet avatar n'est pas disponible."
         });
         return;
       }
@@ -981,7 +1050,12 @@ function createGameServer(options = {}) {
           return;
         }
 
-        player = createPlayer(socket, participant.nickname, participant.id);
+        player = createPlayer(
+          socket,
+          participant.nickname,
+          participant.avatarId,
+          participant.id
+        );
         participant.connected = true;
         participant.socketId = socket.id;
       } else {
@@ -993,12 +1067,13 @@ function createGameServer(options = {}) {
           return;
         }
 
-        player = createPlayer(socket, nickname);
+        player = createPlayer(socket, nickname, requestedAvatarId);
       }
 
       room.players.set(socket.id, player);
       socket.data.roomCode = roomCode;
       socket.data.nickname = player.nickname;
+      socket.data.avatarId = player.avatarId;
       socket.data.participantId = player.participantId;
       await socket.join(roomCode);
 
@@ -1139,6 +1214,7 @@ function createGameServer(options = {}) {
         roundIndex: game.roundIndex,
         participantId,
         nickname: participant.nickname,
+        avatarId: participant.avatarId,
         chainId: assignment.chain.id,
         type: normalized.type,
         content: normalized.content,
@@ -1147,6 +1223,7 @@ function createGameServer(options = {}) {
       });
 
       answer(socket, acknowledgment, { ok: true });
+      emitRoomState(room);
       emitGameStates(room);
 
       if (allPlayersSubmitted(game)) {
@@ -1292,6 +1369,7 @@ if (require.main === module) {
 }
 
 module.exports = {
+  AVATAR_IDS,
   CONTRIBUTION_TYPES,
   MAX_PLAYERS,
   ROUND_DURATION_MS,
