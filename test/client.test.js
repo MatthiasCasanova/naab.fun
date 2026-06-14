@@ -21,6 +21,10 @@ function readPublicFile(fileName) {
   return fs.readFileSync(publicPath(fileName), "utf8");
 }
 
+function readProjectFile(fileName) {
+  return fs.readFileSync(path.join(__dirname, "..", fileName), "utf8");
+}
+
 test("normalizeServerUrl utilise la configuration et supprime chemins et slashs", () => {
   assert.equal(
     normalizeServerUrl(
@@ -74,6 +78,19 @@ test("config.js cible le service Render attendu", () => {
     config,
     /window\.GAME_SERVER_URL\s*=\s*"https:\/\/multiplayer-room-test\.onrender\.com"/
   );
+});
+
+test("render.yaml déploie automatiquement la branche main", () => {
+  const renderConfig = readProjectFile("render.yaml");
+
+  assert.match(renderConfig, /name:\s+multiplayer-room-test/);
+  assert.match(
+    renderConfig,
+    /repo:\s+https:\/\/github\.com\/MatthiasCasanova\/multiplayer-room-test/
+  );
+  assert.match(renderConfig, /branch:\s+main/);
+  assert.match(renderConfig, /autoDeployTrigger:\s+commit/);
+  assert.match(renderConfig, /healthCheckPath:\s+\/health/);
 });
 
 test("app.js désactive le cache et journalise l'URL health", () => {

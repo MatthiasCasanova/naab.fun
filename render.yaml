@@ -1,8 +1,11 @@
 services:
   - type: web
-    name: kamoulox-30000
+    name: multiplayer-room-test
     runtime: node
     plan: free
+    repo: https://github.com/MatthiasCasanova/multiplayer-room-test
+    branch: main
+    autoDeployTrigger: commit
     buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /health

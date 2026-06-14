@@ -60,7 +60,10 @@ git push -u origin main
 ## Déployer le serveur sur Render
 
 1. Créez un nouveau **Blueprint** Render et sélectionnez le dépôt GitHub. Le
-   fichier `render.yaml` configure le Web Service Node.js gratuit.
+   fichier `render.yaml` configure le Web Service Node.js gratuit, la branche
+   `main` et un déploiement automatique à chaque commit.
+   Si le service existe déjà, synchronisez le Blueprint ou vérifiez dans
+   **Settings > Build & Deploy** que **Auto-Deploy** est activé sur `main`.
 2. Le fichier `render.yaml` définit déjà `ALLOWED_ORIGINS` avec les quatre
    origines prévues :
 
@@ -71,7 +74,10 @@ git push -u origin main
    Une origine contient uniquement le protocole et le domaine, jamais `/game/`.
    N'utilisez pas `*` en production. Si le nom du service Render ou du domaine
    change, mettez cette variable à jour dans Render et dans `render.yaml`.
-3. Attendez la fin du déploiement et vérifiez
+3. Pour mettre à jour un service qui servait encore une ancienne version,
+   utilisez une fois **Manual Deploy > Deploy latest commit**. Les prochains
+   pushes sur `main` seront ensuite déployés automatiquement.
+4. Attendez la fin du déploiement et vérifiez
    `https://VOTRE-SERVICE.onrender.com/health`.
 
 Render peut suspendre un Web Service gratuit inactif. L'interface garde une
