@@ -187,6 +187,7 @@ test("les sliders partagent le composant visuel du jeu", () => {
 });
 
 test("la premiere manche masque le panneau recu et agrandit l'editeur", () => {
+  const html = readPublicFile("index.html");
   const app = readPublicFile("app.js");
   const css = readPublicFile("styles.css");
 
@@ -199,6 +200,15 @@ test("la premiere manche masque le panneau recu et agrandit l'editeur", () => {
     /gameStage\.classList\.toggle\("without-previous", !hasPrevious\)/
   );
   assert.match(css, /\.game-stage\.without-previous/);
+  assert.match(
+    css,
+    /\.game-stage\.without-previous \.workspace-panel\s*\{[\s\S]*width:\s*100%/
+  );
+  assert.match(
+    html,
+    /<h2 id="game-title">[\s\S]*id="game-prompt"[\s\S]*<\/h2>/
+  );
+  assert.doesNotMatch(html, /class="prompt-panel"/);
 });
 
 test("l'outil de dessin expose la palette et tous les outils demandés", () => {
@@ -342,11 +352,15 @@ test("la mise en page reste dans le viewport et stabilise le canvas", () => {
     css,
     /\.play-layout\.with-sidebar\s*\{[\s\S]*grid-template-columns/
   );
-  assert.match(css, /\.canvas-shell\s*\{[\s\S]*aspect-ratio:\s*8\s*\/\s*5/);
   assert.match(
     css,
-    /\.canvas-shell\s*\{[\s\S]*height:\s*min\(100%,\s*430px\)/
+    /\.canvas-shell\s*\{[\s\S]*width:\s*100%[\s\S]*height:\s*100%/
   );
+  assert.match(
+    css,
+    /\.audio-empty-state,\s*\.audio-ready-state\s*\{[\s\S]*width:\s*100%/
+  );
+  assert.doesNotMatch(css, /width:\s*min\(100%,\s*560px\)/);
   const scrollableAxes = [
     ...css.matchAll(/overflow-(?:x|y):\s*(?:auto|scroll)/g)
   ].map((match) => match[0]);

@@ -371,7 +371,10 @@
             <div class="game-header">
               <div>
                 <p id="round-label" class="eyebrow">Manche 1 / 2</p>
-                <h2 id="game-title">À toi de jouer</h2>
+                <h2 id="game-title">
+                  <span>À toi de jouer :</span>
+                  <span id="game-prompt">Commence ta chaîne.</span>
+                </h2>
               </div>
               <div id="game-clock" class="game-clock" aria-label="Temps restant">
                 <span class="clock-icon" aria-hidden="true">◷</span>
@@ -388,10 +391,6 @@
               </section>
 
               <div class="workspace-panel">
-                <div class="prompt-panel">
-                  <p id="game-prompt">Commence ta chaîne.</p>
-                </div>
-
                 <div id="type-picker" class="type-picker hidden">
                   <button class="type-button active" data-type="text" type="button" aria-label="Texte">
                     <svg class="icon"><use href="#icon-text"></use></svg>
