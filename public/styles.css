@@ -2059,6 +2059,25 @@ label,
   gap: 12px;
 }
 
+.round-preview-close {
+  position: absolute;
+  z-index: 3;
+  top: 0;
+  right: 0;
+  width: 44px;
+  height: 44px;
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  color: var(--text);
+  background: color-mix(in srgb, var(--surface) 86%, var(--primary-soft));
+  box-shadow: 0 10px 24px rgba(5, 8, 22, 0.2);
+}
+
+.round-preview-close:hover {
+  color: #fff;
+  background: var(--primary);
+  transform: translateY(-2px) rotate(4deg);
+}
+
 .round-preview.no-previous {
   grid-template-rows: minmax(0, 1fr) auto;
   place-items: center;

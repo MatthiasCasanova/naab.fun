@@ -34,7 +34,6 @@
   const EFFECTS_VOLUME_STORAGE_KEY = "kamoulox-effects-volume";
   const MUTED_STORAGE_KEY = "kamoulox-muted";
   const THEME_STORAGE_KEY = "kamoulox-theme";
-  const PREVIOUS_REPLAY_DURATION_MS = 5000;
   const AUDIO_RECORDING_DURATION_MS = 5000;
   const AUDIO_OUTPUT_SCALE = 0.5;
   const MAX_DRAWING_HISTORY = 30;
@@ -110,6 +109,9 @@
     roundPreview: document.querySelector("#round-preview"),
     roundPreviewCountdown: document.querySelector(
       "#round-preview-countdown"
+    ),
+    closeRoundPreviewButton: document.querySelector(
+      "#close-round-preview-button"
     ),
     roundIntroText: document.querySelector("#round-intro-text"),
     introAudioPlayButton: document.querySelector(
@@ -907,6 +909,7 @@
     elements.roundIntro.classList.add("hidden");
     elements.gameStartCountdown.classList.add("hidden");
     elements.roundPreview.classList.add("hidden");
+    elements.closeRoundPreviewButton.classList.add("hidden");
     elements.introAudioPlayButton.classList.add("hidden");
     introRoundKey = null;
     introAudioElement = null;
@@ -2971,8 +2974,10 @@
     gameState,
     previousContribution,
     previousAudio,
-    durationMs
+    durationMs = null
   ) {
+    const hasAutomaticClose =
+      Number.isFinite(durationMs) && durationMs > 0;
     stopRoundIntro();
     introRoundKey = roundKey;
     introAudioElement = previousAudio;
@@ -2987,25 +2992,35 @@
     );
     elements.roundIntro.classList.remove("hidden");
     elements.roundPreview.classList.remove("hidden");
+    elements.roundPreviewCountdown.classList.toggle(
+      "hidden",
+      !hasAutomaticClose
+    );
+    elements.closeRoundPreviewButton.classList.toggle(
+      "hidden",
+      hasAutomaticClose
+    );
     elements.introAudioPlayButton.classList.add("hidden");
     setGameWorkspaceVisible(false);
 
-    const previewStartedAt = Date.now();
-    function updatePreviewCountdown() {
-      const remaining = Math.max(
-        0,
-        durationMs - (Date.now() - previewStartedAt)
-      );
-      elements.roundPreviewCountdown.textContent =
-        `Mémorise bien : ${Math.max(1, Math.ceil(remaining / 1000))} s`;
-    }
+    if (hasAutomaticClose) {
+      const previewStartedAt = Date.now();
+      function updatePreviewCountdown() {
+        const remaining = Math.max(
+          0,
+          durationMs - (Date.now() - previewStartedAt)
+        );
+        elements.roundPreviewCountdown.textContent =
+          `Mémorise bien : ${Math.max(1, Math.ceil(remaining / 1000))} s`;
+      }
 
-    updatePreviewCountdown();
-    introInterval = window.setInterval(updatePreviewCountdown, 200);
-    introTimeout = window.setTimeout(() => {
-      introTimeout = null;
-      finishRoundPreview(roundKey);
-    }, durationMs);
+      updatePreviewCountdown();
+      introInterval = window.setInterval(updatePreviewCountdown, 200);
+      introTimeout = window.setTimeout(() => {
+        introTimeout = null;
+        finishRoundPreview(roundKey);
+      }, durationMs);
+    }
     autoplayPreviewAudio(previousAudio);
   }
 
@@ -3072,7 +3087,7 @@
         previousAudio,
         previewRemaining
       );
-    } else {
+    } else if (!introRoundKey) {
       stopRoundIntro();
       setGameWorkspaceVisible(true);
       startRoundTimer(gameState);
@@ -3455,9 +3470,13 @@
         `${currentGame.roomCode}:${currentGame.roundIndex}:replay:${Date.now()}`,
         currentGame,
         currentGame.assignment.previousContribution,
-        roundPreviousAudio,
-        PREVIOUS_REPLAY_DURATION_MS
+        roundPreviousAudio
       );
+    });
+    elements.closeRoundPreviewButton.addEventListener("click", () => {
+      if (introRoundKey) {
+        finishRoundPreview(introRoundKey);
+      }
     });
     elements.chatToggleButton.addEventListener("click", () => {
       setChatOpen(!chatOpen);

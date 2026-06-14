@@ -212,14 +212,18 @@ test("le contenu reçu passe par un aperçu plein écran temporaire", () => {
   assert.match(html, /id="round-preview"/);
   assert.match(html, /id="round-preview-countdown"/);
   assert.match(html, /id="replay-previous-button"/);
+  assert.match(html, /id="close-round-preview-button"/);
   assert.match(
     app,
     /function showRoundPreview\(/
   );
+  assert.match(app, /const hasAutomaticClose =/);
   assert.match(
     app,
-    /PREVIOUS_REPLAY_DURATION_MS = 5000/
+    /closeRoundPreviewButton\.addEventListener\("click"/
   );
+  assert.match(app, /\} else if \(!introRoundKey\) \{/);
+  assert.doesNotMatch(app, /PREVIOUS_REPLAY_DURATION_MS/);
   assert.match(
     css,
     /\.round-preview \.previous-text\s*\{[\s\S]*font-size:\s*clamp/
@@ -385,7 +389,7 @@ test("le frontend conserve le volume et utilise le timer du serveur", () => {
   assert.match(app, /gameState\.roundEndsAt - serverTime/);
   assert.match(app, /gameState\.previewEndsAt/);
   assert.match(app, /gameState\.countdownEndsAt/);
-  assert.match(app, /PREVIOUS_REPLAY_DURATION_MS = 5000/);
+  assert.match(app, /closeRoundPreviewButton/);
   assert.match(app, /emitWithAcknowledgment\("navigateResults"/);
   assert.match(app, /emitWithAcknowledgment\(\s*"updateGameSettings"/);
   assert.match(css, /#drawing-canvas[\s\S]*touch-action:\s*none/);
