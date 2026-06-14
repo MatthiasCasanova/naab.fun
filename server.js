@@ -458,7 +458,7 @@ function createGameServer(options = {}) {
     if (expectedType === CONTRIBUTION_TYPES.AUDIO) {
       return previousType
         ? "Enregistre un son inspiré de ce que tu viens de recevoir."
-        : "Commence cette chaîne par un son de dix secondes.";
+        : "Commence cette chaîne par un son de cinq secondes.";
     }
 
     if (expectedType === CONTRIBUTION_TYPES.DRAWING) {
@@ -492,12 +492,30 @@ function createGameServer(options = {}) {
     const player = Array.from(room.players.values()).find(
       (candidate) => candidate.participantId === participantId
     );
+    const resultStepCount = game.chains.reduce(
+      (total, chain) => total + chain.contributions.length,
+      0
+    );
+    const resultStepNumber =
+      game.chains
+        .slice(0, game.resultChainIndex)
+        .reduce(
+          (total, chain) => total + chain.contributions.length,
+          0
+        ) +
+      game.resultContributionIndex +
+      1;
 
     return {
       phase: "results",
       roomCode: room.code,
       serverNow: Date.now(),
       currentChainIndex: game.resultChainIndex,
+      currentContributionIndex: game.resultContributionIndex,
+      resultStepNumber,
+      resultStepCount,
+      canGoPrevious: resultStepNumber > 1,
+      canGoNext: resultStepNumber < resultStepCount,
       canControlResults: Boolean(player && player.id === room.hostId),
       chains: game.chains.map((chain) => ({
         id: chain.id,
@@ -737,7 +755,8 @@ function createGameServer(options = {}) {
       roundSubmissions: new Map(),
       roundTimer: null,
       finalizing: false,
-      resultChainIndex: 0
+      resultChainIndex: 0,
+      resultContributionIndex: 0
     };
   }
 
@@ -1260,16 +1279,28 @@ function createGameServer(options = {}) {
         return;
       }
 
-      game.resultChainIndex = Math.max(
-        0,
-        Math.min(
-          game.chains.length - 1,
-          game.resultChainIndex + direction
-        )
-      );
+      if (direction === 1) {
+        const currentChain = game.chains[game.resultChainIndex];
+        if (
+          game.resultContributionIndex <
+          currentChain.contributions.length - 1
+        ) {
+          game.resultContributionIndex += 1;
+        } else if (game.resultChainIndex < game.chains.length - 1) {
+          game.resultChainIndex += 1;
+          game.resultContributionIndex = 0;
+        }
+      } else if (game.resultContributionIndex > 0) {
+        game.resultContributionIndex -= 1;
+      } else if (game.resultChainIndex > 0) {
+        game.resultChainIndex -= 1;
+        game.resultContributionIndex =
+          game.chains[game.resultChainIndex].contributions.length - 1;
+      }
       answer(socket, acknowledgment, {
         ok: true,
-        currentChainIndex: game.resultChainIndex
+        currentChainIndex: game.resultChainIndex,
+        currentContributionIndex: game.resultContributionIndex
       });
       emitGameStates(room);
     });

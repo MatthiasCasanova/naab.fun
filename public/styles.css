@@ -21,6 +21,7 @@
   --range-border: #c9cede;
   --waveform-idle: #b9bfd3;
   --waveform-active: #6550e8;
+  --waveform-active-end: #17a77a;
   --shadow: 0 18px 48px rgba(37, 45, 75, 0.14);
   --panel-radius: 22px;
 }
@@ -48,6 +49,7 @@ html[data-theme="dark"] {
   --range-border: #434b6a;
   --waveform-idle: #59617f;
   --waveform-active: #b6a8ff;
+  --waveform-active-end: #63d9ac;
   --shadow: 0 20px 58px rgba(0, 0, 0, 0.36);
 }
 
@@ -635,9 +637,14 @@ label,
 
 .join-row {
   display: grid;
-  width: min(240px, 34vw);
-  grid-template-columns: minmax(0, 1fr) 44px;
+  width: min(270px, 38vw);
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 7px;
+}
+
+.join-confirm-button {
+  min-width: 72px;
+  padding-inline: 12px;
 }
 
 .code-input {
@@ -899,7 +906,7 @@ label,
   color: var(--primary);
   background: var(--card);
   box-shadow: var(--shadow);
-  font-size: 0.62rem;
+  font-size: 1.15rem;
   font-weight: 950;
 }
 
@@ -1706,6 +1713,31 @@ label,
   background: var(--surface);
 }
 
+.result-item.current-reveal {
+  border-color: var(--primary);
+  box-shadow:
+    0 0 0 2px color-mix(in srgb, var(--primary) 16%, transparent),
+    0 10px 24px color-mix(in srgb, var(--primary) 12%, transparent);
+  animation: reveal-step-in 280ms ease-out;
+}
+
+@keyframes reveal-step-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px) scale(0.97);
+  }
+}
+
+.audio-player-card.autoplay-blocked {
+  border-color: var(--warning);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--warning) 15%, transparent);
+}
+
+.audio-player-card.autoplay-blocked .audio-play-button {
+  background: linear-gradient(145deg, var(--warning), #e86f1f);
+  animation: danger-pulse 1.1s ease-in-out infinite;
+}
+
 .result-meta {
   display: flex;
   min-width: 0;
@@ -2034,13 +2066,22 @@ label,
   }
 
   .join-row {
-    width: 145px;
-    grid-template-columns: minmax(0, 1fr) 38px;
+    width: 170px;
+    grid-template-columns: minmax(0, 1fr) 46px;
   }
 
   .join-row input,
   .join-row button {
     height: 36px;
+  }
+
+  .join-confirm-button {
+    min-width: 46px;
+    padding: 0;
+  }
+
+  .join-confirm-button span {
+    display: none;
   }
 
   .room-hero {

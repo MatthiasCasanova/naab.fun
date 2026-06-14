@@ -116,7 +116,7 @@
         </div>
 
         <label class="volume-label" for="volume-slider">
-          Volume général
+          Volume des audios
           <strong id="volume-value">100 %</strong>
         </label>
         <div class="range-shell volume-range-shell">
@@ -132,10 +132,27 @@
           <svg class="icon range-icon" aria-hidden="true"><use href="#icon-volume"></use></svg>
         </div>
 
+        <label class="volume-label" for="effects-volume-slider">
+          Volume des effets
+          <strong id="effects-volume-value">70 %</strong>
+        </label>
+        <div class="range-shell volume-range-shell">
+          <svg class="icon range-icon" aria-hidden="true"><use href="#icon-muted"></use></svg>
+          <input
+            id="effects-volume-slider"
+            class="game-range volume-slider"
+            type="range"
+            min="0"
+            max="100"
+            value="70"
+          >
+          <svg class="icon range-icon" aria-hidden="true"><use href="#icon-volume"></use></svg>
+        </div>
+
         <div class="settings-icon-row">
           <div>
-            <strong>Son du site</strong>
-            <p>Tous les lecteurs utilisent ce volume.</p>
+            <strong>Couper tout le son</strong>
+            <p>Audios, clics et chrono deviennent silencieux.</p>
           </div>
           <button id="mute-button" class="round-control" type="button" aria-label="Couper le son" aria-pressed="false">
             <svg class="icon"><use id="mute-icon-use" href="#icon-volume"></use></svg>
@@ -284,8 +301,9 @@
                       placeholder="ABC234"
                       aria-label="Code de partie"
                     >
-                    <button id="join-button" class="button button-secondary icon-action" type="button" aria-label="Rejoindre">
-                      <svg class="icon"><use href="#icon-enter"></use></svg>
+                    <button id="join-button" class="button button-secondary join-confirm-button" type="button" aria-label="Confirmer et rejoindre">
+                      <svg class="icon"><use href="#icon-check"></use></svg>
+                      <span>OK</span>
                     </button>
                   </div>
                 </article>
@@ -320,7 +338,7 @@
 
             <div class="lobby-center">
               <div class="lobby-orbit" aria-hidden="true">
-                <span>TXT</span><span>SND</span><span>IMG</span>
+                <span>📝</span><span>🎙️</span><span>🎨</span>
               </div>
               <h3>En attente du signal de l'hôte</h3>
               <p id="game-settings-summary" class="game-settings-summary"></p>
@@ -447,7 +465,7 @@
                     <div id="audio-empty-state" class="audio-empty-state">
                       <button id="record-audio-button" class="record-button" type="button">
                         <svg class="icon"><use href="#icon-mic"></use></svg>
-                        <span id="record-button-label">10 secondes de bruit</span>
+                        <span id="record-button-label">5 secondes de bruit</span>
                       </button>
                       <p id="audio-status" class="audio-status" aria-live="polite"></p>
                     </div>

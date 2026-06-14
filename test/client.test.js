@@ -147,6 +147,11 @@ test("les lecteurs audio utilisent une forme d'onde et aucun controle natif", ()
   assert.doesNotMatch(html, /<audio[^>]*\scontrols(?:\s|>)/);
   assert.match(css, /\.audio-waveform-shell/);
   assert.match(css, /\.audio-player-card\.is-playing/);
+  assert.match(css, /--waveform-active-end/);
+  assert.match(
+    app,
+    /function scheduleWaveformRedraw\(\)[\s\S]*redrawWaveforms\(\)/
+  );
 });
 
 test("les sliders partagent le composant visuel du jeu", () => {
@@ -155,6 +160,8 @@ test("les sliders partagent le composant visuel du jeu", () => {
 
   assert.match(html, /class="range-shell volume-range-shell"/);
   assert.match(html, /class="game-range volume-slider"/);
+  assert.match(html, /id="effects-volume-slider"/);
+  assert.match(html, /id="effects-volume-value"/);
   assert.match(html, /class="game-range audio-progress"/);
   assert.match(css, /\.game-range::-webkit-slider-runnable-track/);
   assert.match(css, /\.game-range::-moz-range-track/);
@@ -228,6 +235,8 @@ test("l'accueil propose les avatars et la room conserve une liste laterale", () 
   assert.match(html, /id="players-sidebar"/);
   assert.match(html, /id="player-list"/);
   assert.match(html, /id="player-count"/);
+  assert.match(html, /id="join-button"[\s\S]*href="#icon-check"/);
+  assert.match(html, /<span>📝<\/span><span>🎙️<\/span><span>🎨<\/span>/);
 });
 
 test("les sélecteurs d'identifiants de app.js existent dans index.html", () => {
@@ -255,10 +264,11 @@ test("le frontend conserve le volume et utilise le timer du serveur", () => {
   const app = readPublicFile("app.js");
   const css = readPublicFile("styles.css");
 
-  assert.match(app, /localStorage\.setItem\(VOLUME_STORAGE_KEY/);
-  assert.match(app, /audioElement\.volume = siteVolume/);
+  assert.match(app, /localStorage\.setItem\(\s*AUDIO_VOLUME_STORAGE_KEY/);
+  assert.match(app, /localStorage\.setItem\(\s*EFFECTS_VOLUME_STORAGE_KEY/);
+  assert.match(app, /audioElement\.volume = audioVolume/);
   assert.match(app, /THEME_STORAGE_KEY = "kamoulox-theme"/);
-  assert.match(app, /AUDIO_RECORDING_DURATION_MS = 10000/);
+  assert.match(app, /AUDIO_RECORDING_DURATION_MS = 5000/);
   assert.match(app, /window\.setTimeout\([\s\S]*AUDIO_RECORDING_DURATION_MS/);
   assert.match(app, /gameState\.serverNow - Date\.now\(\)/);
   assert.match(app, /gameState\.roundEndsAt - serverTime/);
@@ -271,6 +281,26 @@ test("le frontend conserve le volume et utilise le timer du serveur", () => {
   assert.match(css, /\.game-clock\.warning/);
   assert.match(css, /\.game-clock\.danger/);
   assert.match(css, /html\[data-theme="dark"\]/);
+});
+
+test("les effets sonores et le chrono respectent leur volume separe", () => {
+  const app = readPublicFile("app.js");
+
+  assert.match(app, /function playSoundEffect/);
+  assert.match(app, /effectsVolume/);
+  assert.match(app, /playSoundEffect\("tick"/);
+  assert.match(app, /remaining <= 2500 \? 250/);
+  assert.match(app, /Math\.pow\(1 - remaining \/ 10000, 2\)/);
+});
+
+test("le resume revele les contributions une par une et lance les audios", () => {
+  const app = readPublicFile("app.js");
+
+  assert.match(app, /currentContributionIndex/);
+  assert.match(app, /visibleContributions = chain\.contributions\.slice/);
+  assert.match(app, /autoplayRevealedAudio/);
+  assert.match(app, /await audioPlayer\.audio\.play\(\)/);
+  assert.match(app, /current-reveal/);
 });
 
 test("la mise en page reste dans le viewport et stabilise le canvas", () => {

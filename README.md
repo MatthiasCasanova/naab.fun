@@ -29,13 +29,14 @@ contribution audio. Le microphone fonctionne sur `localhost` et en HTTPS.
 - Le premier type de chaque chaîne est imposé aléatoirement par le serveur.
 - Le type suivant est choisi aléatoirement parmi les types actifs autres que le
   précédent, lorsqu'il existe plusieurs choix.
-- Un enregistrement audio dure automatiquement 10 secondes.
+- Un enregistrement audio dure automatiquement 5 secondes.
 - Les chaînes tournent entre les joueurs sans rendre sa propre chaîne après la
   première manche. En mode automatique, chacun participe une fois à chaque
   chaîne.
 - Les absences et déconnexions deviennent des contributions vides afin de ne
   jamais bloquer la partie.
-- À la fin, seul l'hôte fait défiler le résumé synchronisé pour tous.
+- À la fin, seul l'hôte révèle le résumé contribution par contribution, de
+  façon synchronisée pour tous.
 
 Les tests automatisés se lancent avec :
 

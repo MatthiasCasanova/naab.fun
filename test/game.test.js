@@ -353,6 +353,11 @@ test("une partie complète respecte rotations et types aléatoires imposés", as
     assert.equal(hostResults.canControlResults, true);
     assert.equal(guestResults.canControlResults, false);
     assert.equal(hostResults.currentChainIndex, 0);
+    assert.equal(hostResults.currentContributionIndex, 0);
+    assert.equal(hostResults.resultStepNumber, 1);
+    assert.equal(hostResults.resultStepCount, 9);
+    assert.equal(hostResults.canGoPrevious, false);
+    assert.equal(hostResults.canGoNext, true);
     hostResults.chains.forEach((chain) => {
       assert.equal(chain.contributions.length, 3);
       for (let index = 1; index < chain.contributions.length; index += 1) {
@@ -376,14 +381,51 @@ test("une partie complète respecte rotations et types aléatoires imposés", as
         client,
         "gameState",
         (state) =>
-          state.phase === "results" && state.currentChainIndex === 1
+          state.phase === "results" &&
+          state.currentChainIndex === 0 &&
+          state.currentContributionIndex === 1
       )
     );
     const navigated = await emitAck(alice, "navigateResults", {
       direction: 1
     });
     assert.equal(navigated.ok, true);
-    await Promise.all(synchronizedResults);
+    const secondStepStates = await Promise.all(synchronizedResults);
+    assert.equal(secondStepStates[0].resultStepNumber, 2);
+
+    const thirdStep = waitForEvent(
+      alice,
+      "gameState",
+      (state) =>
+        state.phase === "results" &&
+        state.currentChainIndex === 0 &&
+        state.currentContributionIndex === 2
+    );
+    await emitAck(alice, "navigateResults", { direction: 1 });
+    await thirdStep;
+
+    const nextChain = waitForEvent(
+      alice,
+      "gameState",
+      (state) =>
+        state.phase === "results" &&
+        state.currentChainIndex === 1 &&
+        state.currentContributionIndex === 0
+    );
+    await emitAck(alice, "navigateResults", { direction: 1 });
+    const nextChainState = await nextChain;
+    assert.equal(nextChainState.resultStepNumber, 4);
+
+    const previousStep = waitForEvent(
+      alice,
+      "gameState",
+      (state) =>
+        state.phase === "results" &&
+        state.currentChainIndex === 0 &&
+        state.currentContributionIndex === 2
+    );
+    await emitAck(alice, "navigateResults", { direction: -1 });
+    await previousStep;
 
     const guestReturn = await emitAck(clients[1], "returnToLobby");
     assert.equal(guestReturn.ok, false);
@@ -567,6 +609,7 @@ test("le contrôle du résumé suit le transfert d'hôte", async () => {
     alice.disconnect();
     const promotedState = await promotedStatePromise;
     assert.equal(promotedState.currentChainIndex, 0);
+    assert.equal(promotedState.currentContributionIndex, 0);
 
     const nextResultPromise = waitForEvent(
       bob,

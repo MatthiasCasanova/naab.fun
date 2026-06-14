@@ -249,6 +249,8 @@ test("les arrivées sont diffusées et les erreurs de room sont refusées", asyn
       hostState.players.map((player) => player.nickname),
       ["Alice", "Bob"]
     );
+    assert.equal(hostState.settings.roundCount, null);
+    assert.equal(hostState.settings.effectiveRoundCount, 2);
     assert.equal(
       hostState.players.find((player) => player.nickname === "Bob").avatarId,
       "frog"
