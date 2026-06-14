@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta
+      name="description"
+      content="Créez ou rejoignez une partie multijoueur avec un simple code."
+    >
+    <title>Kamoulox 30000</title>
+    <link rel="stylesheet" href="./styles.css">
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="brand">
+        <p class="eyebrow">Jeu multijoueur</p>
+        <h1>Kamoulox 30000</h1>
+        <p class="subtitle">Créez une room, partagez le code, jouez ensemble.</p>
+      </header>
+
+      <section id="home-view" class="card" aria-labelledby="home-title">
+        <h2 id="home-title">Rejoindre le lobby</h2>
+
+        <label for="nickname">Votre pseudonyme</label>
+        <input
+          id="nickname"
+          name="nickname"
+          type="text"
+          minlength="2"
+          maxlength="20"
+          autocomplete="nickname"
+          placeholder="2 à 20 caractères"
+        >
+
+        <button id="create-button" class="button button-primary" type="button">
+          Créer une partie
+        </button>
+
+        <div class="separator" aria-hidden="true"><span>ou</span></div>
+
+        <label for="room-code">Code de partie</label>
+        <input
+          id="room-code"
+          name="room-code"
+          class="code-input"
+          type="text"
+          maxlength="6"
+          autocomplete="off"
+          autocapitalize="characters"
+          spellcheck="false"
+          placeholder="ABC234"
+        >
+
+        <button id="join-button" class="button button-secondary" type="button">
+          Rejoindre une partie
+        </button>
+
+        <div id="home-message" class="message" role="status" aria-live="polite"></div>
+        <button id="retry-button" class="button button-link hidden" type="button">
+          Réessayer
+        </button>
+      </section>
+
+      <section
+        id="room-view"
+        class="card room-card hidden"
+        aria-labelledby="room-title"
+      >
+        <div class="room-heading">
+          <div>
+            <p class="eyebrow">Code de la partie</p>
+            <h2 id="room-title" class="room-code">------</h2>
+          </div>
+          <button id="copy-button" class="button button-compact" type="button">
+            Copier le code
+          </button>
+        </div>
+
+        <div class="room-meta">
+          <span id="player-count">0 / 10 joueurs</span>
+          <span id="connection-status" class="connection-status">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span id="connection-label">Connexion...</span>
+          </span>
+        </div>
+
+        <h3>Joueurs connectés</h3>
+        <ul id="player-list" class="player-list"></ul>
+
+        <div id="room-message" class="message" role="status" aria-live="polite"></div>
+        <button id="leave-button" class="button button-danger" type="button">
+          Quitter la partie
+        </button>
+      </section>
+    </main>
+
+    <script src="./socket.io.min.js" defer></script>
+    <script src="./config.js" defer></script>
+    <script src="./app.js" defer></script>
+  </body>
+</html>
