@@ -15,6 +15,7 @@ const ROUND_DURATION_MS = 60000;
 const MAX_TEXT_LENGTH = 500;
 const MAX_MEDIA_DATA_LENGTH = 1500000;
 const ROOM_CODE_LENGTH = 6;
+const DEFAULT_INPUT_TYPE_COUNT = 3;
 const ROOM_CODE_CHARACTERS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const ROOM_CODE_PATTERN = new RegExp(
   `^[${ROOM_CODE_CHARACTERS}]{${ROOM_CODE_LENGTH}}$`
@@ -24,11 +25,9 @@ const CONTRIBUTION_TYPES = Object.freeze({
   DRAWING: "drawing",
   AUDIO: "audio"
 });
-const NEXT_CONTRIBUTION_TYPE = Object.freeze({
-  [CONTRIBUTION_TYPES.TEXT]: CONTRIBUTION_TYPES.AUDIO,
-  [CONTRIBUTION_TYPES.AUDIO]: CONTRIBUTION_TYPES.DRAWING,
-  [CONTRIBUTION_TYPES.DRAWING]: CONTRIBUTION_TYPES.TEXT
-});
+const CONTRIBUTION_TYPE_VALUES = Object.freeze(
+  Object.values(CONTRIBUTION_TYPES)
+);
 
 function normalizeConfiguredOrigin(value) {
   const trimmedValue = value.trim();
@@ -101,8 +100,64 @@ function getAssignedChainIndex(playerIndex, roundIndex, playerCount) {
   return (playerIndex - roundIndex + playerCount) % playerCount;
 }
 
-function getExpectedContributionType(previousType) {
-  return NEXT_CONTRIBUTION_TYPE[previousType] || null;
+function getExpectedContributionType(
+  previousType,
+  allowedTypes = CONTRIBUTION_TYPE_VALUES,
+  randomInt = crypto.randomInt
+) {
+  const validTypes = allowedTypes.filter((type) =>
+    CONTRIBUTION_TYPE_VALUES.includes(type)
+  );
+  const candidates = validTypes.filter((type) => type !== previousType);
+  const availableTypes = candidates.length > 0 ? candidates : validTypes;
+
+  if (availableTypes.length === 0) {
+    return null;
+  }
+
+  return availableTypes[randomInt(availableTypes.length)];
+}
+
+function selectActiveContributionTypes(
+  typeCount,
+  randomInt = crypto.randomInt
+) {
+  const availableTypes = [...CONTRIBUTION_TYPE_VALUES];
+  const selectedTypes = [];
+  const safeTypeCount = Math.min(
+    CONTRIBUTION_TYPE_VALUES.length,
+    Math.max(1, Number(typeCount) || DEFAULT_INPUT_TYPE_COUNT)
+  );
+
+  while (selectedTypes.length < safeTypeCount) {
+    const selectedIndex = randomInt(availableTypes.length);
+    selectedTypes.push(availableTypes.splice(selectedIndex, 1)[0]);
+  }
+
+  return selectedTypes;
+}
+
+function createTypePlan(
+  chainCount,
+  totalRounds,
+  activeTypes,
+  randomInt = crypto.randomInt
+) {
+  return Array.from({ length: chainCount }, () => {
+    const plan = [];
+
+    for (let roundIndex = 0; roundIndex < totalRounds; roundIndex += 1) {
+      plan.push(
+        getExpectedContributionType(
+          roundIndex > 0 ? plan[roundIndex - 1] : null,
+          activeTypes,
+          randomInt
+        )
+      );
+    }
+
+    return plan;
+  });
 }
 
 function createGameServer(options = {}) {
@@ -112,6 +167,10 @@ function createGameServer(options = {}) {
     Number.isFinite(options.roundDurationMs) && options.roundDurationMs > 0
       ? options.roundDurationMs
       : ROUND_DURATION_MS;
+  const randomInt =
+    typeof options.randomInt === "function"
+      ? options.randomInt
+      : crypto.randomInt;
   const allowedOrigins = parseAllowedOrigins(
     options.allowedOrigins !== undefined
       ? options.allowedOrigins
@@ -260,6 +319,11 @@ function createGameServer(options = {}) {
   }
 
   function serializeRoom(room) {
+    const automaticRoundCount = Math.max(
+      1,
+      Math.min(room.players.size, MAX_PLAYERS)
+    );
+
     return {
       code: room.code,
       hostId: room.hostId,
@@ -267,6 +331,14 @@ function createGameServer(options = {}) {
       playerCount: room.players.size,
       maxPlayers: MAX_PLAYERS,
       minPlayersToStart: MIN_PLAYERS_TO_START,
+      settings: {
+        roundCount: room.settings.roundCount,
+        effectiveRoundCount:
+          room.settings.roundCount === null
+            ? automaticRoundCount
+            : Math.min(room.settings.roundCount, automaticRoundCount),
+        inputTypeCount: room.settings.inputTypeCount
+      },
       players: Array.from(room.players.values())
         .sort((first, second) => first.joinOrder - second.joinOrder)
         .map((player) => ({
@@ -325,9 +397,8 @@ function createGameServer(options = {}) {
       game.roundIndex > 0
         ? chain.contributions[game.roundIndex - 1] || null
         : null;
-    const expectedType = previousContribution
-      ? getExpectedContributionType(previousContribution.type)
-      : null;
+    const expectedType =
+      game.typePlans.get(chain.id)[game.roundIndex] || null;
 
     return {
       chain,
@@ -338,24 +409,24 @@ function createGameServer(options = {}) {
 
   function getPrompt(expectedType, previousType) {
     if (!expectedType) {
-      return "Commence ta chaîne avec un texte, un dessin ou un son.";
+      return "Aucune contribution n'est attendue.";
     }
 
-    if (
-      previousType === CONTRIBUTION_TYPES.TEXT &&
-      expectedType === CONTRIBUTION_TYPES.AUDIO
-    ) {
-      return "Enregistre un son inspiré de ce texte.";
+    if (expectedType === CONTRIBUTION_TYPES.AUDIO) {
+      return previousType
+        ? "Enregistre un son inspiré de ce que tu viens de recevoir."
+        : "Commence cette chaîne par un son de dix secondes.";
     }
 
-    if (
-      previousType === CONTRIBUTION_TYPES.AUDIO &&
-      expectedType === CONTRIBUTION_TYPES.DRAWING
-    ) {
-      return "Dessine ce qui pourrait produire ce son.";
+    if (expectedType === CONTRIBUTION_TYPES.DRAWING) {
+      return previousType
+        ? "Dessine ce que cette contribution t'inspire."
+        : "Commence cette chaîne par un dessin.";
     }
 
-    return "Décris ce dessin.";
+    return previousType
+      ? "Décris ce que tu viens de recevoir."
+      : "Commence cette chaîne par un texte.";
   }
 
   function serializeContribution(contribution) {
@@ -372,13 +443,18 @@ function createGameServer(options = {}) {
     };
   }
 
-  function serializeResults(room) {
+  function serializeResults(room, participantId) {
     const game = room.game;
+    const player = Array.from(room.players.values()).find(
+      (candidate) => candidate.participantId === participantId
+    );
 
     return {
       phase: "results",
       roomCode: room.code,
       serverNow: Date.now(),
+      currentChainIndex: game.resultChainIndex,
+      canControlResults: Boolean(player && player.id === room.hostId),
       chains: game.chains.map((chain) => ({
         id: chain.id,
         ownerNickname: chain.ownerNickname,
@@ -395,7 +471,7 @@ function createGameServer(options = {}) {
     }
 
     if (game.status === "results") {
-      return serializeResults(room);
+      return serializeResults(room, participantId);
     }
 
     const assignment = getAssignment(game, participantId);
@@ -418,9 +494,7 @@ function createGameServer(options = {}) {
       assignment: {
         chainId: assignment.chain.id,
         expectedType: assignment.expectedType,
-        allowedTypes: assignment.expectedType
-          ? [assignment.expectedType]
-          : Object.values(CONTRIBUTION_TYPES),
+        allowedTypes: [assignment.expectedType],
         prompt: getPrompt(
           assignment.expectedType,
           assignment.previousContribution &&
@@ -572,25 +646,91 @@ function createGameServer(options = {}) {
       connected: true,
       socketId: player.id
     }));
+    const chains = participants.map((participant) => ({
+      id: crypto.randomUUID(),
+      ownerId: participant.id,
+      ownerNickname: participant.nickname,
+      contributions: []
+    }));
+    const totalRounds = Math.max(
+      1,
+      Math.min(
+        room.settings.roundCount === null
+          ? participants.length
+          : room.settings.roundCount,
+        participants.length
+      )
+    );
+    const activeTypes = selectActiveContributionTypes(
+      room.settings.inputTypeCount,
+      randomInt
+    );
+    const generatedPlans = createTypePlan(
+      chains.length,
+      totalRounds,
+      activeTypes,
+      randomInt
+    );
+    const typePlans = new Map(
+      chains.map((chain, index) => [chain.id, generatedPlans[index]])
+    );
 
     return {
       status: "playing",
       participants,
       participantOrder: participants.map((participant) => participant.id),
-      chains: participants.map((participant) => ({
-        id: crypto.randomUUID(),
-        ownerId: participant.id,
-        ownerNickname: participant.nickname,
-        contributions: []
-      })),
+      chains,
+      activeTypes,
+      typePlans,
       roundIndex: 0,
-      totalRounds: participants.length,
+      totalRounds,
       roundStartedAt: null,
       roundEndsAt: null,
       roundSubmissions: new Map(),
       roundTimer: null,
-      finalizing: false
+      finalizing: false,
+      resultChainIndex: 0
     };
+  }
+
+  function normalizeGameSettings(payload, playerCount) {
+    if (!payload || typeof payload !== "object") {
+      return { error: "Paramètres de partie invalides." };
+    }
+
+    let roundCount = null;
+    if (
+      payload.roundCount !== null &&
+      payload.roundCount !== undefined &&
+      payload.roundCount !== "auto"
+    ) {
+      roundCount = Number(payload.roundCount);
+      if (
+        !Number.isInteger(roundCount) ||
+        roundCount < 1 ||
+        roundCount > Math.min(playerCount, MAX_PLAYERS)
+      ) {
+        return {
+          error: `Le nombre de manches doit être compris entre 1 et ${Math.min(
+            playerCount,
+            MAX_PLAYERS
+          )}.`
+        };
+      }
+    }
+
+    const inputTypeCount = Number(payload.inputTypeCount);
+    if (
+      !Number.isInteger(inputTypeCount) ||
+      inputTypeCount < 1 ||
+      inputTypeCount > CONTRIBUTION_TYPE_VALUES.length
+    ) {
+      return {
+        error: "Le nombre de types disponibles doit être compris entre 1 et 3."
+      };
+    }
+
+    return { roundCount, inputTypeCount };
   }
 
   function normalizeContribution(payload, expectedType, roundIndex) {
@@ -698,6 +838,14 @@ function createGameServer(options = {}) {
       room.hostId = findLongestConnectedPlayer(room).id;
     }
 
+    if (
+      !room.game &&
+      room.settings.roundCount !== null &&
+      room.settings.roundCount > room.players.size
+    ) {
+      room.settings.roundCount = Math.max(1, room.players.size);
+    }
+
     emitRoomState(room);
     emitGameStates(room);
 
@@ -752,6 +900,10 @@ function createGameServer(options = {}) {
         code: roomCode,
         hostId: socket.id,
         players: new Map([[socket.id, player]]),
+        settings: {
+          roundCount: null,
+          inputTypeCount: DEFAULT_INPUT_TYPE_COUNT
+        },
         game: null
       };
 
@@ -854,6 +1006,49 @@ function createGameServer(options = {}) {
       answer(socket, acknowledgment, { ok: true, room: roomState });
       emitRoomState(room);
       emitGameStateToSocket(room, socket.id, player.participantId);
+    });
+
+    socket.on("updateGameSettings", (payload, acknowledgment) => {
+      const room = rooms.get(socket.data.roomCode);
+      if (!room) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "La room n'existe plus."
+        });
+        return;
+      }
+
+      if (room.hostId !== socket.id) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Seul l'hôte peut modifier les paramètres de la partie."
+        });
+        return;
+      }
+
+      if (room.game) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Les paramètres ne peuvent plus changer après le lancement."
+        });
+        return;
+      }
+
+      const normalized = normalizeGameSettings(payload, room.players.size);
+      if (normalized.error) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: normalized.error
+        });
+        return;
+      }
+
+      room.settings = normalized;
+      answer(socket, acknowledgment, {
+        ok: true,
+        settings: serializeRoom(room).settings
+      });
+      emitRoomState(room);
     });
 
     socket.on("startGame", (acknowledgment) => {
@@ -959,12 +1154,63 @@ function createGameServer(options = {}) {
       }
     });
 
+    socket.on("navigateResults", (payload, acknowledgment) => {
+      const room = rooms.get(socket.data.roomCode);
+      const game = room && room.game;
+
+      if (!room || !game || game.status !== "results") {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Les résultats ne sont pas disponibles."
+        });
+        return;
+      }
+
+      if (room.hostId !== socket.id) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Seul l'hôte peut faire défiler le résumé."
+        });
+        return;
+      }
+
+      const direction = Number(payload && payload.direction);
+      if (![1, -1].includes(direction)) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Direction de navigation invalide."
+        });
+        return;
+      }
+
+      game.resultChainIndex = Math.max(
+        0,
+        Math.min(
+          game.chains.length - 1,
+          game.resultChainIndex + direction
+        )
+      );
+      answer(socket, acknowledgment, {
+        ok: true,
+        currentChainIndex: game.resultChainIndex
+      });
+      emitGameStates(room);
+    });
+
     socket.on("returnToLobby", (acknowledgment) => {
       const room = rooms.get(socket.data.roomCode);
       if (!room || !room.game || room.game.status !== "results") {
         answer(socket, acknowledgment, {
           ok: false,
           error: "Les résultats ne sont pas disponibles."
+        });
+        return;
+      }
+
+      if (room.hostId !== socket.id) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Seul l'hôte peut terminer le résumé."
         });
         return;
       }
@@ -1048,10 +1294,11 @@ if (require.main === module) {
 module.exports = {
   CONTRIBUTION_TYPES,
   MAX_PLAYERS,
-  NEXT_CONTRIBUTION_TYPE,
   ROUND_DURATION_MS,
   ROOM_CODE_CHARACTERS,
+  createTypePlan,
   createGameServer,
   getAssignedChainIndex,
-  getExpectedContributionType
+  getExpectedContributionType,
+  selectActiveContributionTypes
 };

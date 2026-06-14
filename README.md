@@ -1,9 +1,9 @@
 # Kamoulox 30000
 
-Jeu multijoueur de chaînes créatives inspiré du téléphone arabe dessiné. Chaque
-joueur alterne entre texte, audio et dessin pendant autant de manches qu'il y a
-de participants. Les rooms, contributions et enregistrements restent uniquement
-en mémoire dans le processus Node.js.
+Jeu multijoueur de chaînes créatives inspiré du téléphone arabe dessiné. Le
+serveur impose à chaque joueur un texte, un audio ou un dessin selon les
+paramètres choisis par l'hôte. Les rooms, contributions et enregistrements
+restent uniquement en mémoire dans le processus Node.js.
 
 ## Lancer en local
 
@@ -23,15 +23,19 @@ contribution audio. Le microphone fonctionne sur `localhost` et en HTTPS.
 ## Règles du jeu
 
 - L'hôte peut lancer la partie dès que 2 joueurs sont connectés.
-- La partie contient autant de manches que de joueurs.
+- L'hôte choisit le nombre de manches, sans dépasser le nombre de joueurs.
+- L'hôte choisit si la partie utilise 1, 2 ou 3 types de contribution.
 - Chaque manche dure 60 secondes et se termine plus tôt si tout le monde valide.
-- La première contribution de chaque chaîne peut être un texte, un dessin ou
-  un son.
-- Les contributions suivantes suivent la boucle Texte → Audio → Dessin → Texte.
-- Chaque joueur participe une fois à chaque chaîne.
+- Le premier type de chaque chaîne est imposé aléatoirement par le serveur.
+- Le type suivant est choisi aléatoirement parmi les types actifs autres que le
+  précédent, lorsqu'il existe plusieurs choix.
+- Un enregistrement audio dure automatiquement 10 secondes.
+- Les chaînes tournent entre les joueurs sans rendre sa propre chaîne après la
+  première manche. En mode automatique, chacun participe une fois à chaque
+  chaîne.
 - Les absences et déconnexions deviennent des contributions vides afin de ne
   jamais bloquer la partie.
-- À la fin, chaque chaîne peut être parcourue dans son ordre complet.
+- À la fin, seul l'hôte fait défiler le résumé synchronisé pour tous.
 
 Les tests automatisés se lancent avec :
 

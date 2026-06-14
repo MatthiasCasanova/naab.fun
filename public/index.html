@@ -8,6 +8,17 @@
       content="Un jeu multijoueur de chaînes créatives avec textes, dessins et sons."
     >
     <title>Kamoulox 30000</title>
+    <script>
+      (() => {
+        try {
+          const savedTheme = localStorage.getItem("kamoulox-theme");
+          document.documentElement.dataset.theme =
+            savedTheme === "light" ? "light" : "dark";
+        } catch {
+          document.documentElement.dataset.theme = "dark";
+        }
+      })();
+    </script>
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
@@ -60,6 +71,23 @@
         <button id="mute-button" class="button button-secondary" type="button">
           Couper le son
         </button>
+
+        <div class="settings-divider"></div>
+        <div class="setting-toggle-row">
+          <div>
+            <strong>Mode sombre</strong>
+            <p>Recommandé pour préserver les rétines.</p>
+          </div>
+          <button
+            id="theme-toggle"
+            class="toggle-button"
+            type="button"
+            role="switch"
+            aria-checked="true"
+          >
+            <span class="toggle-knob"></span>
+          </button>
+        </div>
       </section>
     </div>
 
@@ -121,11 +149,16 @@
         <div class="room-heading">
           <div>
             <p class="eyebrow">Code ultra-secret</p>
-            <h2 id="room-title" class="room-code">------</h2>
+            <h2 id="room-title" class="room-code">******</h2>
           </div>
-          <button id="copy-button" class="button button-compact" type="button">
-            Copier le code
-          </button>
+          <div class="room-code-actions">
+            <button id="toggle-code-button" class="button button-compact" type="button">
+              Afficher
+            </button>
+            <button id="copy-button" class="button button-compact" type="button">
+              Copier
+            </button>
+          </div>
         </div>
 
         <div class="room-meta">
@@ -146,6 +179,33 @@
             original ait officiellement disparu.
           </p>
         </div>
+
+        <section id="game-settings-panel" class="game-settings-panel hidden">
+          <div class="game-settings-heading">
+            <div>
+              <p class="section-label">Réglages de l'hôte</p>
+              <h3>Dosage de la catastrophe</h3>
+            </div>
+          </div>
+
+          <label for="round-count-select">Nombre de manches</label>
+          <select id="round-count-select">
+            <option value="auto">Automatique</option>
+          </select>
+
+          <label for="input-type-count-select">Nombre de types possibles</label>
+          <select id="input-type-count-select">
+            <option value="1">1 type aléatoire</option>
+            <option value="2">2 types aléatoires</option>
+            <option value="3">Les 3 types</option>
+          </select>
+          <p class="settings-help">
+            Le serveur choisit les types disponibles et, lorsqu'il en a
+            plusieurs, évite de demander deux fois le même à la suite.
+          </p>
+        </section>
+
+        <p id="game-settings-summary" class="game-settings-summary"></p>
 
         <button
           id="start-game-button"
@@ -284,7 +344,7 @@
               <div id="audio-empty-state" class="audio-empty-state">
                 <button id="record-audio-button" class="record-button" type="button">
                   <span class="record-dot" aria-hidden="true"></span>
-                  <span id="record-button-label">Enregistrer un son</span>
+                  <span id="record-button-label">Enregistrer pendant 10 secondes</span>
                 </button>
                 <p id="audio-status" class="audio-status" aria-live="polite"></p>
               </div>
@@ -353,7 +413,11 @@
 
         <ol id="result-contributions" class="result-contributions"></ol>
 
-        <div class="result-navigation">
+        <p id="results-observer-message" class="results-observer-message hidden">
+          L'hôte pilote le résumé. Installe-toi confortablement et observe.
+        </p>
+
+        <div id="result-navigation" class="result-navigation">
           <button id="previous-chain-button" class="button button-secondary" type="button">
             Chaîne précédente
           </button>

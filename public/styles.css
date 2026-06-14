@@ -2,6 +2,14 @@
   color-scheme: light;
   --background: #f4f5fb;
   --card: #ffffff;
+  --input: #ffffff;
+  --surface-soft: #fafbfe;
+  --surface-muted: #f8f9fc;
+  --lobby-panel: #f7f5ff;
+  --floating-surface: rgba(255, 255, 255, 0.9);
+  --card-border: rgba(217, 222, 234, 0.9);
+  --intro-start: rgba(255, 255, 255, 0.98);
+  --intro-end: rgba(238, 234, 253, 0.97);
   --text: #182034;
   --muted: #667085;
   --border: #d9deea;
@@ -15,6 +23,33 @@
   --warning: #dd7a0d;
   --warning-soft: #fff4e5;
   --shadow: 0 20px 55px rgba(42, 51, 83, 0.12);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0e1020;
+  --card: #171a2b;
+  --input: #111425;
+  --surface-soft: #1d2134;
+  --surface-muted: #202438;
+  --lobby-panel: #24203b;
+  --floating-surface: rgba(23, 26, 43, 0.92);
+  --card-border: rgba(73, 79, 108, 0.75);
+  --intro-start: rgba(23, 26, 43, 0.98);
+  --intro-end: rgba(37, 31, 64, 0.98);
+  --text: #f4f5fb;
+  --muted: #abb2c8;
+  --border: #363c55;
+  --primary: #a995ff;
+  --primary-dark: #c1b5ff;
+  --primary-soft: #2c2750;
+  --danger: #ff8292;
+  --danger-soft: #3a2029;
+  --success: #62d7aa;
+  --success-soft: #17372f;
+  --warning: #ffb45d;
+  --warning-soft: #3d2d18;
+  --shadow: 0 22px 65px rgba(0, 0, 0, 0.34);
 }
 
 * {
@@ -32,6 +67,9 @@ body {
   font-family:
     Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
     sans-serif;
+  transition:
+    color 180ms ease,
+    background-color 180ms ease;
 }
 
 button,
@@ -85,7 +123,7 @@ button:disabled {
 .card {
   position: relative;
   padding: clamp(1.25rem, 4vw, 2rem);
-  border: 1px solid rgba(217, 222, 234, 0.9);
+  border: 1px solid var(--card-border);
   border-radius: 22px;
   background: var(--card);
   box-shadow: var(--shadow);
@@ -108,13 +146,14 @@ label {
 }
 
 input[type="text"],
-textarea {
+textarea,
+select {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 12px;
   outline: none;
   color: var(--text);
-  background: #fff;
+  background: var(--input);
   transition:
     border-color 150ms ease,
     box-shadow 150ms ease;
@@ -124,6 +163,16 @@ input[type="text"] {
   min-height: 48px;
   margin-bottom: 1rem;
   padding: 0.75rem 0.9rem;
+}
+
+select {
+  width: 100%;
+  min-height: 46px;
+  margin-bottom: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 0.65rem 0.8rem;
+  color: var(--text);
 }
 
 textarea {
@@ -312,7 +361,7 @@ textarea:focus {
   padding: 0.7rem 0.85rem;
   border: 1px solid var(--border);
   border-radius: 12px;
-  background: #fafbfe;
+  background: var(--surface-soft);
 }
 
 .player-name {
@@ -337,7 +386,7 @@ textarea:focus {
   margin: 1rem 0;
   border-radius: 14px;
   padding: 1rem;
-  background: #f7f5ff;
+  background: var(--lobby-panel);
   color: var(--muted);
   font-size: 0.9rem;
   line-height: 1.5;
@@ -367,11 +416,11 @@ textarea:focus {
   min-height: 42px;
   align-items: center;
   gap: 0.45rem;
-  border: 1px solid rgba(217, 222, 234, 0.95);
+  border: 1px solid var(--card-border);
   border-radius: 999px;
   padding: 0.55rem 0.8rem;
   color: var(--text);
-  background: rgba(255, 255, 255, 0.9);
+  background: var(--floating-surface);
   box-shadow: 0 8px 25px rgba(42, 51, 83, 0.12);
   font-weight: 800;
   backdrop-filter: blur(12px);
@@ -393,7 +442,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 1.2rem;
-  background: #fff;
+  background: var(--card);
   box-shadow: var(--shadow);
   animation: settings-in 160ms ease-out;
 }
@@ -442,6 +491,89 @@ textarea:focus {
 
 .volume-slider {
   margin: 0.35rem 0 1rem;
+}
+
+.settings-divider {
+  height: 1px;
+  margin: 1.1rem 0;
+  background: var(--border);
+}
+
+.setting-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.setting-toggle-row p {
+  margin: 0.2rem 0 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+}
+
+.toggle-button {
+  position: relative;
+  width: 52px;
+  height: 30px;
+  flex: 0 0 auto;
+  border: 0;
+  border-radius: 999px;
+  background: var(--border);
+  transition: background-color 160ms ease;
+}
+
+.toggle-button[aria-checked="true"] {
+  background: var(--primary);
+}
+
+.toggle-knob {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.24);
+  transition: transform 160ms ease;
+}
+
+.toggle-button[aria-checked="true"] .toggle-knob {
+  transform: translateX(22px);
+}
+
+.room-code-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.game-settings-panel {
+  margin: 1rem 0;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 1rem;
+  background: var(--surface-soft);
+}
+
+.game-settings-heading h3 {
+  margin: 0.25rem 0 1rem;
+}
+
+.settings-help,
+.game-settings-summary {
+  color: var(--muted);
+  font-size: 0.84rem;
+  line-height: 1.45;
+}
+
+.settings-help {
+  margin: -0.25rem 0 0;
+}
+
+.game-settings-summary {
+  margin: 0.8rem 0;
+  text-align: center;
 }
 
 .game-header {
@@ -520,8 +652,8 @@ textarea:focus {
   border-radius: 22px;
   padding: 1.5rem;
   background:
-    radial-gradient(circle, rgba(255, 255, 255, 0.98), rgba(238, 234, 253, 0.97)),
-    #fff;
+    radial-gradient(circle, var(--intro-start), var(--intro-end)),
+    var(--card);
 }
 
 .round-intro::before,
@@ -597,7 +729,7 @@ textarea:focus {
 .previous-panel {
   margin: 0.4rem 0 1rem;
   border: 1px solid var(--border);
-  background: #fafbfe;
+  background: var(--surface-soft);
 }
 
 .previous-content {
@@ -663,7 +795,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 12px;
   color: var(--text);
-  background: #fff;
+  background: var(--input);
   font-weight: 850;
 }
 
@@ -692,7 +824,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 14px;
   padding: 0.7rem;
-  background: #f8f9fc;
+  background: var(--surface-muted);
 }
 
 .paint-row {
@@ -770,7 +902,7 @@ textarea:focus {
   border-radius: 9px;
   padding: 0.25rem 0.4rem;
   color: var(--text);
-  background: #fff;
+  background: var(--input);
   font-size: 1.15rem;
   font-weight: 900;
 }
@@ -793,7 +925,7 @@ textarea:focus {
   place-items: center;
   border: 1px solid var(--border);
   border-radius: 9px;
-  background: #fff;
+  background: var(--input);
 }
 
 .brush-size span {
@@ -818,7 +950,7 @@ textarea:focus {
   border-radius: 9px;
   padding: 0.45rem 0.7rem;
   color: var(--text);
-  background: #fff;
+  background: var(--input);
   font-weight: 850;
 }
 
@@ -914,7 +1046,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 18px;
   padding: 0.85rem;
-  background: #fafbfe;
+  background: var(--surface-soft);
 }
 
 .audio-play-button,
@@ -1015,7 +1147,7 @@ textarea:focus {
   border: 1px solid var(--border);
   border-radius: 16px;
   padding: 1rem;
-  background: #fafbfe;
+  background: var(--surface-soft);
 }
 
 .result-item:not(:last-child)::after {
@@ -1059,6 +1191,15 @@ textarea:focus {
   margin-top: 1.25rem;
 }
 
+.results-observer-message {
+  margin: 1.25rem 0 0;
+  border-radius: 12px;
+  padding: 0.85rem;
+  color: var(--muted);
+  background: var(--surface-soft);
+  text-align: center;
+}
+
 .hidden {
   display: none !important;
 }
@@ -1086,7 +1227,7 @@ textarea:focus {
     z-index: 2;
     min-height: 48px;
     padding-top: 0.85rem;
-    background: #f8f9fc;
+    background: var(--surface-muted);
   }
 
   .tool-group,
@@ -1117,6 +1258,15 @@ textarea:focus {
 
   .button-compact {
     width: 100%;
+  }
+
+  .room-code-actions {
+    width: 100%;
+  }
+
+  .room-code-actions .button-compact {
+    width: auto;
+    flex: 1;
   }
 
   .room-meta {

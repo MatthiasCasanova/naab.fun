@@ -153,10 +153,21 @@ test("les paramètres, l'introduction et l'horloge sont présents", () => {
   assert.match(html, /id="settings-button"/);
   assert.match(html, /id="volume-slider"/);
   assert.match(html, /id="mute-button"/);
+  assert.match(html, /id="theme-toggle"/);
   assert.match(html, /id="round-intro"/);
   assert.match(html, /id="intro-audio-play-button"/);
   assert.match(html, /id="game-clock"/);
   assert.doesNotMatch(html, /id="timer-progress"/);
+});
+
+test("le lobby masque le code et expose les réglages de l'hôte", () => {
+  const html = readPublicFile("index.html");
+
+  assert.match(html, /id="room-title" class="room-code">\*{6}</);
+  assert.match(html, /id="toggle-code-button"/);
+  assert.match(html, /id="game-settings-panel"/);
+  assert.match(html, /id="round-count-select"/);
+  assert.match(html, /id="input-type-count-select"/);
 });
 
 test("les sélecteurs d'identifiants de app.js existent dans index.html", () => {
@@ -186,11 +197,17 @@ test("le frontend conserve le volume et utilise le timer du serveur", () => {
 
   assert.match(app, /localStorage\.setItem\(VOLUME_STORAGE_KEY/);
   assert.match(app, /audioElement\.volume = siteVolume/);
+  assert.match(app, /THEME_STORAGE_KEY = "kamoulox-theme"/);
+  assert.match(app, /AUDIO_RECORDING_DURATION_MS = 10000/);
+  assert.match(app, /window\.setTimeout\([\s\S]*AUDIO_RECORDING_DURATION_MS/);
   assert.match(app, /gameState\.serverNow - Date\.now\(\)/);
   assert.match(app, /gameState\.roundEndsAt - serverTime/);
-  assert.match(app, /INTRO_DURATION_MS = 2100/);
+  assert.match(app, /INTRO_DURATION_MS = 4500/);
+  assert.match(app, /emitWithAcknowledgment\("navigateResults"/);
+  assert.match(app, /emitWithAcknowledgment\(\s*"updateGameSettings"/);
   assert.match(css, /#drawing-canvas[\s\S]*touch-action:\s*none/);
   assert.match(css, /@media \(max-width:\s*640px\)/);
   assert.match(css, /\.game-clock\.warning/);
   assert.match(css, /\.game-clock\.danger/);
+  assert.match(css, /html\[data-theme="dark"\]/);
 });

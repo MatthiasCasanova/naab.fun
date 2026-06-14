@@ -15,7 +15,9 @@
   };
   const VOLUME_STORAGE_KEY = "kamoulox-volume";
   const MUTED_STORAGE_KEY = "kamoulox-muted";
-  const INTRO_DURATION_MS = 2100;
+  const THEME_STORAGE_KEY = "kamoulox-theme";
+  const INTRO_DURATION_MS = 4500;
+  const AUDIO_RECORDING_DURATION_MS = 10000;
   const MAX_DRAWING_HISTORY = 30;
 
   const elements = {
@@ -29,6 +31,7 @@
     volumeSlider: document.querySelector("#volume-slider"),
     volumeValue: document.querySelector("#volume-value"),
     muteButton: document.querySelector("#mute-button"),
+    themeToggle: document.querySelector("#theme-toggle"),
     nickname: document.querySelector("#nickname"),
     roomCodeInput: document.querySelector("#room-code"),
     createButton: document.querySelector("#create-button"),
@@ -41,6 +44,13 @@
     connectionStatus: document.querySelector("#connection-status"),
     connectionLabel: document.querySelector("#connection-label"),
     copyButton: document.querySelector("#copy-button"),
+    toggleCodeButton: document.querySelector("#toggle-code-button"),
+    gameSettingsPanel: document.querySelector("#game-settings-panel"),
+    roundCountSelect: document.querySelector("#round-count-select"),
+    inputTypeCountSelect: document.querySelector(
+      "#input-type-count-select"
+    ),
+    gameSettingsSummary: document.querySelector("#game-settings-summary"),
     startGameButton: document.querySelector("#start-game-button"),
     startHelp: document.querySelector("#start-help"),
     leaveButton: document.querySelector("#leave-button"),
@@ -98,6 +108,10 @@
     resultsMessage: document.querySelector("#results-message"),
     previousChainButton: document.querySelector("#previous-chain-button"),
     nextChainButton: document.querySelector("#next-chain-button"),
+    resultNavigation: document.querySelector("#result-navigation"),
+    resultsObserverMessage: document.querySelector(
+      "#results-observer-message"
+    ),
     returnLobbyButton: document.querySelector("#return-lobby-button")
   };
 
@@ -133,6 +147,8 @@
   let resultChainIndex = 0;
   let siteVolume = 1;
   let siteMuted = false;
+  let codeVisible = false;
+  let siteTheme = "dark";
 
   function setMessage(element, message, type = "") {
     element.textContent = message;
@@ -197,6 +213,38 @@
     updateAudioSettingsUi();
   }
 
+  function applyTheme(theme) {
+    siteTheme = theme === "light" ? "light" : "dark";
+    document.documentElement.dataset.theme = siteTheme;
+    const darkModeEnabled = siteTheme === "dark";
+    elements.themeToggle.setAttribute(
+      "aria-checked",
+      String(darkModeEnabled)
+    );
+    elements.themeToggle.setAttribute(
+      "aria-label",
+      darkModeEnabled ? "Désactiver le mode sombre" : "Activer le mode sombre"
+    );
+  }
+
+  function loadTheme() {
+    try {
+      applyTheme(window.localStorage.getItem(THEME_STORAGE_KEY) || "dark");
+    } catch (error) {
+      console.warn("[paramètres] Lecture du thème impossible :", error);
+      applyTheme("dark");
+    }
+  }
+
+  function toggleTheme() {
+    applyTheme(siteTheme === "dark" ? "light" : "dark");
+    try {
+      window.localStorage.setItem(THEME_STORAGE_KEY, siteTheme);
+    } catch (error) {
+      console.warn("[paramètres] Sauvegarde du thème impossible :", error);
+    }
+  }
+
   function setSettingsOpen(isOpen) {
     elements.settingsModal.classList.toggle("hidden", !isOpen);
     if (isOpen) {
@@ -258,6 +306,7 @@
     currentGame = null;
     shouldRejoin = false;
     renderedRoundKey = null;
+    codeVisible = false;
     showOnly(elements.homeView);
     setConnectionState(Boolean(socket && socket.connected), "Connecté");
   }
@@ -285,7 +334,73 @@
     });
   }
 
+  function renderRoomCode() {
+    if (!currentRoom) {
+      return;
+    }
+
+    elements.roomTitle.textContent = codeVisible
+      ? currentRoom.code
+      : "*".repeat(currentRoom.code.length);
+    elements.toggleCodeButton.textContent = codeVisible
+      ? "Masquer"
+      : "Afficher";
+    elements.toggleCodeButton.setAttribute(
+      "aria-pressed",
+      String(codeVisible)
+    );
+  }
+
+  function populateRoundCountOptions(room) {
+    const selectedValue =
+      room.settings.roundCount === null
+        ? "auto"
+        : String(room.settings.roundCount);
+    const options = [
+      {
+        value: "auto",
+        label: `Automatique (${room.playerCount} manche${
+          room.playerCount > 1 ? "s" : ""
+        })`
+      }
+    ];
+
+    for (let roundCount = 1; roundCount <= room.playerCount; roundCount += 1) {
+      options.push({
+        value: String(roundCount),
+        label: `${roundCount} manche${roundCount > 1 ? "s" : ""}`
+      });
+    }
+
+    elements.roundCountSelect.replaceChildren(
+      ...options.map((option) => {
+        const element = document.createElement("option");
+        element.value = option.value;
+        element.textContent = option.label;
+        return element;
+      })
+    );
+    elements.roundCountSelect.value = selectedValue;
+  }
+
+  function renderGameSettings(room, isHost) {
+    populateRoundCountOptions(room);
+    elements.inputTypeCountSelect.value = String(
+      room.settings.inputTypeCount
+    );
+    elements.gameSettingsPanel.classList.toggle("hidden", !isHost);
+
+    const rounds = room.settings.effectiveRoundCount;
+    const typeCount = room.settings.inputTypeCount;
+    elements.gameSettingsSummary.textContent =
+      `${rounds} manche${rounds > 1 ? "s" : ""}, ` +
+      `${typeCount} type${typeCount > 1 ? "s" : ""} possible${
+        typeCount > 1 ? "s" : ""
+      }.`;
+  }
+
   function showRoom(room) {
+    const roomChanged = !currentRoom || currentRoom.code !== room.code;
     currentRoom = room;
     currentGame = null;
     renderedRoundKey = null;
@@ -293,19 +408,29 @@
     stopRoundIntro();
     stopAudioRecording(true);
 
-    elements.roomTitle.textContent = room.code;
+    if (roomChanged) {
+      codeVisible = false;
+    }
+    renderRoomCode();
     elements.playerCount.textContent =
       `${room.playerCount} / ${room.maxPlayers} joueurs`;
     renderPlayerList(room);
 
     const isHost = Boolean(socket && room.hostId === socket.id);
+    renderGameSettings(room, isHost);
     elements.startGameButton.classList.toggle("hidden", !isHost);
     elements.startGameButton.disabled =
       !isHost || room.playerCount < room.minPlayersToStart;
     elements.startHelp.textContent = isHost
       ? room.playerCount < room.minPlayersToStart
         ? "Il faut au moins 2 joueurs pour lancer la partie."
-        : `${room.playerCount} manches seront jouées.`
+        : `${room.settings.effectiveRoundCount} manche${
+            room.settings.effectiveRoundCount > 1 ? "s" : ""
+          } ${
+            room.settings.effectiveRoundCount > 1
+              ? "seront jouées"
+              : "sera jouée"
+          }.`
       : "En attente du lancement par l'hôte.";
 
     showOnly(elements.roomView);
@@ -775,6 +900,43 @@
     runPendingAction();
   }
 
+  async function updateRoomSettings() {
+    if (!currentRoom || !socket || currentRoom.hostId !== socket.id) {
+      return;
+    }
+
+    const roundValue = elements.roundCountSelect.value;
+    const payload = {
+      roundCount: roundValue === "auto" ? null : Number(roundValue),
+      inputTypeCount: Number(elements.inputTypeCountSelect.value)
+    };
+
+    elements.roundCountSelect.disabled = true;
+    elements.inputTypeCountSelect.disabled = true;
+    setMessage(elements.roomMessage, "Réglages envoyés au laboratoire...");
+
+    try {
+      const response = await emitWithAcknowledgment(
+        "updateGameSettings",
+        payload
+      );
+      if (!response || !response.ok) {
+        throw new Error(
+          (response && response.error) || "Réglages refusés."
+        );
+      }
+      setMessage(elements.roomMessage, "");
+    } catch (error) {
+      setMessage(elements.roomMessage, error.message, "error");
+      if (currentRoom) {
+        renderGameSettings(currentRoom, true);
+      }
+    } finally {
+      elements.roundCountSelect.disabled = false;
+      elements.inputTypeCountSelect.disabled = false;
+    }
+  }
+
   function resetDrawing() {
     if (!drawingContext) {
       return;
@@ -1130,6 +1292,10 @@
       window.clearInterval(recordingSession.timer);
       recordingSession.timer = null;
     }
+    if (recordingSession.autoStopTimer) {
+      window.clearTimeout(recordingSession.autoStopTimer);
+      recordingSession.autoStopTimer = null;
+    }
     if (recordingSession.recorder.state !== "inactive") {
       recordingSession.recorder.stop();
     } else {
@@ -1152,7 +1318,8 @@
     elements.recordAudioButton.classList.remove("recording");
     elements.recordAudioButton.disabled = false;
     elements.validateAudioButton.disabled = false;
-    elements.recordButtonLabel.textContent = "Enregistrer un son";
+    elements.recordButtonLabel.textContent =
+      "Enregistrer pendant 10 secondes";
     elements.playAudioButton.textContent = "▶";
     elements.playAudioButton.setAttribute(
       "aria-label",
@@ -1215,28 +1382,18 @@
     }
   }
 
-  function stopCurrentRecording() {
-    if (!recordingSession) {
-      return;
-    }
-
-    elements.recordAudioButton.disabled = true;
-    elements.recordButtonLabel.textContent = "Préparation du bruit...";
-    stopAudioRecording(false);
-  }
-
   function updateRecordingDuration(session) {
-    const seconds = (Date.now() - session.startedAt) / 1000;
+    const elapsed = Math.min(
+      AUDIO_RECORDING_DURATION_MS,
+      Date.now() - session.startedAt
+    );
+    const remainingSeconds = Math.ceil(
+      (AUDIO_RECORDING_DURATION_MS - elapsed) / 1000
+    );
     elements.audioStatus.textContent =
-      `Enregistrement en cours : ${window.GameClientUtils.formatTime(seconds)}`;
-  }
-
-  function handleRecordButton() {
-    if (recordingSession) {
-      stopCurrentRecording();
-    } else {
-      startAudioRecording();
-    }
+      `Enregistrement automatique : ${Math.max(0, remainingSeconds)} s restantes`;
+    elements.recordButtonLabel.textContent =
+      `Fais du bruit... ${Math.max(0, remainingSeconds)} s`;
   }
 
   function readBlobAsDataUrl(blob) {
@@ -1304,7 +1461,8 @@
         roundIndex: requestedRoundIndex,
         discard: false,
         startedAt: Date.now(),
-        timer: null
+        timer: null,
+        autoStopTimer: null
       };
       recordingSession = session;
 
@@ -1351,14 +1509,20 @@
       });
 
       recorder.start(250);
-      elements.recordAudioButton.disabled = false;
+      session.startedAt = Date.now();
       session.timer = window.setInterval(
         () => updateRecordingDuration(session),
         250
       );
+      session.autoStopTimer = window.setTimeout(() => {
+        if (recordingSession !== session) {
+          return;
+        }
+        elements.recordButtonLabel.textContent = "Préparation du bruit...";
+        stopAudioRecording(false);
+      }, AUDIO_RECORDING_DURATION_MS);
       updateRecordingDuration(session);
       elements.recordAudioButton.classList.add("recording");
-      elements.recordButtonLabel.textContent = "Arrêter l'enregistrement";
       setMessage(elements.gameMessage, "");
     } catch (error) {
       stopStream(stream);
@@ -1482,16 +1646,25 @@
 
   function getHumorousPrompt(gameState) {
     const expectedType = gameState.assignment.expectedType;
+    const hasPrevious = Boolean(
+      gameState.assignment.previousContribution
+    );
     if (expectedType === "audio") {
-      return "Transforme cette phrase en bruit. La dignité est optionnelle.";
+      return hasPrevious
+        ? "Transforme ce que tu as reçu en bruit. La dignité est optionnelle."
+        : "Tu ouvres le bal avec dix secondes de bruit parfaitement assumé.";
     }
     if (expectedType === "drawing") {
-      return "Dessine la source probable de ce son. Les lois de la physique patienteront.";
+      return hasPrevious
+        ? "Dessine ce que ça t'inspire. Les lois de la physique patienteront."
+        : "Commence par un dessin. Le bon goût n'est pas obligatoire.";
     }
     if (expectedType === "text") {
-      return "Explique ce dessin avec des mots que l'humanité peut comprendre.";
+      return hasPrevious
+        ? "Explique ce que tu as reçu avec des mots vaguement compréhensibles."
+        : "Lance la chaîne avec une phrase que quelqu'un pourra massacrer.";
     }
-    return "Choisis ton arme créative et lance la première confusion.";
+    return "Le serveur réfléchit très fort au prochain problème.";
   }
 
   async function finishRoundIntro(roundKey, previousAudio) {
@@ -1605,7 +1778,9 @@
     }
 
     if (recordingSession) {
-      throw new Error("Arrêtez l'enregistrement avant de valider.");
+      throw new Error(
+        "L'enregistrement de 10 secondes doit se terminer avant de valider."
+      );
     }
 
     if (!audioDataUrl) {
@@ -1704,9 +1879,23 @@
     elements.resultContributions.replaceChildren(
       ...chain.contributions.map(renderResultContribution)
     );
-    elements.previousChainButton.disabled = resultChainIndex === 0;
+    elements.previousChainButton.disabled =
+      !currentGame.canControlResults || resultChainIndex === 0;
     elements.nextChainButton.disabled =
+      !currentGame.canControlResults ||
       resultChainIndex === chains.length - 1;
+    elements.resultNavigation.classList.toggle(
+      "hidden",
+      !currentGame.canControlResults
+    );
+    elements.resultsObserverMessage.classList.toggle(
+      "hidden",
+      currentGame.canControlResults
+    );
+    elements.returnLobbyButton.classList.toggle(
+      "hidden",
+      !currentGame.canControlResults
+    );
   }
 
   function showResults(resultsState) {
@@ -1715,10 +1904,39 @@
     stopAudioRecording(true);
     currentGame = resultsState;
     renderedRoundKey = null;
-    resultChainIndex = 0;
+    resultChainIndex = Math.max(
+      0,
+      Math.min(
+        resultsState.chains.length - 1,
+        resultsState.currentChainIndex || 0
+      )
+    );
     setMessage(elements.resultsMessage, "");
     showOnly(elements.resultsView);
     renderCurrentResultChain();
+  }
+
+  async function navigateResults(direction) {
+    if (!currentGame || !currentGame.canControlResults) {
+      return;
+    }
+
+    elements.previousChainButton.disabled = true;
+    elements.nextChainButton.disabled = true;
+    try {
+      const response = await emitWithAcknowledgment("navigateResults", {
+        direction
+      });
+      if (!response || !response.ok) {
+        throw new Error(
+          (response && response.error) || "Navigation impossible."
+        );
+      }
+      setMessage(elements.resultsMessage, "");
+    } catch (error) {
+      setMessage(elements.resultsMessage, error.message, "error");
+      renderCurrentResultChain();
+    }
   }
 
   async function leaveCurrentRoom() {
@@ -1798,6 +2016,7 @@
 
     initializeDrawing();
     loadAudioSettings();
+    loadTheme();
 
     elements.createButton.addEventListener("click", () =>
       prepareAction("create")
@@ -1862,6 +2081,18 @@
         );
       }
     });
+    elements.toggleCodeButton.addEventListener("click", () => {
+      codeVisible = !codeVisible;
+      renderRoomCode();
+    });
+    elements.roundCountSelect.addEventListener(
+      "change",
+      updateRoomSettings
+    );
+    elements.inputTypeCountSelect.addEventListener(
+      "change",
+      updateRoomSettings
+    );
 
     elements.typeButtons.forEach((button) => {
       button.addEventListener("click", () => {
@@ -1901,8 +2132,12 @@
       saveAudioSettings();
       updateAudioSettingsUi();
     });
+    elements.themeToggle.addEventListener("click", toggleTheme);
 
-    elements.recordAudioButton.addEventListener("click", handleRecordButton);
+    elements.recordAudioButton.addEventListener(
+      "click",
+      startAudioRecording
+    );
     elements.playAudioButton.addEventListener(
       "click",
       toggleRecordedAudioPlayback
@@ -1957,21 +2192,12 @@
       submitContribution
     );
 
-    elements.previousChainButton.addEventListener("click", () => {
-      if (resultChainIndex > 0) {
-        resultChainIndex -= 1;
-        renderCurrentResultChain();
-      }
-    });
-    elements.nextChainButton.addEventListener("click", () => {
-      if (
-        currentGame &&
-        resultChainIndex < currentGame.chains.length - 1
-      ) {
-        resultChainIndex += 1;
-        renderCurrentResultChain();
-      }
-    });
+    elements.previousChainButton.addEventListener("click", () =>
+      navigateResults(-1)
+    );
+    elements.nextChainButton.addEventListener("click", () =>
+      navigateResults(1)
+    );
     elements.returnLobbyButton.addEventListener("click", async () => {
       elements.returnLobbyButton.disabled = true;
       try {
