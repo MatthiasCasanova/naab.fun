@@ -152,6 +152,7 @@
     audioPreview: document.querySelector("#audio-preview"),
     audioPlayIconUse: document.querySelector("#audio-play-icon-use"),
     audioWaveform: document.querySelector("#audio-waveform"),
+    audioPlayhead: document.querySelector("#audio-playhead"),
     audioProgress: document.querySelector("#audio-progress"),
     audioCurrentTime: document.querySelector("#audio-current-time"),
     audioDuration: document.querySelector("#audio-duration"),
@@ -208,6 +209,7 @@
   let recordingSession = null;
   let audioStartRequestId = 0;
   let audioDataUrl = "";
+  let recordedAudioTimelineFrame = null;
   let resultChainIndex = 0;
   let resultContributionIndex = 0;
   let lastResultRevealKey = null;
@@ -423,6 +425,22 @@
     }
     canvas.waveformProgress = progress;
     drawWaveform(canvas);
+  }
+
+  function updateAudioProgressUi(range, waveform, playhead, progress) {
+    const normalizedProgress = Math.max(
+      0,
+      Math.min(1, Number(progress) || 0)
+    );
+    range.value = String(Math.round(normalizedProgress * 1000));
+    syncRangeProgress(range);
+    updateWaveformProgress(waveform, normalizedProgress);
+    if (playhead) {
+      playhead.style.setProperty(
+        "--audio-playhead-position",
+        `${normalizedProgress * 100}%`
+      );
+    }
   }
 
   function clearWaveform(canvas) {
@@ -2303,6 +2321,7 @@
   function resetAudio() {
     audioStartRequestId += 1;
     stopAudioRecording(true);
+    stopRecordedAudioTimelineAnimation();
     audioDataUrl = "";
     elements.audioPreview.pause();
     elements.audioPreview.currentTime = 0;
@@ -2321,8 +2340,12 @@
       "aria-label",
       "Lire l'enregistrement"
     );
-    elements.audioProgress.value = "0";
-    syncRangeProgress(elements.audioProgress);
+    updateAudioProgressUi(
+      elements.audioProgress,
+      elements.audioWaveform,
+      elements.audioPlayhead,
+      0
+    );
     clearWaveform(elements.audioWaveform);
     elements.audioCurrentTime.textContent = "00:00";
     elements.audioDuration.textContent = "00:00";
@@ -2331,8 +2354,12 @@
   function showRecordedAudio() {
     elements.audioEmptyState.classList.add("hidden");
     elements.audioReadyState.classList.remove("hidden");
-    elements.audioProgress.value = "0";
-    syncRangeProgress(elements.audioProgress);
+    updateAudioProgressUi(
+      elements.audioProgress,
+      elements.audioWaveform,
+      elements.audioPlayhead,
+      0
+    );
     elements.audioCurrentTime.textContent = "00:00";
     elements.audioPlayIconUse.setAttribute("href", "#icon-play");
     applyVolumeToAudio(elements.audioPreview);
@@ -2346,18 +2373,40 @@
     const currentTime = Number.isFinite(elements.audioPreview.currentTime)
       ? elements.audioPreview.currentTime
       : 0;
-    elements.audioProgress.value = duration
-      ? String(Math.round((currentTime / duration) * 1000))
-      : "0";
-    syncRangeProgress(elements.audioProgress);
-    updateWaveformProgress(
+    updateAudioProgressUi(
+      elements.audioProgress,
       elements.audioWaveform,
+      elements.audioPlayhead,
       duration ? currentTime / duration : 0
     );
     elements.audioCurrentTime.textContent =
       window.GameClientUtils.formatTime(currentTime);
     elements.audioDuration.textContent =
       window.GameClientUtils.formatTime(duration);
+  }
+
+  function stopRecordedAudioTimelineAnimation() {
+    if (recordedAudioTimelineFrame !== null) {
+      window.cancelAnimationFrame(recordedAudioTimelineFrame);
+      recordedAudioTimelineFrame = null;
+    }
+  }
+
+  function startRecordedAudioTimelineAnimation() {
+    stopRecordedAudioTimelineAnimation();
+
+    function animateTimeline() {
+      updateAudioTimeline();
+      if (!elements.audioPreview.paused && !elements.audioPreview.ended) {
+        recordedAudioTimelineFrame =
+          window.requestAnimationFrame(animateTimeline);
+      } else {
+        recordedAudioTimelineFrame = null;
+      }
+    }
+
+    recordedAudioTimelineFrame =
+      window.requestAnimationFrame(animateTimeline);
   }
 
   function updateAudioPlayButton() {
@@ -2606,6 +2655,7 @@
     const timeline = document.createElement("div");
     const waveformShell = document.createElement("div");
     const waveform = document.createElement("canvas");
+    const playhead = document.createElement("span");
     const progress = document.createElement("input");
     const timeRow = document.createElement("div");
     const currentTime = document.createElement("span");
@@ -2623,13 +2673,15 @@
     waveformShell.className = "audio-waveform-shell";
     waveform.className = "audio-waveform";
     waveform.setAttribute("aria-hidden", "true");
+    playhead.className = "audio-playhead";
+    playhead.setAttribute("aria-hidden", "true");
     progress.className = "game-range audio-progress";
     progress.type = "range";
     progress.min = "0";
     progress.max = "1000";
     progress.value = "0";
     progress.setAttribute("aria-label", "Progression audio");
-    waveformShell.append(waveform, progress);
+    waveformShell.append(waveform, playhead, progress);
 
     timeRow.className = "audio-time-row";
     currentTime.textContent = "00:00";
@@ -2644,6 +2696,8 @@
     player.append(playButton, timeline, audio);
     syncRangeProgress(progress);
     prepareWaveform(waveform, source);
+    updateAudioProgressUi(progress, waveform, playhead, 0);
+    let timelineAnimationFrame = null;
 
     function updatePlayerTimeline() {
       const totalDuration = Number.isFinite(audio.duration)
@@ -2653,13 +2707,39 @@
         ? audio.currentTime
         : 0;
       const ratio = totalDuration ? elapsed / totalDuration : 0;
-      progress.value = String(Math.round(ratio * 1000));
-      syncRangeProgress(progress);
-      updateWaveformProgress(waveform, ratio);
+      updateAudioProgressUi(progress, waveform, playhead, ratio);
       currentTime.textContent =
         window.GameClientUtils.formatTime(elapsed);
       duration.textContent =
         window.GameClientUtils.formatTime(totalDuration);
+    }
+
+    function stopTimelineAnimation() {
+      if (timelineAnimationFrame !== null) {
+        window.cancelAnimationFrame(timelineAnimationFrame);
+        timelineAnimationFrame = null;
+      }
+    }
+
+    function startTimelineAnimation() {
+      stopTimelineAnimation();
+
+      function animateTimeline() {
+        updatePlayerTimeline();
+        if (
+          audio.isConnected &&
+          !audio.paused &&
+          !audio.ended
+        ) {
+          timelineAnimationFrame =
+            window.requestAnimationFrame(animateTimeline);
+        } else {
+          timelineAnimationFrame = null;
+        }
+      }
+
+      timelineAnimationFrame =
+        window.requestAnimationFrame(animateTimeline);
     }
 
     function updatePlayerButton() {
@@ -2704,9 +2784,17 @@
     });
     audio.addEventListener("loadedmetadata", updatePlayerTimeline);
     audio.addEventListener("timeupdate", updatePlayerTimeline);
-    audio.addEventListener("play", updatePlayerButton);
-    audio.addEventListener("pause", updatePlayerButton);
+    audio.addEventListener("play", () => {
+      updatePlayerButton();
+      startTimelineAnimation();
+    });
+    audio.addEventListener("pause", () => {
+      stopTimelineAnimation();
+      updatePlayerTimeline();
+      updatePlayerButton();
+    });
     audio.addEventListener("ended", () => {
+      stopTimelineAnimation();
       audio.currentTime = 0;
       updatePlayerTimeline();
       updatePlayerButton();
@@ -3066,6 +3154,9 @@
     const content = document.createElement("div");
 
     item.className = "result-item";
+    if (!contribution.empty && contribution.type) {
+      item.classList.add(`result-type-${contribution.type}`);
+    }
     item.classList.toggle("current-reveal", isCurrent);
     meta.className = "result-meta";
     player.className = "result-player";
@@ -3591,9 +3682,17 @@
       updateAudioTimeline
     );
     elements.audioPreview.addEventListener("timeupdate", updateAudioTimeline);
-    elements.audioPreview.addEventListener("play", updateAudioPlayButton);
-    elements.audioPreview.addEventListener("pause", updateAudioPlayButton);
+    elements.audioPreview.addEventListener("play", () => {
+      updateAudioPlayButton();
+      startRecordedAudioTimelineAnimation();
+    });
+    elements.audioPreview.addEventListener("pause", () => {
+      stopRecordedAudioTimelineAnimation();
+      updateAudioTimeline();
+      updateAudioPlayButton();
+    });
     elements.audioPreview.addEventListener("ended", () => {
+      stopRecordedAudioTimelineAnimation();
       elements.audioPreview.currentTime = 0;
       updateAudioTimeline();
       updateAudioPlayButton();
@@ -3604,7 +3703,7 @@
         elements.audioPreview.currentTime =
           (Number(elements.audioProgress.value) / 1000) * duration;
       }
-      syncRangeProgress(elements.audioProgress);
+      updateAudioTimeline();
     });
     elements.introAudioPlayButton.addEventListener("click", async () => {
       if (!introAudioElement) {

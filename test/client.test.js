@@ -147,6 +147,7 @@ test("l'interface audio est compacte et ne contient plus l'ancien bouton stop", 
   assert.match(html, /id="validate-audio-button"/);
   assert.match(html, /id="audio-progress"/);
   assert.match(html, /id="audio-waveform"/);
+  assert.match(html, /id="audio-playhead"/);
   assert.match(html, /id="audio-duration"/);
   assert.doesNotMatch(html, /id="stop-audio-button"/);
 });
@@ -163,11 +164,28 @@ test("les lecteurs audio utilisent une forme d'onde et aucun controle natif", ()
   assert.doesNotMatch(app, /\.controls\s*=\s*true/);
   assert.doesNotMatch(html, /<audio[^>]*\scontrols(?:\s|>)/);
   assert.match(css, /\.audio-waveform-shell/);
+  assert.match(css, /\.audio-playhead/);
   assert.match(css, /\.audio-player-card\.is-playing/);
   assert.match(css, /--waveform-active-end/);
   assert.match(
     app,
     /function scheduleWaveformRedraw\(\)[\s\S]*redrawWaveforms\(\)/
+  );
+  assert.match(app, /requestAnimationFrame\(animateTimeline\)/);
+});
+
+test("le reveal conserve le ratio natif des dessins", () => {
+  const app = readPublicFile("app.js");
+  const css = readPublicFile("styles.css");
+
+  assert.match(app, /result-type-\$\{contribution\.type\}/);
+  assert.match(
+    css,
+    /\.result-item\.result-type-drawing > div:last-child\s*\{[\s\S]*aspect-ratio:\s*8\s*\/\s*5/
+  );
+  assert.match(
+    css,
+    /\.result-item\.result-type-drawing \.result-image\s*\{[\s\S]*max-height:\s*none/
   );
 });
 
