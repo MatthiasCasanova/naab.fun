@@ -119,7 +119,18 @@
           Volume général
           <strong id="volume-value">100 %</strong>
         </label>
-        <input id="volume-slider" class="volume-slider" type="range" min="0" max="100" value="100">
+        <div class="range-shell volume-range-shell">
+          <svg class="icon range-icon" aria-hidden="true"><use href="#icon-muted"></use></svg>
+          <input
+            id="volume-slider"
+            class="game-range volume-slider"
+            type="range"
+            min="0"
+            max="100"
+            value="100"
+          >
+          <svg class="icon range-icon" aria-hidden="true"><use href="#icon-volume"></use></svg>
+        </div>
 
         <div class="settings-icon-row">
           <div>
@@ -443,12 +454,23 @@
 
                     <div id="audio-ready-state" class="audio-ready-state hidden">
                       <audio id="audio-preview" class="hidden" preload="metadata"></audio>
-                      <div class="audio-player-card">
+                      <div class="audio-player-card has-delete">
                         <button id="play-audio-button" class="audio-play-button" type="button" aria-label="Lire">
                           <svg class="icon"><use id="audio-play-icon-use" href="#icon-play"></use></svg>
                         </button>
                         <div class="audio-timeline">
-                          <input id="audio-progress" class="audio-progress" type="range" min="0" max="1000" value="0" aria-label="Progression audio">
+                          <div class="audio-waveform-shell">
+                            <canvas id="audio-waveform" class="audio-waveform" aria-hidden="true"></canvas>
+                            <input
+                              id="audio-progress"
+                              class="game-range audio-progress"
+                              type="range"
+                              min="0"
+                              max="1000"
+                              value="0"
+                              aria-label="Progression audio"
+                            >
+                          </div>
                           <div class="audio-time-row">
                             <span id="audio-current-time">00:00</span>
                             <span id="audio-duration">00:00</span>

@@ -98,7 +98,7 @@
     if (previousType === "text") {
       return "Fais du bruit avec cette phrase, sans appeler la police.";
     }
-    return "Invente un truc. La logique est facultative.";
+    return "Tu es le premier de cette chaîne. Invente le début du problème.";
   }
 
   return {

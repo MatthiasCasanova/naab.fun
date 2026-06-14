@@ -35,6 +35,7 @@
   const INTRO_DURATION_MS = 4500;
   const AUDIO_RECORDING_DURATION_MS = 10000;
   const MAX_DRAWING_HISTORY = 30;
+  const WAVEFORM_BAR_COUNT = 72;
 
   const elements = {
     playLayout: document.querySelector("#play-layout"),
@@ -120,6 +121,7 @@
     validateAudioButton: document.querySelector("#validate-audio-button"),
     audioPreview: document.querySelector("#audio-preview"),
     audioPlayIconUse: document.querySelector("#audio-play-icon-use"),
+    audioWaveform: document.querySelector("#audio-waveform"),
     audioProgress: document.querySelector("#audio-progress"),
     audioCurrentTime: document.querySelector("#audio-current-time"),
     audioDuration: document.querySelector("#audio-duration"),
@@ -178,6 +180,8 @@
   let siteMuted = false;
   let codeVisible = false;
   let siteTheme = "dark";
+  const waveformCache = new Map();
+  let waveformResizeFrame = null;
 
   function setMessage(element, message, type = "") {
     element.textContent = message;
@@ -197,6 +201,215 @@
     document.querySelectorAll("audio").forEach(applyVolumeToAudio);
   }
 
+  function syncRangeProgress(range) {
+    const minimum = Number(range.min) || 0;
+    const maximum = Number(range.max) || 100;
+    const value = Number(range.value) || minimum;
+    const progress =
+      maximum > minimum
+        ? ((value - minimum) / (maximum - minimum)) * 100
+        : 0;
+    range.style.setProperty(
+      "--range-progress",
+      `${Math.max(0, Math.min(100, progress))}%`
+    );
+  }
+
+  function getFallbackWaveformPeaks() {
+    return Array.from({ length: WAVEFORM_BAR_COUNT }, (_, index) => {
+      const position = index / WAVEFORM_BAR_COUNT;
+      return Math.max(
+        0.16,
+        Math.min(
+          1,
+          0.28 +
+            Math.abs(Math.sin(position * Math.PI * 7.4)) * 0.42 +
+            Math.abs(Math.cos(position * Math.PI * 13.7)) * 0.24
+        )
+      );
+    });
+  }
+
+  function getWaveformCacheKey(source) {
+    return `${source.length}:${source.slice(0, 48)}:${source.slice(-48)}`;
+  }
+
+  async function decodeWaveformPeaks(source) {
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
+    if (!source || !AudioContextClass) {
+      return getFallbackWaveformPeaks();
+    }
+
+    const cacheKey = getWaveformCacheKey(source);
+    if (waveformCache.has(cacheKey)) {
+      return waveformCache.get(cacheKey);
+    }
+
+    const waveformPromise = (async () => {
+      let audioContext;
+      try {
+        const response = await fetch(source);
+        const arrayBuffer = await response.arrayBuffer();
+        audioContext = new AudioContextClass();
+        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+        const channel = audioBuffer.getChannelData(0);
+        const sampleSize = Math.max(
+          1,
+          Math.floor(channel.length / WAVEFORM_BAR_COUNT)
+        );
+        const peaks = Array.from(
+          { length: WAVEFORM_BAR_COUNT },
+          (_, index) => {
+            const start = index * sampleSize;
+            const end = Math.min(channel.length, start + sampleSize);
+            let peak = 0;
+            for (let sample = start; sample < end; sample += 1) {
+              peak = Math.max(peak, Math.abs(channel[sample]));
+            }
+            return peak;
+          }
+        );
+        const maximumPeak = Math.max(...peaks, 0.01);
+        return peaks.map((peak) =>
+          Math.max(0.08, Math.min(1, peak / maximumPeak))
+        );
+      } catch (error) {
+        console.info(
+          "[audio] Forme d'onde de secours utilisée :",
+          error
+        );
+        return getFallbackWaveformPeaks();
+      } finally {
+        if (audioContext && typeof audioContext.close === "function") {
+          audioContext.close().catch(() => {});
+        }
+      }
+    })();
+
+    waveformCache.set(cacheKey, waveformPromise);
+    if (waveformCache.size > 30) {
+      waveformCache.delete(waveformCache.keys().next().value);
+    }
+    return waveformPromise;
+  }
+
+  function drawWaveform(canvas) {
+    if (!canvas || !canvas.isConnected) {
+      return;
+    }
+
+    const bounds = canvas.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) {
+      return;
+    }
+
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.max(1, Math.round(bounds.width * pixelRatio));
+    const height = Math.max(1, Math.round(bounds.height * pixelRatio));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    const context = canvas.getContext("2d");
+    const peaks = canvas.waveformPeaks || getFallbackWaveformPeaks();
+    const progress = Math.max(
+      0,
+      Math.min(1, Number(canvas.waveformProgress) || 0)
+    );
+    const styles = window.getComputedStyle(canvas);
+    const idleColor =
+      styles.getPropertyValue("--waveform-idle").trim() || "#77718f";
+    const activeColor =
+      styles.getPropertyValue("--waveform-active").trim() || "#a997ff";
+    const gap = Math.max(1, Math.round(2 * pixelRatio));
+    const barWidth = Math.max(
+      1,
+      (width - gap * (peaks.length - 1)) / peaks.length
+    );
+
+    context.clearRect(0, 0, width, height);
+    peaks.forEach((peak, index) => {
+      const x = index * (barWidth + gap);
+      const barHeight = Math.max(
+        3 * pixelRatio,
+        peak * height * 0.78
+      );
+      const y = (height - barHeight) / 2;
+      const barProgress = (index + 0.5) / peaks.length;
+      context.fillStyle =
+        barProgress <= progress ? activeColor : idleColor;
+      if (typeof context.roundRect === "function") {
+        context.beginPath();
+        context.roundRect(
+          x,
+          y,
+          barWidth,
+          barHeight,
+          Math.min(barWidth / 2, 2 * pixelRatio)
+        );
+        context.fill();
+      } else {
+        context.fillRect(x, y, barWidth, barHeight);
+      }
+    });
+  }
+
+  function updateWaveformProgress(canvas, progress) {
+    if (!canvas) {
+      return;
+    }
+    canvas.waveformProgress = progress;
+    drawWaveform(canvas);
+  }
+
+  function clearWaveform(canvas) {
+    if (!canvas) {
+      return;
+    }
+    canvas.waveformRequestKey = null;
+    canvas.waveformPeaks = getFallbackWaveformPeaks();
+    canvas.waveformProgress = 0;
+    drawWaveform(canvas);
+  }
+
+  function prepareWaveform(canvas, source) {
+    if (!canvas) {
+      return;
+    }
+
+    const requestKey = getWaveformCacheKey(source || "");
+    canvas.waveformRequestKey = requestKey;
+    canvas.waveformPeaks = getFallbackWaveformPeaks();
+    canvas.waveformProgress = 0;
+    window.requestAnimationFrame(() => drawWaveform(canvas));
+
+    decodeWaveformPeaks(source).then((peaks) => {
+      if (
+        canvas.isConnected &&
+        canvas.waveformRequestKey === requestKey
+      ) {
+        canvas.waveformPeaks = peaks;
+        drawWaveform(canvas);
+      }
+    });
+  }
+
+  function redrawWaveforms() {
+    document.querySelectorAll(".audio-waveform").forEach(drawWaveform);
+  }
+
+  function scheduleWaveformRedraw() {
+    if (waveformResizeFrame) {
+      window.cancelAnimationFrame(waveformResizeFrame);
+    }
+    waveformResizeFrame = window.requestAnimationFrame(() => {
+      waveformResizeFrame = null;
+      redrawWaveforms();
+    });
+  }
+
   function saveAudioSettings() {
     try {
       window.localStorage.setItem(VOLUME_STORAGE_KEY, String(siteVolume));
@@ -209,6 +422,7 @@
   function updateAudioSettingsUi() {
     const percentage = Math.round(siteVolume * 100);
     elements.volumeSlider.value = String(percentage);
+    syncRangeProgress(elements.volumeSlider);
     elements.volumeValue.textContent = `${percentage} %`;
     elements.muteButton.setAttribute("aria-pressed", String(siteMuted));
     elements.muteButton.setAttribute(
@@ -264,6 +478,7 @@
       "href",
       darkModeEnabled ? "#icon-moon" : "#icon-sun"
     );
+    window.requestAnimationFrame(redrawWaveforms);
   }
 
   function loadTheme() {
@@ -1444,6 +1659,8 @@
       "Lire l'enregistrement"
     );
     elements.audioProgress.value = "0";
+    syncRangeProgress(elements.audioProgress);
+    clearWaveform(elements.audioWaveform);
     elements.audioCurrentTime.textContent = "00:00";
     elements.audioDuration.textContent = "00:00";
   }
@@ -1452,9 +1669,11 @@
     elements.audioEmptyState.classList.add("hidden");
     elements.audioReadyState.classList.remove("hidden");
     elements.audioProgress.value = "0";
+    syncRangeProgress(elements.audioProgress);
     elements.audioCurrentTime.textContent = "00:00";
     elements.audioPlayIconUse.setAttribute("href", "#icon-play");
     applyVolumeToAudio(elements.audioPreview);
+    prepareWaveform(elements.audioWaveform, audioDataUrl);
   }
 
   function updateAudioTimeline() {
@@ -1467,6 +1686,11 @@
     elements.audioProgress.value = duration
       ? String(Math.round((currentTime / duration) * 1000))
       : "0";
+    syncRangeProgress(elements.audioProgress);
+    updateWaveformProgress(
+      elements.audioWaveform,
+      duration ? currentTime / duration : 0
+    );
     elements.audioCurrentTime.textContent =
       window.GameClientUtils.formatTime(currentTime);
     elements.audioDuration.textContent =
@@ -1483,6 +1707,9 @@
       "aria-label",
       isPlaying ? "Mettre en pause" : "Lire l'enregistrement"
     );
+    elements.playAudioButton
+      .closest(".audio-player-card")
+      .classList.toggle("is-playing", isPlaying);
   }
 
   async function toggleRecordedAudioPlayback() {
@@ -1690,6 +1917,131 @@
     );
   }
 
+  function createSvgIcon(symbolId) {
+    const namespace = "http://www.w3.org/2000/svg";
+    const icon = document.createElementNS(namespace, "svg");
+    const use = document.createElementNS(namespace, "use");
+    icon.classList.add("icon");
+    use.setAttribute("href", `#${symbolId}`);
+    icon.append(use);
+    return { icon, use };
+  }
+
+  function createAudioPlayer(source, compact = false) {
+    const player = document.createElement("div");
+    const playButton = document.createElement("button");
+    const playIcon = createSvgIcon("icon-play");
+    const timeline = document.createElement("div");
+    const waveformShell = document.createElement("div");
+    const waveform = document.createElement("canvas");
+    const progress = document.createElement("input");
+    const timeRow = document.createElement("div");
+    const currentTime = document.createElement("span");
+    const duration = document.createElement("span");
+    const audio = document.createElement("audio");
+
+    player.className =
+      `audio-player-card custom-audio-player${compact ? " compact" : ""}`;
+    playButton.className = "audio-play-button";
+    playButton.type = "button";
+    playButton.setAttribute("aria-label", "Lire le son");
+    playButton.append(playIcon.icon);
+
+    timeline.className = "audio-timeline";
+    waveformShell.className = "audio-waveform-shell";
+    waveform.className = "audio-waveform";
+    waveform.setAttribute("aria-hidden", "true");
+    progress.className = "game-range audio-progress";
+    progress.type = "range";
+    progress.min = "0";
+    progress.max = "1000";
+    progress.value = "0";
+    progress.setAttribute("aria-label", "Progression audio");
+    waveformShell.append(waveform, progress);
+
+    timeRow.className = "audio-time-row";
+    currentTime.textContent = "00:00";
+    duration.textContent = "00:00";
+    timeRow.append(currentTime, duration);
+    timeline.append(waveformShell, timeRow);
+
+    audio.className = "hidden";
+    audio.src = source;
+    audio.preload = "metadata";
+    applyVolumeToAudio(audio);
+    player.append(playButton, timeline, audio);
+    syncRangeProgress(progress);
+    prepareWaveform(waveform, source);
+
+    function updatePlayerTimeline() {
+      const totalDuration = Number.isFinite(audio.duration)
+        ? audio.duration
+        : 0;
+      const elapsed = Number.isFinite(audio.currentTime)
+        ? audio.currentTime
+        : 0;
+      const ratio = totalDuration ? elapsed / totalDuration : 0;
+      progress.value = String(Math.round(ratio * 1000));
+      syncRangeProgress(progress);
+      updateWaveformProgress(waveform, ratio);
+      currentTime.textContent =
+        window.GameClientUtils.formatTime(elapsed);
+      duration.textContent =
+        window.GameClientUtils.formatTime(totalDuration);
+    }
+
+    function updatePlayerButton() {
+      const isPlaying = !audio.paused;
+      playIcon.use.setAttribute(
+        "href",
+        isPlaying ? "#icon-pause" : "#icon-play"
+      );
+      playButton.setAttribute(
+        "aria-label",
+        isPlaying ? "Mettre le son en pause" : "Lire le son"
+      );
+      player.classList.toggle("is-playing", isPlaying);
+    }
+
+    playButton.addEventListener("click", async () => {
+      try {
+        if (audio.paused) {
+          applyVolumeToAudio(audio);
+          await audio.play();
+        } else {
+          audio.pause();
+        }
+      } catch (error) {
+        console.error("[audio] Lecture impossible :", error);
+        setMessage(
+          elements.gameMessage,
+          `Lecture audio impossible : ${error.message}`,
+          "error"
+        );
+      }
+    });
+    progress.addEventListener("input", () => {
+      const totalDuration = audio.duration;
+      if (Number.isFinite(totalDuration) && totalDuration > 0) {
+        audio.currentTime =
+          (Number(progress.value) / 1000) * totalDuration;
+      }
+      syncRangeProgress(progress);
+      updatePlayerTimeline();
+    });
+    audio.addEventListener("loadedmetadata", updatePlayerTimeline);
+    audio.addEventListener("timeupdate", updatePlayerTimeline);
+    audio.addEventListener("play", updatePlayerButton);
+    audio.addEventListener("pause", updatePlayerButton);
+    audio.addEventListener("ended", () => {
+      audio.currentTime = 0;
+      updatePlayerTimeline();
+      updatePlayerButton();
+    });
+
+    return { element: player, audio };
+  }
+
   function renderContribution(container, contribution) {
     container.replaceChildren();
 
@@ -1718,14 +2070,9 @@
       return null;
     }
 
-    const audio = document.createElement("audio");
-    audio.className = "audio-player";
-    audio.src = contribution.content;
-    audio.controls = true;
-    audio.preload = "metadata";
-    applyVolumeToAudio(audio);
-    container.append(audio);
-    return audio;
+    const audioPlayer = createAudioPlayer(contribution.content);
+    container.append(audioPlayer.element);
+    return audioPlayer.audio;
   }
 
   function resetRoundEditors() {
@@ -1843,16 +2190,15 @@
     elements.gamePrompt.textContent = getHumorousPrompt(gameState);
 
     const previous = gameState.assignment.previousContribution;
+    const hasPrevious = Boolean(previous);
+    elements.previousPanel.classList.toggle("hidden", !hasPrevious);
+    elements.gameStage.classList.toggle("without-previous", !hasPrevious);
     let previousAudio = null;
     if (isNewRound) {
-      if (previous) {
+      if (hasPrevious) {
         previousAudio = renderContribution(elements.previousContent, previous);
       } else {
-        const empty = document.createElement("p");
-        empty.className = "empty-contribution";
-        empty.textContent =
-          "Début de chaîne : aucune preuve compromettante.";
-        elements.previousContent.replaceChildren(empty);
+        elements.previousContent.replaceChildren();
       }
     }
 
@@ -1976,13 +2322,8 @@
       image.alt = `Dessin de ${contribution.nickname}`;
       content.append(image);
     } else {
-      const audio = document.createElement("audio");
-      audio.className = "audio-player";
-      audio.src = contribution.content;
-      audio.controls = true;
-      audio.preload = "metadata";
-      applyVolumeToAudio(audio);
-      content.append(audio);
+      const audioPlayer = createAudioPlayer(contribution.content, true);
+      content.append(audioPlayer.element);
     }
 
     item.append(content);
@@ -2272,6 +2613,7 @@
     elements.volumeSlider.addEventListener("input", () => {
       setSiteVolume(Number(elements.volumeSlider.value) / 100);
     });
+    window.addEventListener("resize", scheduleWaveformRedraw);
     elements.muteButton.addEventListener("click", () => {
       siteMuted = !siteMuted;
       saveAudioSettings();

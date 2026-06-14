@@ -118,7 +118,7 @@ test("les introductions correspondent au type reçu", () => {
   assert.match(getRoundIntro("audio"), /produit ce son/);
   assert.match(getRoundIntro("drawing"), /dessin/);
   assert.match(getRoundIntro("text"), /Fais du bruit/);
-  assert.match(getRoundIntro(null), /logique est facultative/);
+  assert.match(getRoundIntro(null), /premier/);
 });
 
 test("l'interface audio est compacte et ne contient plus l'ancien bouton stop", () => {
@@ -129,8 +129,52 @@ test("l'interface audio est compacte et ne contient plus l'ancien bouton stop", 
   assert.match(html, /id="reset-audio-button"/);
   assert.match(html, /id="validate-audio-button"/);
   assert.match(html, /id="audio-progress"/);
+  assert.match(html, /id="audio-waveform"/);
   assert.match(html, /id="audio-duration"/);
   assert.doesNotMatch(html, /id="stop-audio-button"/);
+});
+
+test("les lecteurs audio utilisent une forme d'onde et aucun controle natif", () => {
+  const html = readPublicFile("index.html");
+  const app = readPublicFile("app.js");
+  const css = readPublicFile("styles.css");
+
+  assert.match(app, /decodeWaveformPeaks/);
+  assert.match(app, /decodeAudioData/);
+  assert.match(app, /createAudioPlayer/);
+  assert.match(app, /canvas\.waveformPeaks/);
+  assert.doesNotMatch(app, /\.controls\s*=\s*true/);
+  assert.doesNotMatch(html, /<audio[^>]*\scontrols(?:\s|>)/);
+  assert.match(css, /\.audio-waveform-shell/);
+  assert.match(css, /\.audio-player-card\.is-playing/);
+});
+
+test("les sliders partagent le composant visuel du jeu", () => {
+  const html = readPublicFile("index.html");
+  const css = readPublicFile("styles.css");
+
+  assert.match(html, /class="range-shell volume-range-shell"/);
+  assert.match(html, /class="game-range volume-slider"/);
+  assert.match(html, /class="game-range audio-progress"/);
+  assert.match(css, /\.game-range::-webkit-slider-runnable-track/);
+  assert.match(css, /\.game-range::-moz-range-track/);
+  assert.match(css, /--range-progress/);
+  assert.doesNotMatch(css, /accent-color/);
+});
+
+test("la premiere manche masque le panneau recu et agrandit l'editeur", () => {
+  const app = readPublicFile("app.js");
+  const css = readPublicFile("styles.css");
+
+  assert.match(
+    app,
+    /previousPanel\.classList\.toggle\("hidden", !hasPrevious\)/
+  );
+  assert.match(
+    app,
+    /gameStage\.classList\.toggle\("without-previous", !hasPrevious\)/
+  );
+  assert.match(css, /\.game-stage\.without-previous/);
 });
 
 test("l'outil de dessin expose la palette et tous les outils demandés", () => {
