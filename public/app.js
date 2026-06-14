@@ -76,6 +76,7 @@
       "#close-game-settings-button"
     ),
     nickname: document.querySelector("#nickname"),
+    roomName: document.querySelector("#room-name"),
     avatarButtons: Array.from(document.querySelectorAll(".avatar-option")),
     roomCodeInput: document.querySelector("#room-code"),
     createButton: document.querySelector("#create-button"),
@@ -840,6 +841,7 @@
     elements.createButton.disabled = isBusy;
     elements.joinButton.disabled = isBusy;
     elements.nickname.disabled = isBusy;
+    elements.roomName.disabled = isBusy;
     elements.roomCodeInput.disabled = isBusy;
     elements.avatarButtons.forEach((button) => {
       button.disabled = isBusy;
@@ -1506,6 +1508,11 @@
     return length >= 2 && length <= 20;
   }
 
+  function validateRoomName(roomName) {
+    const length = Array.from(roomName).length;
+    return length >= 2 && length <= 30;
+  }
+
   async function runPendingAction() {
     if (!pendingAction || actionRunning) {
       return;
@@ -1569,6 +1576,7 @@
 
   function prepareAction(type) {
     const nickname = elements.nickname.value.trim();
+    const roomName = elements.roomName.value.trim().replace(/\s+/g, " ");
     const roomCode = elements.roomCodeInput.value.trim().toUpperCase();
 
     if (!validateNickname(nickname)) {
@@ -1578,6 +1586,16 @@
         "error"
       );
       elements.nickname.focus();
+      return;
+    }
+
+    if (type === "create" && !validateRoomName(roomName)) {
+      setMessage(
+        elements.homeMessage,
+        "Le nom de la room doit contenir entre 2 et 30 caractères.",
+        "error"
+      );
+      elements.roomName.focus();
       return;
     }
 
@@ -1598,7 +1616,7 @@
       type,
       payload:
         type === "create"
-          ? { nickname, avatarId: currentAvatarId }
+          ? { nickname, roomName, avatarId: currentAvatarId }
           : { nickname, code: roomCode, avatarId: currentAvatarId }
     };
     runPendingAction();
@@ -3253,6 +3271,12 @@
       if (event.key === "Enter") {
         event.preventDefault();
         prepareAction(elements.roomCodeInput.value.trim() ? "join" : "create");
+      }
+    });
+    elements.roomName.addEventListener("keydown", (event) => {
+      if (event.key === "Enter") {
+        event.preventDefault();
+        prepareAction("create");
       }
     });
 

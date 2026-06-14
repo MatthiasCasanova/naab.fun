@@ -192,9 +192,17 @@ test("la création valide les pseudonymes et génère un code non ambigu", async
     assert.equal(invalidAvatar.ok, false);
     assert.match(invalidAvatar.error, /avatar/);
 
+    const invalidRoomName = await emitAck(host, "createRoom", {
+      nickname: "Alice",
+      roomName: "A"
+    });
+    assert.equal(invalidRoomName.ok, false);
+    assert.match(invalidRoomName.error, /nom de la room/);
+
     const created = await emitAck(host, "createRoom", {
       nickname: "Alice",
-      avatarId: "robot"
+      avatarId: "robot",
+      roomName: "Le Laboratoire"
     });
     assert.equal(created.ok, true);
     assert.match(
@@ -205,7 +213,7 @@ test("la création valide les pseudonymes et génère un code non ambigu", async
     assert.equal(created.room.players[0].isHost, true);
     assert.equal(created.room.players[0].avatarId, "robot");
     assert.equal(created.room.players[0].status, "ready");
-    assert.equal(created.room.name, "Alice's Room");
+    assert.equal(created.room.name, "Le Laboratoire");
     assert.deepEqual(created.room.chatMessages, []);
     assert.deepEqual(AVATAR_IDS, [
       "comet",

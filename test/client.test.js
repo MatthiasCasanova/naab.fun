@@ -263,7 +263,21 @@ test("l'accueil propose les avatars et la room conserve une liste laterale", () 
   assert.match(html, /id="player-list"/);
   assert.match(html, /id="player-count"/);
   assert.match(html, /id="join-button"[\s\S]*href="#icon-check"/);
+  assert.match(html, /id="room-name"/);
+  assert.match(html, /maxlength="30"/);
+  assert.match(html, /class="home-features"/);
   assert.match(html, /<span>📝<\/span><span>🎙️<\/span><span>🎨<\/span>/);
+});
+
+test("la création transmet un nom de room et le serveur le valide", () => {
+  const app = readPublicFile("app.js");
+  const server = readProjectFile("server.js");
+
+  assert.match(app, /function validateRoomName/);
+  assert.match(app, /\{ nickname, roomName, avatarId: currentAvatarId \}/);
+  assert.match(server, /function normalizeRoomName/);
+  assert.match(server, /customName: customRoomName/);
+  assert.match(server, /room\.customName \|\|/);
 });
 
 test("la room expose le chat, les emotes et son nom d'hôte", () => {
@@ -418,4 +432,7 @@ test("les commandes utilisent le sprite d'icones et des animations coherentes", 
   assert.match(css, /button,\s*\.button\s*\{[\s\S]*transition:/);
   assert.match(css, /\.icon-button:hover:not\(:disabled\)/);
   assert.match(css, /button:active:not\(:disabled\)/);
+  assert.match(css, /@keyframes selected-glint/);
+  assert.match(css, /button\[aria-checked="true"\]::after/);
+  assert.match(css, /button\[aria-pressed="true"\]::after/);
 });

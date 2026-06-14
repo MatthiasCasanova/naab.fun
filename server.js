@@ -16,6 +16,8 @@ const MAX_TEXT_LENGTH = 500;
 const MAX_MEDIA_DATA_LENGTH = 1500000;
 const MAX_CHAT_MESSAGE_LENGTH = 200;
 const MAX_CHAT_MESSAGES = 100;
+const MAX_ROOM_NAME_LENGTH = 30;
+const MIN_ROOM_NAME_LENGTH = 2;
 const ROOM_CODE_LENGTH = 6;
 const DEFAULT_INPUT_TYPE_COUNT = 3;
 const DEFAULT_AVATAR_ID = "comet";
@@ -300,6 +302,21 @@ function createGameServer(options = {}) {
     return nickname;
   }
 
+  function normalizeRoomName(value) {
+    if (typeof value !== "string") {
+      return null;
+    }
+
+    const roomName = value.trim().replace(/\s+/g, " ");
+    const length = Array.from(roomName).length;
+
+    if (length < MIN_ROOM_NAME_LENGTH || length > MAX_ROOM_NAME_LENGTH) {
+      return null;
+    }
+
+    return roomName;
+  }
+
   function normalizeAvatarId(value, allowDefault = true) {
     if ((value === undefined || value === null || value === "") && allowDefault) {
       return DEFAULT_AVATAR_ID;
@@ -372,7 +389,9 @@ function createGameServer(options = {}) {
 
     return {
       code: room.code,
-      name: `${host ? host.nickname : "Kamoulox"}'s Room`,
+      name:
+        room.customName ||
+        `${host ? host.nickname : "Kamoulox"}'s Room`,
       hostId: room.hostId,
       phase: room.game ? room.game.status : "lobby",
       playerCount: room.players.size,
@@ -1006,11 +1025,26 @@ function createGameServer(options = {}) {
         });
         return;
       }
+      const hasCustomRoomName = Boolean(
+        payload &&
+          Object.prototype.hasOwnProperty.call(payload, "roomName")
+      );
+      const customRoomName = hasCustomRoomName
+        ? normalizeRoomName(payload.roomName)
+        : null;
+      if (hasCustomRoomName && !customRoomName) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: `Le nom de la room doit contenir entre ${MIN_ROOM_NAME_LENGTH} et ${MAX_ROOM_NAME_LENGTH} caractères.`
+        });
+        return;
+      }
 
       const roomCode = generateRoomCode();
       const player = createPlayer(socket, nickname, avatarId);
       const room = {
         code: roomCode,
+        customName: customRoomName,
         hostId: socket.id,
         players: new Map([[socket.id, player]]),
         settings: {

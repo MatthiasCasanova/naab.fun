@@ -142,6 +142,66 @@ button:disabled {
   display: none !important;
 }
 
+.visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  white-space: nowrap !important;
+}
+
+button.active,
+button[aria-checked="true"],
+button[aria-pressed="true"] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+}
+
+button.active::after,
+button[aria-checked="true"]::after,
+button[aria-pressed="true"]::after {
+  position: absolute;
+  z-index: 2;
+  top: -45%;
+  bottom: -45%;
+  left: -65%;
+  width: 34%;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent,
+    rgba(255, 255, 255, 0.08) 28%,
+    rgba(255, 255, 255, 0.72) 50%,
+    rgba(255, 255, 255, 0.08) 72%,
+    transparent
+  );
+  content: "";
+  filter: blur(1px);
+  transform: skewX(-16deg);
+  animation: selected-glint 2.8s ease-in-out infinite;
+}
+
+@keyframes selected-glint {
+  0%,
+  22% {
+    left: -65%;
+    opacity: 0;
+  }
+
+  34% {
+    opacity: 0.9;
+  }
+
+  52%,
+  100% {
+    left: 132%;
+    opacity: 0;
+  }
+}
+
 .app-shell {
   display: grid;
   width: min(100%, 1480px);
@@ -497,10 +557,12 @@ label,
 /* Home */
 .home-card {
   display: grid;
-  width: min(100%, 1050px);
+  width: min(100%, 960px);
+  height: min(600px, 100%);
+  align-self: center;
   margin: 0 auto;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  gap: 14px;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+  gap: 11px;
 }
 
 .home-intro {
@@ -518,11 +580,31 @@ label,
   color: var(--muted);
 }
 
+.home-features {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.home-features span {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: var(--muted);
+  background: var(--surface);
+  font-size: 0.7rem;
+  font-weight: 750;
+}
+
 .home-grid {
   display: grid;
+  width: min(100%, 860px);
   min-height: 0;
-  grid-template-columns: minmax(260px, 0.82fr) minmax(400px, 1.25fr);
-  gap: 14px;
+  justify-self: center;
+  grid-template-columns: minmax(280px, 0.78fr) minmax(390px, 1.22fr);
+  gap: 12px;
 }
 
 .profile-setup,
@@ -537,11 +619,46 @@ label,
   min-height: 0;
   flex-direction: column;
   justify-content: center;
-  padding: clamp(14px, 2vw, 24px);
+  padding: clamp(14px, 2vw, 20px);
 }
 
 .profile-setup input {
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+}
+
+.profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.profile-heading > span {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 10px;
+  color: #fff;
+  background: var(--primary);
+  font-size: 0.72rem;
+  font-weight: 950;
+}
+
+.profile-heading div {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+}
+
+.profile-heading strong {
+  font-size: 0.88rem;
+}
+
+.profile-heading small {
+  color: var(--muted);
+  font-size: 0.66rem;
 }
 
 .avatar-picker {
@@ -622,19 +739,23 @@ label,
   display: grid;
   min-height: 0;
   grid-template-rows: 1fr 1fr;
-  gap: 12px;
+  gap: 10px;
 }
 
 .action-card {
   display: grid;
   min-height: 0;
   align-items: center;
-  grid-template-columns: 52px minmax(0, 1fr) auto;
-  gap: 13px;
-  padding: 14px;
+  grid-template-columns: 48px minmax(0, 1fr);
+  grid-template-areas:
+    "icon copy"
+    "controls controls";
+  gap: 8px 11px;
+  padding: 12px;
 }
 
 .action-icon {
+  grid-area: icon;
   display: grid;
   width: 48px;
   height: 48px;
@@ -642,6 +763,10 @@ label,
   border-radius: 14px;
   color: var(--primary);
   background: var(--primary-soft);
+}
+
+.action-copy {
+  grid-area: copy;
 }
 
 .action-card h3 {
@@ -655,14 +780,26 @@ label,
 }
 
 .action-button {
-  min-width: 112px;
+  min-width: 104px;
 }
 
+.create-room-row,
 .join-row {
   display: grid;
-  width: min(270px, 38vw);
+  width: 100%;
+  grid-area: controls;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 7px;
+}
+
+.create-room-row input,
+.join-row input {
+  height: 40px;
+}
+
+.create-room-row .button,
+.join-row .button {
+  min-height: 40px;
 }
 
 .join-confirm-button {
@@ -2308,7 +2445,7 @@ label,
   }
 
   .action-card {
-    grid-template-columns: 42px minmax(0, 1fr) auto;
+    grid-template-columns: 42px minmax(0, 1fr);
     gap: 8px;
     padding: 9px;
   }
@@ -2330,8 +2467,9 @@ label,
     display: none;
   }
 
+  .create-room-row,
   .join-row {
-    width: 180px;
+    width: 100%;
   }
 
   .game-stage {
@@ -2347,6 +2485,7 @@ label,
   }
 
   .home-card {
+    height: 100%;
     gap: 7px;
   }
 
@@ -2364,6 +2503,18 @@ label,
     gap: 7px;
   }
 
+  .home-features {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 4px;
+  }
+
+  .home-features span {
+    padding: 4px 5px;
+    font-size: 0.58rem;
+    text-align: center;
+  }
+
   .profile-setup {
     display: grid;
     align-items: center;
@@ -2375,6 +2526,10 @@ label,
   .profile-setup label,
   .field-label {
     margin: 0;
+  }
+
+  .profile-heading {
+    display: none;
   }
 
   .profile-setup input {
@@ -2397,7 +2552,7 @@ label,
   }
 
   .action-card {
-    grid-template-columns: 34px minmax(0, 1fr) auto;
+    grid-template-columns: 34px minmax(0, 1fr);
     padding: 7px;
   }
 
@@ -2410,11 +2565,14 @@ label,
     font-size: 0.85rem;
   }
 
+  .create-room-row,
   .join-row {
-    width: 170px;
+    width: 100%;
     grid-template-columns: minmax(0, 1fr) 46px;
   }
 
+  .create-room-row input,
+  .create-room-row button,
   .join-row input,
   .join-row button {
     height: 36px;

@@ -292,8 +292,21 @@
               <p>Un pseudo, une photo de profil très officielle, puis la confusion.</p>
             </div>
 
+            <div class="home-features" aria-label="Caractéristiques du jeu">
+              <span>⏱️ 60 secondes</span>
+              <span>✍️ Texte, dessin et audio</span>
+              <span>👥 2 à 10 joueurs</span>
+            </div>
+
             <div class="home-grid">
               <div class="profile-setup">
+                <div class="profile-heading">
+                  <span>01</span>
+                  <div>
+                    <strong>Ton identité douteuse</strong>
+                    <small>Elle sera visible dans toute la room.</small>
+                  </div>
+                </div>
                 <label for="nickname">Pseudonyme</label>
                 <input
                   id="nickname"
@@ -319,25 +332,37 @@
               </div>
 
               <div class="home-actions">
-                <article class="action-card">
+                <article class="action-card action-card-create">
                   <div class="action-icon">
                     <svg class="icon"><use href="#icon-plus"></use></svg>
                   </div>
-                  <div>
+                  <div class="action-copy">
                     <h3>Nouvelle room</h3>
-                    <p>Crée un code et invite jusqu'à dix personnes.</p>
+                    <p>Donne un nom à ton futur désastre collectif.</p>
                   </div>
-                  <button id="create-button" class="button button-primary action-button" type="button">
-                    <svg class="icon"><use href="#icon-plus"></use></svg>
-                    <span>Créer</span>
-                  </button>
+                  <div class="create-room-row">
+                    <label class="visually-hidden" for="room-name">Nom de la room</label>
+                    <input
+                      id="room-name"
+                      name="room-name"
+                      type="text"
+                      minlength="2"
+                      maxlength="30"
+                      autocomplete="off"
+                      placeholder="Nom de la room"
+                    >
+                    <button id="create-button" class="button button-primary action-button" type="button">
+                      <svg class="icon"><use href="#icon-plus"></use></svg>
+                      <span>Créer</span>
+                    </button>
+                  </div>
                 </article>
 
                 <article class="action-card">
                   <div class="action-icon">
                     <svg class="icon"><use href="#icon-enter"></use></svg>
                   </div>
-                  <div>
+                  <div class="action-copy">
                     <h3>Rejoindre</h3>
                     <p>Entre le code transmis par l'hôte.</p>
                   </div>
