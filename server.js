@@ -94,15 +94,25 @@ function createGameServer(options = {}) {
   const rooms = new Map();
   let joinSequence = 0;
 
+  function normalizeRequestOrigin(origin) {
+    if (!origin) {
+      return null;
+    }
+
+    try {
+      return new URL(origin).origin;
+    } catch {
+      return null;
+    }
+  }
+
   function isOriginAllowed(origin, req) {
     if (!origin) {
       return true;
     }
 
-    let normalizedOrigin;
-    try {
-      normalizedOrigin = new URL(origin).origin;
-    } catch {
+    const normalizedOrigin = normalizeRequestOrigin(origin);
+    if (!normalizedOrigin) {
       return false;
     }
 
@@ -135,7 +145,10 @@ function createGameServer(options = {}) {
   );
 
   app.get("/health", (req, res) => {
-    res.json({ status: "ok" });
+    res
+      .status(200)
+      .set("Cache-Control", "no-store")
+      .json({ status: "ok" });
   });
 
   app.use(express.static(path.join(__dirname, "public")));
@@ -143,10 +156,14 @@ function createGameServer(options = {}) {
   const io = new Server(httpServer, {
     cors: {
       origin(origin, callback) {
+        const normalizedOrigin = normalizeRequestOrigin(origin);
+
         if (
           !origin ||
-          allowedOrigins.has(origin) ||
-          (isDevelopment && isLocalOrigin(origin))
+          (normalizedOrigin && allowedOrigins.has(normalizedOrigin)) ||
+          (isDevelopment &&
+            normalizedOrigin &&
+            isLocalOrigin(normalizedOrigin))
         ) {
           callback(null, true);
           return;
@@ -157,7 +174,14 @@ function createGameServer(options = {}) {
       methods: ["GET", "POST"]
     },
     allowRequest(req, callback) {
-      callback(null, isOriginAllowed(req.headers.origin, req));
+      const origin = req.headers.origin;
+      const originAllowed = isOriginAllowed(origin, req);
+
+      if (!originAllowed) {
+        console.warn(`Connexion Socket.IO refusée pour l'origine : ${origin}`);
+      }
+
+      callback(null, originAllowed);
     }
   });
 

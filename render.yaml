@@ -3,11 +3,11 @@ services:
     name: kamoulox-30000
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: npm start
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
         value: production
       - key: ALLOWED_ORIGINS
-        sync: false
+        value: "https://multiplayer-room-test.onrender.com,https://mathiascasanova.com,https://www.mathiascasanova.com,http://localhost:3000"

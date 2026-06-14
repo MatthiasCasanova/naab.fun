@@ -9,10 +9,17 @@ const {
   createGameServer
 } = require("../server");
 
+const REQUIRED_ORIGINS = [
+  "https://multiplayer-room-test.onrender.com",
+  "https://mathiascasanova.com",
+  "https://www.mathiascasanova.com",
+  "http://localhost:3000"
+];
+
 async function startTestServer() {
   const game = createGameServer({
     nodeEnv: "production",
-    allowedOrigins: "https://frontend.example"
+    allowedOrigins: REQUIRED_ORIGINS.join(",")
   });
   const address = await game.start(0, "127.0.0.1");
 
@@ -108,19 +115,22 @@ async function cleanup(game, clients) {
   await game.stop();
 }
 
-test("GET /health répond et applique la liste CORS", async () => {
+test("GET /health répond sans cache et applique toute la liste CORS", async () => {
   const { game, url } = await startTestServer();
 
   try {
-    const healthResponse = await fetch(`${url}/health`, {
-      headers: { Origin: "https://frontend.example" }
-    });
-    assert.equal(healthResponse.status, 200);
-    assert.deepEqual(await healthResponse.json(), { status: "ok" });
-    assert.equal(
-      healthResponse.headers.get("access-control-allow-origin"),
-      "https://frontend.example"
-    );
+    for (const origin of REQUIRED_ORIGINS) {
+      const healthResponse = await fetch(`${url}/health`, {
+        headers: { Origin: origin }
+      });
+      assert.equal(healthResponse.status, 200);
+      assert.deepEqual(await healthResponse.json(), { status: "ok" });
+      assert.equal(
+        healthResponse.headers.get("access-control-allow-origin"),
+        origin
+      );
+      assert.equal(healthResponse.headers.get("cache-control"), "no-store");
+    }
 
     const blockedResponse = await fetch(`${url}/health`, {
       headers: { Origin: "https://malicious.example" }
@@ -139,12 +149,15 @@ test("GET /health répond et applique la liste CORS", async () => {
       url
     );
 
-    const allowedSocket = await connectClient(
-      url,
-      "https://frontend.example"
-    );
-    assert.equal(allowedSocket.connected, true);
-    allowedSocket.disconnect();
+    for (const origin of REQUIRED_ORIGINS) {
+      const allowedSocket = await connectClient(url, origin);
+      assert.equal(allowedSocket.connected, true);
+      allowedSocket.disconnect();
+    }
+
+    const sameOriginSocket = await connectClient(url, url);
+    assert.equal(sameOriginSocket.connected, true);
+    sameOriginSocket.disconnect();
 
     await assert.rejects(
       connectClient(url, "https://malicious.example"),

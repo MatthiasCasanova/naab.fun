@@ -39,30 +39,30 @@ git push -u origin main
 
 1. Créez un nouveau **Blueprint** Render et sélectionnez le dépôt GitHub. Le
    fichier `render.yaml` configure le Web Service Node.js gratuit.
-2. Dans les variables d'environnement du service, définissez
-   `ALLOWED_ORIGINS` avec les origines autorisées, séparées par des virgules :
+2. Le fichier `render.yaml` définit déjà `ALLOWED_ORIGINS` avec les quatre
+   origines prévues :
 
    ```text
-   https://mathiascasanova.com,https://www.mathiascasanova.com
+   https://multiplayer-room-test.onrender.com,https://mathiascasanova.com,https://www.mathiascasanova.com,http://localhost:3000
    ```
 
    Une origine contient uniquement le protocole et le domaine, jamais `/game/`.
-   N'utilisez pas `*` en production. Les adresses localhost sont autorisées
-   automatiquement hors production.
+   N'utilisez pas `*` en production. Si le nom du service Render ou du domaine
+   change, mettez cette variable à jour dans Render et dans `render.yaml`.
 3. Attendez la fin du déploiement et vérifiez
    `https://VOTRE-SERVICE.onrender.com/health`.
 
-Render peut suspendre un Web Service gratuit inactif. L'interface appelle
-`/health` et retente automatiquement pendant 90 secondes avant chaque création
-ou connexion à une partie.
+Render peut suspendre un Web Service gratuit inactif. L'interface garde une
+requête `/health` longue ouverte pour déclencher le réveil et lance une sonde
+supplémentaire toutes les 3 secondes pendant 90 secondes. L'URL, les statuts
+HTTP et les erreurs réseau ou CORS sont visibles dans la console du navigateur.
 
 ## Utiliser le frontend sur mathiascasanova.com/game/
 
-Dans `public/config.js`, remplacez la valeur vide par l'URL Render, sans slash
-final :
+`public/config.js` contient actuellement l'URL Render, sans slash final :
 
 ```js
-window.GAME_SERVER_URL = "https://VOTRE-SERVICE.onrender.com";
+window.GAME_SERVER_URL = "https://multiplayer-room-test.onrender.com";
 ```
 
 Envoyez ensuite **uniquement le contenu du dossier `public`** dans le dossier
