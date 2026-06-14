@@ -287,7 +287,6 @@
         <div class="view-stack">
           <section id="home-view" class="card home-card" aria-labelledby="home-title">
             <div class="home-intro">
-              <p class="eyebrow">Téléphone créatif multijoueur</p>
               <h2 id="home-title">Choisis ta tête et entre dans l'histoire</h2>
               <p>Un pseudo, une photo de profil très officielle, puis la confusion.</p>
             </div>
@@ -437,9 +436,17 @@
 
           <section id="game-view" class="card game-card hidden" aria-labelledby="game-title">
             <div id="round-intro" class="round-intro hidden" aria-live="assertive">
-              <div class="round-intro-content">
-                <span class="round-intro-spark" aria-hidden="true">✦</span>
+              <div id="game-start-countdown" class="game-start-countdown hidden">
+                <span id="game-start-countdown-value">3</span>
+                <small>La catastrophe commence dans...</small>
+              </div>
+              <div id="round-preview" class="round-preview hidden">
                 <p id="round-intro-text">Prépare ton chef-d'œuvre douteux.</p>
+                <section id="previous-panel" class="previous-panel">
+                  <p class="section-label">Ce que tu as reçu</p>
+                  <div id="previous-content" class="previous-content"></div>
+                </section>
+                <span id="round-preview-countdown" class="round-preview-countdown">Mémorise bien : 10 s</span>
                 <button id="intro-audio-play-button" class="round-control intro-play-button hidden" type="button" aria-label="Écouter le son">
                   <svg class="icon"><use href="#icon-play"></use></svg>
                 </button>
@@ -453,6 +460,10 @@
                   <span>À toi de jouer :</span>
                   <span id="game-prompt">Commence ta chaîne.</span>
                 </h2>
+                <button id="replay-previous-button" class="button button-secondary replay-previous-button hidden" type="button">
+                  <svg class="icon"><use href="#icon-eye"></use></svg>
+                  <span>Revoir l'entrée reçue</span>
+                </button>
               </div>
               <div id="game-clock" class="game-clock" aria-label="Temps restant">
                 <span class="clock-icon" aria-hidden="true">◷</span>
@@ -461,13 +472,6 @@
             </div>
 
             <div id="game-stage" class="game-stage">
-              <section id="previous-panel" class="previous-panel">
-                <p class="section-label">Ce que tu as reçu</p>
-                <div id="previous-content" class="previous-content">
-                  <p class="empty-contribution">Début de chaîne : aucune preuve compromettante.</p>
-                </div>
-              </section>
-
               <div class="workspace-panel">
                 <div id="type-picker" class="type-picker hidden">
                   <button class="type-button active" data-type="text" type="button" aria-label="Texte">

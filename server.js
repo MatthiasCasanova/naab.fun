@@ -12,10 +12,12 @@ const { Server } = require("socket.io");
 const MAX_PLAYERS = 10;
 const MIN_PLAYERS_TO_START = 2;
 const ROUND_DURATION_MS = 60000;
+const GAME_COUNTDOWN_MS = 3000;
+const ROUND_PREVIEW_MS = 10000;
 const MAX_TEXT_LENGTH = 500;
 const MAX_MEDIA_DATA_LENGTH = 1500000;
 const MAX_CHAT_MESSAGE_LENGTH = 200;
-const MAX_CHAT_MESSAGES = 100;
+const MAX_CHAT_MESSAGES = 20;
 const MAX_ROOM_NAME_LENGTH = 30;
 const MIN_ROOM_NAME_LENGTH = 2;
 const ROOM_CODE_LENGTH = 6;
@@ -183,6 +185,14 @@ function createGameServer(options = {}) {
     Number.isFinite(options.roundDurationMs) && options.roundDurationMs > 0
       ? options.roundDurationMs
       : ROUND_DURATION_MS;
+  const gameCountdownMs =
+    Number.isFinite(options.gameCountdownMs) && options.gameCountdownMs >= 0
+      ? options.gameCountdownMs
+      : GAME_COUNTDOWN_MS;
+  const roundPreviewMs =
+    Number.isFinite(options.roundPreviewMs) && options.roundPreviewMs >= 0
+      ? options.roundPreviewMs
+      : ROUND_PREVIEW_MS;
   const randomInt =
     typeof options.randomInt === "function"
       ? options.randomInt
@@ -569,6 +579,15 @@ function createGameServer(options = {}) {
       return serializeResults(room, participantId);
     }
 
+    if (game.status === "countdown") {
+      return {
+        phase: "countdown",
+        roomCode: room.code,
+        countdownEndsAt: game.countdownEndsAt,
+        serverNow: Date.now()
+      };
+    }
+
     const assignment = getAssignment(game, participantId);
     if (!assignment) {
       return null;
@@ -581,6 +600,7 @@ function createGameServer(options = {}) {
       roundNumber: game.roundIndex + 1,
       totalRounds: game.totalRounds,
       roundStartedAt: game.roundStartedAt,
+      previewEndsAt: game.roundStartedAt,
       roundEndsAt: game.roundEndsAt,
       serverNow: Date.now(),
       submitted: game.roundSubmissions.has(participantId),
@@ -627,6 +647,10 @@ function createGameServer(options = {}) {
     if (game.roundTimer) {
       clearTimeout(game.roundTimer);
       game.roundTimer = null;
+    }
+    if (game.countdownTimer) {
+      clearTimeout(game.countdownTimer);
+      game.countdownTimer = null;
     }
   }
 
@@ -685,7 +709,8 @@ function createGameServer(options = {}) {
     game.finalizing = false;
     game.roundSubmissions = new Map();
     game.roundDrafts = new Map();
-    game.roundStartedAt = Date.now();
+    game.countdownEndsAt = null;
+    game.roundStartedAt = Date.now() + roundPreviewMs;
     game.roundEndsAt = game.roundStartedAt + roundDurationMs;
 
     game.participants.forEach((participant) => {
@@ -696,7 +721,7 @@ function createGameServer(options = {}) {
 
     game.roundTimer = setTimeout(() => {
       finalizeRound(room, "timer");
-    }, roundDurationMs);
+    }, roundPreviewMs + roundDurationMs);
 
     emitRoomState(room);
     emitGameStates(room);
@@ -704,6 +729,22 @@ function createGameServer(options = {}) {
     if (allPlayersSubmitted(game)) {
       finalizeRound(room, "disconnections");
     }
+  }
+
+  function beginGameCountdown(room) {
+    const game = room.game;
+    if (!game) {
+      return;
+    }
+
+    clearGameTimers(game);
+    game.status = "countdown";
+    game.countdownEndsAt = Date.now() + gameCountdownMs;
+    game.countdownTimer = setTimeout(() => {
+      beginRound(room);
+    }, gameCountdownMs);
+    emitRoomState(room);
+    emitGameStates(room);
   }
 
   function finalizeRound(room, reason) {
@@ -787,7 +828,7 @@ function createGameServer(options = {}) {
     );
 
     return {
-      status: "playing",
+      status: "countdown",
       participants,
       participantOrder: participants.map((participant) => participant.id),
       chains,
@@ -800,6 +841,8 @@ function createGameServer(options = {}) {
       roundSubmissions: new Map(),
       roundDrafts: new Map(),
       roundTimer: null,
+      countdownTimer: null,
+      countdownEndsAt: null,
       finalizing: false,
       resultChainIndex: 0,
       resultContributionIndex: 0
@@ -1253,7 +1296,7 @@ function createGameServer(options = {}) {
 
       room.game = createGame(room);
       answer(socket, acknowledgment, { ok: true });
-      beginRound(room);
+      beginGameCountdown(room);
     });
 
     socket.on("submitContribution", (payload, acknowledgment) => {
@@ -1265,6 +1308,14 @@ function createGameServer(options = {}) {
         answer(socket, acknowledgment, {
           ok: false,
           error: "Aucune manche n'est en cours."
+        });
+        return;
+      }
+
+      if (Date.now() < game.roundStartedAt) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "La manche commence après l'aperçu."
         });
         return;
       }
@@ -1332,6 +1383,14 @@ function createGameServer(options = {}) {
         answer(socket, acknowledgment, {
           ok: false,
           error: "Aucune manche n'est en cours."
+        });
+        return;
+      }
+
+      if (Date.now() < game.roundStartedAt) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Le brouillon sera enregistré après l'aperçu."
         });
         return;
       }
@@ -1572,7 +1631,7 @@ function createGameServer(options = {}) {
       clearGameTimers(room.game);
       room.game = createGame(room);
       answer(socket, acknowledgment, { ok: true });
-      beginRound(room);
+      beginGameCountdown(room);
     });
 
     socket.on("leaveRoom", (acknowledgment) => {
@@ -1648,8 +1707,10 @@ if (require.main === module) {
 module.exports = {
   AVATAR_IDS,
   CONTRIBUTION_TYPES,
+  GAME_COUNTDOWN_MS,
   MAX_PLAYERS,
   ROUND_DURATION_MS,
+  ROUND_PREVIEW_MS,
   ROOM_CODE_CHARACTERS,
   createTypePlan,
   createGameServer,

@@ -186,24 +186,27 @@ test("les sliders partagent le composant visuel du jeu", () => {
   assert.doesNotMatch(css, /accent-color/);
 });
 
-test("la premiere manche masque le panneau recu et agrandit l'editeur", () => {
+test("le contenu reçu passe par un aperçu plein écran temporaire", () => {
   const html = readPublicFile("index.html");
   const app = readPublicFile("app.js");
   const css = readPublicFile("styles.css");
 
+  assert.match(html, /id="round-preview"/);
+  assert.match(html, /id="round-preview-countdown"/);
+  assert.match(html, /id="replay-previous-button"/);
   assert.match(
     app,
-    /previousPanel\.classList\.toggle\("hidden", !hasPrevious\)/
+    /function showRoundPreview\(/
   );
   assert.match(
     app,
-    /gameStage\.classList\.toggle\("without-previous", !hasPrevious\)/
+    /PREVIOUS_REPLAY_DURATION_MS = 5000/
   );
-  assert.match(css, /\.game-stage\.without-previous/);
   assert.match(
     css,
-    /\.game-stage\.without-previous \.workspace-panel\s*\{[\s\S]*width:\s*100%/
+    /\.round-preview \.previous-text\s*\{[\s\S]*font-size:\s*clamp/
   );
+  assert.match(css, /\.game-stage\s*\{[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/);
   assert.match(
     html,
     /<h2 id="game-title">[\s\S]*id="game-prompt"[\s\S]*<\/h2>/
@@ -213,6 +216,7 @@ test("la premiere manche masque le panneau recu et agrandit l'editeur", () => {
 
 test("l'outil de dessin expose la palette et tous les outils demandés", () => {
   const html = readPublicFile("index.html");
+  const css = readPublicFile("styles.css");
   const swatches = html.match(/class="color-swatch(?: active)?"/g) || [];
 
   assert.equal(swatches.length, 10);
@@ -223,6 +227,8 @@ test("l'outil de dessin expose la palette et tous les outils demandés", () => {
   assert.match(html, /id="redo-drawing-button"/);
   assert.match(html, /id="clear-drawing-button"/);
   assert.match(html, /id="drawing-color" type="color"/);
+  assert.match(css, /\.brush-size span\s*\{[\s\S]*place-self:\s*center/);
+  assert.match(css, /\.brush-size\s*\{[\s\S]*padding:\s*0/);
 });
 
 test("les paramètres, l'introduction et l'horloge sont présents", () => {
@@ -296,8 +302,19 @@ test("la room expose le chat, les emotes et son nom d'hôte", () => {
   assert.match(app, /socket\.on\("chatMessage"/);
   assert.match(app, /emitWithAcknowledgment\("sendChatMessage"/);
   assert.match(app, /emitWithAcknowledgment\("setPlayerEmote"/);
-  assert.match(css, /grid-template-areas:\s*"chat main players"/);
+  assert.match(css, /grid-template-areas:\s*"players main chat"/);
   assert.match(css, /\.chat-sidebar\.mobile-open/);
+  assert.match(css, /\.chat-messages\s*\{[\s\S]*overflow:\s*hidden/);
+  assert.match(app, /function trimChatToFit/);
+  assert.match(app, /appendChatMessage\(message\)/);
+});
+
+test("l'accueil retire l'ancien surtitre et exploite le viewport", () => {
+  const html = readPublicFile("index.html");
+  const css = readPublicFile("styles.css");
+
+  assert.doesNotMatch(html, />Téléphone créatif multijoueur</);
+  assert.match(css, /\.app-shell\s*\{[\s\S]*width:\s*100%/);
 });
 
 test("les trois éditeurs sauvegardent un brouillon avant validation", () => {
@@ -348,7 +365,9 @@ test("le frontend conserve le volume et utilise le timer du serveur", () => {
   assert.match(app, /window\.setTimeout\([\s\S]*AUDIO_RECORDING_DURATION_MS/);
   assert.match(app, /gameState\.serverNow - Date\.now\(\)/);
   assert.match(app, /gameState\.roundEndsAt - serverTime/);
-  assert.match(app, /INTRO_DURATION_MS = 4500/);
+  assert.match(app, /gameState\.previewEndsAt/);
+  assert.match(app, /gameState\.countdownEndsAt/);
+  assert.match(app, /PREVIOUS_REPLAY_DURATION_MS = 5000/);
   assert.match(app, /emitWithAcknowledgment\("navigateResults"/);
   assert.match(app, /emitWithAcknowledgment\(\s*"updateGameSettings"/);
   assert.match(css, /#drawing-canvas[\s\S]*touch-action:\s*none/);

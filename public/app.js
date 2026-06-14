@@ -34,7 +34,7 @@
   const EFFECTS_VOLUME_STORAGE_KEY = "kamoulox-effects-volume";
   const MUTED_STORAGE_KEY = "kamoulox-muted";
   const THEME_STORAGE_KEY = "kamoulox-theme";
-  const INTRO_DURATION_MS = 4500;
+  const PREVIOUS_REPLAY_DURATION_MS = 5000;
   const AUDIO_RECORDING_DURATION_MS = 5000;
   const AUDIO_OUTPUT_SCALE = 0.5;
   const MAX_DRAWING_HISTORY = 30;
@@ -103,6 +103,14 @@
     leaveButton: document.querySelector("#leave-button"),
     roomMessage: document.querySelector("#room-message"),
     roundIntro: document.querySelector("#round-intro"),
+    gameStartCountdown: document.querySelector("#game-start-countdown"),
+    gameStartCountdownValue: document.querySelector(
+      "#game-start-countdown-value"
+    ),
+    roundPreview: document.querySelector("#round-preview"),
+    roundPreviewCountdown: document.querySelector(
+      "#round-preview-countdown"
+    ),
     roundIntroText: document.querySelector("#round-intro-text"),
     introAudioPlayButton: document.querySelector(
       "#intro-audio-play-button"
@@ -113,6 +121,9 @@
     timerLabel: document.querySelector("#timer-label"),
     previousPanel: document.querySelector("#previous-panel"),
     previousContent: document.querySelector("#previous-content"),
+    replayPreviousButton: document.querySelector(
+      "#replay-previous-button"
+    ),
     gamePrompt: document.querySelector("#game-prompt"),
     typePicker: document.querySelector("#type-picker"),
     typeButtons: Array.from(document.querySelectorAll(".type-button")),
@@ -177,8 +188,10 @@
   let shouldRejoin = false;
   let timerInterval = null;
   let introTimeout = null;
+  let introInterval = null;
   let introRoundKey = null;
   let introAudioElement = null;
+  let roundPreviousAudio = null;
   let selectedType = "text";
   let renderedRoundKey = null;
   let drawingContext = null;
@@ -866,10 +879,16 @@
       window.clearTimeout(introTimeout);
       introTimeout = null;
     }
+    if (introInterval) {
+      window.clearInterval(introInterval);
+      introInterval = null;
+    }
     if (introAudioElement) {
       introAudioElement.pause();
     }
     elements.roundIntro.classList.add("hidden");
+    elements.gameStartCountdown.classList.add("hidden");
+    elements.roundPreview.classList.add("hidden");
     elements.introAudioPlayButton.classList.add("hidden");
     introRoundKey = null;
     introAudioElement = null;
@@ -884,6 +903,7 @@
     currentGame = null;
     shouldRejoin = false;
     renderedRoundKey = null;
+    roundPreviousAudio = null;
     codeVisible = false;
     setGameSettingsOpen(false);
     showOnly(elements.homeView);
@@ -953,14 +973,59 @@
     });
   }
 
-  function renderChatMessages(messages) {
-    const shouldStickToBottom =
-      elements.chatMessages.scrollHeight -
-        elements.chatMessages.scrollTop -
-        elements.chatMessages.clientHeight <
-      40;
-    elements.chatMessages.replaceChildren();
+  function createChatMessageElement(message) {
+    const item = document.createElement("li");
+    const author = document.createElement("div");
+    const avatar = document.createElement("span");
+    const nickname = document.createElement("span");
+    const content = document.createElement("p");
 
+    item.className = "chat-item";
+    item.dataset.messageId = message.id;
+    item.classList.toggle("is-self", message.nickname === currentNickname);
+    author.className = "chat-author";
+    avatar.className =
+      `chat-author-avatar avatar-${message.avatarId || "comet"}`;
+    avatar.textContent = AVATARS[message.avatarId] || AVATARS.comet;
+    nickname.textContent = message.nickname;
+    content.className = "chat-content";
+    content.textContent = message.content;
+    author.append(avatar, nickname);
+    item.append(author, content);
+    return item;
+  }
+
+  function trimChatToFit() {
+    const empty = elements.chatMessages.querySelector(".chat-empty");
+    if (empty) {
+      return;
+    }
+
+    while (
+      elements.chatMessages.children.length > 1 &&
+      elements.chatMessages.scrollHeight >
+        elements.chatMessages.clientHeight
+    ) {
+      elements.chatMessages.firstElementChild.remove();
+    }
+  }
+
+  function renderChatMessages(messages) {
+    const visibleIds = Array.from(
+      elements.chatMessages.querySelectorAll(".chat-item")
+    ).map((item) => item.dataset.messageId);
+    const incomingIds = (messages || []).map((message) => message.id);
+    if (
+      visibleIds.length > 0 &&
+      visibleIds.every(
+        (id, index) =>
+          id === incomingIds[incomingIds.length - visibleIds.length + index]
+      )
+    ) {
+      return;
+    }
+
+    elements.chatMessages.replaceChildren();
     if (!messages || messages.length === 0) {
       const empty = document.createElement("li");
       empty.className = "chat-empty";
@@ -971,35 +1036,25 @@
     }
 
     messages.forEach((message) => {
-      const item = document.createElement("li");
-      const author = document.createElement("div");
-      const avatar = document.createElement("span");
-      const nickname = document.createElement("span");
-      const content = document.createElement("p");
-
-      item.className = "chat-item";
-      item.classList.toggle(
-        "is-self",
-        message.nickname === currentNickname
-      );
-      author.className = "chat-author";
-      avatar.className =
-        `chat-author-avatar avatar-${message.avatarId || "comet"}`;
-      avatar.textContent = AVATARS[message.avatarId] || AVATARS.comet;
-      nickname.textContent = message.nickname;
-      content.className = "chat-content";
-      content.textContent = message.content;
-      author.append(avatar, nickname);
-      item.append(author, content);
-      elements.chatMessages.append(item);
+      elements.chatMessages.append(createChatMessageElement(message));
     });
+    window.requestAnimationFrame(trimChatToFit);
+  }
 
-    if (shouldStickToBottom) {
-      window.requestAnimationFrame(() => {
-        elements.chatMessages.scrollTop =
-          elements.chatMessages.scrollHeight;
-      });
+  function appendChatMessage(message) {
+    const empty = elements.chatMessages.querySelector(".chat-empty");
+    if (empty) {
+      empty.remove();
     }
+    if (
+      elements.chatMessages.querySelector(
+        `[data-message-id="${CSS.escape(message.id)}"]`
+      )
+    ) {
+      return;
+    }
+    elements.chatMessages.append(createChatMessageElement(message));
+    window.requestAnimationFrame(trimChatToFit);
   }
 
   function renderRoomCode() {
@@ -1449,8 +1504,8 @@
       if (!messages.some((candidate) => candidate.id === message.id)) {
         messages.push(message);
       }
-      currentRoom.chatMessages = messages.slice(-100);
-      renderChatMessages(currentRoom.chatMessages);
+      currentRoom.chatMessages = messages.slice(-20);
+      appendChatMessage(message);
     });
 
     socket.on("roomError", (payload) => {
@@ -2766,13 +2821,8 @@
     return "Le serveur réfléchit très fort au prochain problème.";
   }
 
-  async function finishRoundIntro(roundKey, previousAudio) {
-    if (introRoundKey !== roundKey) {
-      return;
-    }
-
+  async function autoplayPreviewAudio(previousAudio) {
     if (!previousAudio) {
-      elements.roundIntro.classList.add("hidden");
       return;
     }
 
@@ -2781,7 +2831,6 @@
       previousAudio.currentTime = 0;
       pauseOtherAudio(previousAudio);
       await previousAudio.play();
-      elements.roundIntro.classList.add("hidden");
     } catch (error) {
       console.info("[audio] Autoplay bloqué, bouton affiché :", error);
       introAudioElement = previousAudio;
@@ -2789,23 +2838,95 @@
     }
   }
 
-  function startRoundIntro(roundKey, previousContribution, previousAudio) {
+  function setGameWorkspaceVisible(isVisible) {
+    elements.gameView.classList.toggle("intro-active", !isVisible);
+    elements.gameStage.setAttribute("aria-hidden", String(!isVisible));
+  }
+
+  function showGameCountdown(gameState) {
+    currentGame = gameState;
+    renderedRoundKey = null;
+    stopTimer();
+    stopRoundIntro();
+    showOnly(elements.gameView);
+    setGameWorkspaceVisible(false);
+    elements.roundIntro.classList.remove("hidden");
+    elements.gameStartCountdown.classList.remove("hidden");
+    const serverOffset = gameState.serverNow - Date.now();
+
+    function updateCountdown() {
+      const remaining =
+        gameState.countdownEndsAt - (Date.now() + serverOffset);
+      const seconds = Math.max(1, Math.ceil(remaining / 1000));
+      elements.gameStartCountdownValue.textContent =
+        remaining <= 0 ? "GO !" : String(seconds);
+    }
+
+    updateCountdown();
+    introInterval = window.setInterval(updateCountdown, 100);
+  }
+
+  function finishRoundPreview(roundKey) {
+    if (introRoundKey !== roundKey) {
+      return;
+    }
+
+    stopRoundIntro();
+    setGameWorkspaceVisible(true);
+    if (currentGame && currentGame.phase === "playing") {
+      startRoundTimer(currentGame);
+    }
+  }
+
+  function showRoundPreview(
+    roundKey,
+    gameState,
+    previousContribution,
+    previousAudio,
+    durationMs
+  ) {
     stopRoundIntro();
     introRoundKey = roundKey;
     introAudioElement = previousAudio;
-    elements.roundIntroText.textContent =
-      window.GameClientUtils.getRoundIntro(
-        previousContribution && previousContribution.type
-      );
+    elements.roundIntroText.textContent = getHumorousPrompt(gameState);
+    elements.previousPanel.classList.toggle(
+      "hidden",
+      !previousContribution
+    );
+    elements.roundPreview.classList.toggle(
+      "no-previous",
+      !previousContribution
+    );
     elements.roundIntro.classList.remove("hidden");
+    elements.roundPreview.classList.remove("hidden");
     elements.introAudioPlayButton.classList.add("hidden");
+    setGameWorkspaceVisible(false);
+
+    const previewStartedAt = Date.now();
+    function updatePreviewCountdown() {
+      const remaining = Math.max(
+        0,
+        durationMs - (Date.now() - previewStartedAt)
+      );
+      elements.roundPreviewCountdown.textContent =
+        `Mémorise bien : ${Math.max(1, Math.ceil(remaining / 1000))} s`;
+    }
+
+    updatePreviewCountdown();
+    introInterval = window.setInterval(updatePreviewCountdown, 200);
     introTimeout = window.setTimeout(() => {
       introTimeout = null;
-      finishRoundIntro(roundKey, previousAudio);
-    }, INTRO_DURATION_MS);
+      finishRoundPreview(roundKey);
+    }, durationMs);
+    autoplayPreviewAudio(previousAudio);
   }
 
   function showGame(gameState) {
+    if (gameState.phase === "countdown") {
+      showGameCountdown(gameState);
+      return;
+    }
+
     const roundKey = `${gameState.roomCode}:${gameState.roundIndex}`;
     const isNewRound = renderedRoundKey !== roundKey;
     currentGame = gameState;
@@ -2824,8 +2945,7 @@
 
     const previous = gameState.assignment.previousContribution;
     const hasPrevious = Boolean(previous);
-    elements.previousPanel.classList.toggle("hidden", !hasPrevious);
-    elements.gameStage.classList.toggle("without-previous", !hasPrevious);
+    elements.replayPreviousButton.classList.toggle("hidden", !hasPrevious);
     let previousAudio = null;
     if (isNewRound) {
       if (hasPrevious) {
@@ -2833,6 +2953,7 @@
       } else {
         elements.previousContent.replaceChildren();
       }
+      roundPreviousAudio = previousAudio;
     }
 
     elements.typePicker.classList.add("hidden");
@@ -2849,10 +2970,24 @@
     elements.waitingProgress.textContent =
       `${gameState.submittedCount} / ${gameState.participantCount} joueurs ont validé.`;
     elements.submitContributionButton.disabled = false;
-    startRoundTimer(gameState);
+    const serverTime = Date.now() + (gameState.serverNow - Date.now());
+    const previewRemaining = Math.max(
+      0,
+      gameState.previewEndsAt - serverTime
+    );
 
-    if (isNewRound) {
-      startRoundIntro(roundKey, previous, previousAudio);
+    if (isNewRound && previewRemaining > 0) {
+      showRoundPreview(
+        roundKey,
+        gameState,
+        previous,
+        previousAudio,
+        previewRemaining
+      );
+    } else {
+      stopRoundIntro();
+      setGameWorkspaceVisible(true);
+      startRoundTimer(gameState);
     }
   }
 
@@ -3216,6 +3351,23 @@
     elements.retryButton.addEventListener("click", runPendingAction);
     elements.leaveButton.addEventListener("click", leaveCurrentRoom);
     elements.gameLeaveButton.addEventListener("click", leaveCurrentRoom);
+    elements.replayPreviousButton.addEventListener("click", () => {
+      if (
+        !currentGame ||
+        currentGame.phase !== "playing" ||
+        !currentGame.assignment.previousContribution
+      ) {
+        return;
+      }
+
+      showRoundPreview(
+        `${currentGame.roomCode}:${currentGame.roundIndex}:replay:${Date.now()}`,
+        currentGame,
+        currentGame.assignment.previousContribution,
+        roundPreviousAudio,
+        PREVIOUS_REPLAY_DURATION_MS
+      );
+    });
     elements.chatToggleButton.addEventListener("click", () => {
       setChatOpen(!chatOpen);
       if (chatOpen) {
@@ -3379,7 +3531,10 @@
     elements.effectsVolumeSlider.addEventListener("change", () => {
       playSoundEffect("soft");
     });
-    window.addEventListener("resize", scheduleWaveformRedraw);
+    window.addEventListener("resize", () => {
+      scheduleWaveformRedraw();
+      trimChatToFit();
+    });
     elements.muteButton.addEventListener("click", () => {
       siteMuted = !siteMuted;
       saveAudioSettings();
@@ -3462,7 +3617,6 @@
         introAudioElement.currentTime = 0;
         pauseOtherAudio(introAudioElement);
         await introAudioElement.play();
-        elements.roundIntro.classList.add("hidden");
         elements.introAudioPlayButton.classList.add("hidden");
       } catch (error) {
         console.error("[audio] Lecture manuelle impossible :", error);

@@ -4,7 +4,9 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 const { io: createClient } = require("socket.io-client");
 const {
+  GAME_COUNTDOWN_MS,
   ROUND_DURATION_MS,
+  ROUND_PREVIEW_MS,
   createGameServer,
   createTypePlan,
   getAssignedChainIndex,
@@ -20,6 +22,8 @@ async function startTestServer(options = {}) {
     nodeEnv: "development",
     allowedOrigins: "http://localhost:3000",
     roundDurationMs: 5000,
+    gameCountdownMs: 0,
+    roundPreviewMs: 0,
     randomInt: () => 0,
     ...options
   });
@@ -170,6 +174,8 @@ test("les rotations couvrent chaque chaîne sans réattribuer sa chaîne", () =>
 
 test("les types sont imposés aléatoirement sans répétition immédiate", () => {
   assert.equal(ROUND_DURATION_MS, 60000);
+  assert.equal(GAME_COUNTDOWN_MS, 3000);
+  assert.equal(ROUND_PREVIEW_MS, 10000);
   const activeTypes = selectActiveContributionTypes(3, () => 0);
   assert.deepEqual(activeTypes, ["text", "drawing", "audio"]);
 
@@ -247,6 +253,60 @@ test("seul l'hôte configure et lance la partie", async () => {
 
     const room = game.rooms.get(setup.code);
     assert.equal(room.game.activeTypes.length, 2);
+  } finally {
+    await cleanup(game, clients);
+  }
+});
+
+test("le lancement compte 3 secondes puis réserve 10 secondes d'aperçu", async () => {
+  const { game, url } = await startTestServer({
+    gameCountdownMs: 80,
+    roundPreviewMs: 120,
+    roundDurationMs: 180
+  });
+  let clients = [];
+
+  try {
+    const setup = await createRoomWithPlayers(url, ["Alice", "Bob"]);
+    clients = setup.clients;
+    const [alice, bob] = clients;
+
+    const countdownPromise = waitForEvent(
+      alice,
+      "gameState",
+      (state) => state.phase === "countdown"
+    );
+    const roundPromise = waitForEvent(
+      alice,
+      "gameState",
+      (state) => state.phase === "playing"
+    );
+    const bobRoundPromise = waitForEvent(
+      bob,
+      "gameState",
+      (state) => state.phase === "playing"
+    );
+    await emitAck(alice, "startGame");
+    const countdown = await countdownPromise;
+    assert.ok(countdown.countdownEndsAt > countdown.serverNow);
+
+    const round = await roundPromise;
+    const bobRound = await bobRoundPromise;
+    assert.equal(round.previewEndsAt, round.roundStartedAt);
+    assert.equal(round.roundEndsAt - round.roundStartedAt, 180);
+    assert.ok(round.roundStartedAt > round.serverNow);
+
+    const tooEarly = await emitAck(alice, "submitContribution", {
+      roundIndex: round.roundIndex,
+      type: round.assignment.expectedType,
+      content: contentForType(round.assignment.expectedType, "Trop tôt")
+    });
+    assert.equal(tooEarly.ok, false);
+    assert.match(tooEarly.error, /aperçu/);
+
+    await new Promise((resolve) => setTimeout(resolve, 130));
+    await submitExpected(alice, round, "Après aperçu Alice");
+    await submitExpected(bob, bobRound, "Après aperçu Bob");
   } finally {
     await cleanup(game, clients);
   }
