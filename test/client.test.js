@@ -283,7 +283,11 @@ test("le frontend conserve le volume et utilise le timer du serveur", () => {
 
   assert.match(app, /localStorage\.setItem\(\s*AUDIO_VOLUME_STORAGE_KEY/);
   assert.match(app, /localStorage\.setItem\(\s*EFFECTS_VOLUME_STORAGE_KEY/);
-  assert.match(app, /audioElement\.volume = audioVolume/);
+  assert.match(app, /AUDIO_OUTPUT_SCALE = 0\.5/);
+  assert.match(
+    app,
+    /audioElement\.volume = audioVolume \* AUDIO_OUTPUT_SCALE/
+  );
   assert.match(app, /THEME_STORAGE_KEY = "kamoulox-theme"/);
   assert.match(app, /AUDIO_RECORDING_DURATION_MS = 5000/);
   assert.match(app, /window\.setTimeout\([\s\S]*AUDIO_RECORDING_DURATION_MS/);
@@ -308,16 +312,24 @@ test("les effets sonores et le chrono respectent leur volume separe", () => {
   assert.match(app, /playSoundEffect\("tick"/);
   assert.match(app, /remaining <= 2500 \? 250/);
   assert.match(app, /Math\.pow\(1 - remaining \/ 10000, 2\)/);
+  assert.match(app, /frequency:\s*245 - strength \* 25/);
+  assert.doesNotMatch(app, /frequency:\s*850 \+ strength \* 650/);
 });
 
-test("le resume revele les contributions une par une et lance les audios", () => {
+test("le resume revele verticalement, defile et lance les audios", () => {
   const app = readPublicFile("app.js");
+  const css = readPublicFile("styles.css");
 
   assert.match(app, /currentContributionIndex/);
   assert.match(app, /visibleContributions = chain\.contributions\.slice/);
   assert.match(app, /autoplayRevealedAudio/);
   assert.match(app, /await audioPlayer\.audio\.play\(\)/);
   assert.match(app, /current-reveal/);
+  assert.match(app, /function scrollToCurrentResult/);
+  assert.match(app, /container\.scrollTo\(/);
+  assert.match(css, /\.result-contributions[\s\S]*flex-direction:\s*column/);
+  assert.match(css, /\.result-contributions[\s\S]*overflow-y:\s*auto/);
+  assert.match(css, /#text-contribution::selection/);
 });
 
 test("la mise en page reste dans le viewport et stabilise le canvas", () => {
@@ -335,7 +347,10 @@ test("la mise en page reste dans le viewport et stabilise le canvas", () => {
     css,
     /\.canvas-shell\s*\{[\s\S]*height:\s*min\(100%,\s*430px\)/
   );
-  assert.doesNotMatch(css, /overflow-(?:x|y):\s*(?:auto|scroll)/);
+  const scrollableAxes = [
+    ...css.matchAll(/overflow-(?:x|y):\s*(?:auto|scroll)/g)
+  ].map((match) => match[0]);
+  assert.deepEqual(scrollableAxes, ["overflow-y: auto"]);
 });
 
 test("les commandes utilisent le sprite d'icones et des animations coherentes", () => {

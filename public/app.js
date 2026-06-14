@@ -36,6 +36,7 @@
   const THEME_STORAGE_KEY = "kamoulox-theme";
   const INTRO_DURATION_MS = 4500;
   const AUDIO_RECORDING_DURATION_MS = 5000;
+  const AUDIO_OUTPUT_SCALE = 0.5;
   const MAX_DRAWING_HISTORY = 30;
   const WAVEFORM_BAR_COUNT = 72;
 
@@ -208,7 +209,7 @@
       return;
     }
 
-    audioElement.volume = audioVolume;
+    audioElement.volume = audioVolume * AUDIO_OUTPUT_SCALE;
     audioElement.muted = siteMuted;
   }
 
@@ -665,14 +666,23 @@
           delay: 0.12
         });
       },
-      tick: () =>
+      tick: () => {
         playSynthTone({
-          frequency: 850 + strength * 650,
-          endFrequency: 620 + strength * 380,
-          duration: 0.035 + strength * 0.025,
-          gain: 0.025 + Math.pow(strength, 2.2) * 0.15,
-          type: strength > 0.7 ? "square" : "triangle"
-        })
+          frequency: 245 - strength * 25,
+          endFrequency: 175 - strength * 15,
+          duration: 0.055,
+          gain: 0.009 + Math.pow(strength, 2) * 0.018,
+          type: "triangle"
+        });
+        playSynthTone({
+          frequency: 130 - strength * 10,
+          endFrequency: 95,
+          duration: 0.045,
+          gain: 0.004 + strength * 0.006,
+          type: "sine",
+          delay: 0.026
+        });
+      }
     };
 
     (effects[name] || effects.click)();
@@ -2620,6 +2630,35 @@
     }
   }
 
+  function scrollToCurrentResult(resultElement) {
+    if (!resultElement) {
+      return;
+    }
+
+    window.requestAnimationFrame(() => {
+      const container = elements.resultContributions;
+      const maximumScroll = Math.max(
+        0,
+        container.scrollHeight - container.clientHeight
+      );
+      const centeredPosition =
+        resultElement.offsetTop -
+        Math.max(12, (container.clientHeight - resultElement.offsetHeight) / 2);
+      const targetTop = Math.max(
+        0,
+        Math.min(maximumScroll, centeredPosition)
+      );
+      const prefersReducedMotion = window.matchMedia(
+        "(prefers-reduced-motion: reduce)"
+      ).matches;
+
+      container.scrollTo({
+        top: targetTop,
+        behavior: prefersReducedMotion ? "auto" : "smooth"
+      });
+    });
+  }
+
   function renderCurrentResultChain() {
     if (!currentGame || currentGame.phase !== "results") {
       return;
@@ -2668,6 +2707,7 @@
       playSoundEffect("reveal");
       const currentRendered =
         renderedContributions[renderedContributions.length - 1];
+      scrollToCurrentResult(currentRendered && currentRendered.element);
       if (currentRendered && currentRendered.audioPlayer) {
         window.requestAnimationFrame(() => {
           autoplayRevealedAudio(currentRendered.audioPlayer);
