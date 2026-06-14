@@ -13,12 +13,22 @@
     drawing: "Dessin",
     audio: "Audio"
   };
+  const VOLUME_STORAGE_KEY = "kamoulox-volume";
+  const MUTED_STORAGE_KEY = "kamoulox-muted";
+  const INTRO_DURATION_MS = 2100;
+  const MAX_DRAWING_HISTORY = 30;
 
   const elements = {
     homeView: document.querySelector("#home-view"),
     roomView: document.querySelector("#room-view"),
     gameView: document.querySelector("#game-view"),
     resultsView: document.querySelector("#results-view"),
+    settingsButton: document.querySelector("#settings-button"),
+    settingsModal: document.querySelector("#settings-modal"),
+    closeSettingsButton: document.querySelector("#close-settings-button"),
+    volumeSlider: document.querySelector("#volume-slider"),
+    volumeValue: document.querySelector("#volume-value"),
+    muteButton: document.querySelector("#mute-button"),
     nickname: document.querySelector("#nickname"),
     roomCodeInput: document.querySelector("#room-code"),
     createButton: document.querySelector("#create-button"),
@@ -35,9 +45,15 @@
     startHelp: document.querySelector("#start-help"),
     leaveButton: document.querySelector("#leave-button"),
     roomMessage: document.querySelector("#room-message"),
+    roundIntro: document.querySelector("#round-intro"),
+    roundIntroText: document.querySelector("#round-intro-text"),
+    introAudioPlayButton: document.querySelector(
+      "#intro-audio-play-button"
+    ),
+    gameStage: document.querySelector("#game-stage"),
     roundLabel: document.querySelector("#round-label"),
+    gameClock: document.querySelector("#game-clock"),
     timerLabel: document.querySelector("#timer-label"),
-    timerProgress: document.querySelector("#timer-progress"),
     previousPanel: document.querySelector("#previous-panel"),
     previousContent: document.querySelector("#previous-content"),
     gamePrompt: document.querySelector("#game-prompt"),
@@ -51,14 +67,24 @@
     textCounter: document.querySelector("#text-counter"),
     drawingCanvas: document.querySelector("#drawing-canvas"),
     drawingColor: document.querySelector("#drawing-color"),
-    drawingSize: document.querySelector("#drawing-size"),
+    colorSwatches: Array.from(document.querySelectorAll(".color-swatch")),
+    drawingTools: Array.from(document.querySelectorAll(".paint-tool")),
+    brushSizes: Array.from(document.querySelectorAll(".brush-size")),
+    undoDrawingButton: document.querySelector("#undo-drawing-button"),
+    redoDrawingButton: document.querySelector("#redo-drawing-button"),
     clearDrawingButton: document.querySelector("#clear-drawing-button"),
+    audioEmptyState: document.querySelector("#audio-empty-state"),
+    audioReadyState: document.querySelector("#audio-ready-state"),
     audioStatus: document.querySelector("#audio-status"),
     recordAudioButton: document.querySelector("#record-audio-button"),
-    stopAudioButton: document.querySelector("#stop-audio-button"),
+    recordButtonLabel: document.querySelector("#record-button-label"),
     playAudioButton: document.querySelector("#play-audio-button"),
     resetAudioButton: document.querySelector("#reset-audio-button"),
+    validateAudioButton: document.querySelector("#validate-audio-button"),
     audioPreview: document.querySelector("#audio-preview"),
+    audioProgress: document.querySelector("#audio-progress"),
+    audioCurrentTime: document.querySelector("#audio-current-time"),
+    audioDuration: document.querySelector("#audio-duration"),
     waitingPanel: document.querySelector("#waiting-panel"),
     waitingProgress: document.querySelector("#waiting-progress"),
     gameMessage: document.querySelector("#game-message"),
@@ -85,19 +111,99 @@
   let currentNickname = "";
   let shouldRejoin = false;
   let timerInterval = null;
+  let introTimeout = null;
+  let introRoundKey = null;
+  let introAudioElement = null;
   let selectedType = "text";
   let renderedRoundKey = null;
   let drawingContext = null;
   let drawingActive = false;
   let drawingDirty = false;
   let lastDrawingPoint = null;
+  let drawingStartPoint = null;
+  let drawingStartSnapshot = null;
+  let drawingTool = "pencil";
+  let drawingColor = "#182034";
+  let drawingSize = 8;
+  let drawingHistory = [];
+  let drawingHistoryIndex = -1;
   let recordingSession = null;
+  let audioStartRequestId = 0;
   let audioDataUrl = "";
   let resultChainIndex = 0;
+  let siteVolume = 1;
+  let siteMuted = false;
 
   function setMessage(element, message, type = "") {
     element.textContent = message;
     element.className = `message${type ? ` ${type}` : ""}`;
+  }
+
+  function applyVolumeToAudio(audioElement) {
+    if (!audioElement) {
+      return;
+    }
+
+    audioElement.volume = siteVolume;
+    audioElement.muted = siteMuted;
+  }
+
+  function applyVolumeToAllAudio() {
+    document.querySelectorAll("audio").forEach(applyVolumeToAudio);
+  }
+
+  function saveAudioSettings() {
+    try {
+      window.localStorage.setItem(VOLUME_STORAGE_KEY, String(siteVolume));
+      window.localStorage.setItem(MUTED_STORAGE_KEY, String(siteMuted));
+    } catch (error) {
+      console.warn("[paramètres] Sauvegarde du volume impossible :", error);
+    }
+  }
+
+  function updateAudioSettingsUi() {
+    const percentage = Math.round(siteVolume * 100);
+    elements.volumeSlider.value = String(percentage);
+    elements.volumeValue.textContent = `${percentage} %`;
+    elements.muteButton.textContent = siteMuted
+      ? "Réactiver le son"
+      : "Couper le son";
+    elements.muteButton.classList.toggle("button-danger", siteMuted);
+    applyVolumeToAllAudio();
+  }
+
+  function loadAudioSettings() {
+    try {
+      siteVolume = window.GameClientUtils.normalizeVolume(
+        window.localStorage.getItem(VOLUME_STORAGE_KEY),
+        1
+      );
+      siteMuted = window.localStorage.getItem(MUTED_STORAGE_KEY) === "true";
+    } catch (error) {
+      console.warn("[paramètres] Lecture du volume impossible :", error);
+      siteVolume = 1;
+      siteMuted = false;
+    }
+
+    updateAudioSettingsUi();
+  }
+
+  function setSiteVolume(volume) {
+    siteVolume = window.GameClientUtils.normalizeVolume(volume, siteVolume);
+    if (siteVolume > 0 && siteMuted) {
+      siteMuted = false;
+    }
+    saveAudioSettings();
+    updateAudioSettingsUi();
+  }
+
+  function setSettingsOpen(isOpen) {
+    elements.settingsModal.classList.toggle("hidden", !isOpen);
+    if (isOpen) {
+      elements.closeSettingsButton.focus();
+    } else {
+      elements.settingsButton.focus();
+    }
   }
 
   function showOnly(view) {
@@ -130,8 +236,23 @@
     }
   }
 
+  function stopRoundIntro() {
+    if (introTimeout) {
+      window.clearTimeout(introTimeout);
+      introTimeout = null;
+    }
+    if (introAudioElement) {
+      introAudioElement.pause();
+    }
+    elements.roundIntro.classList.add("hidden");
+    elements.introAudioPlayButton.classList.add("hidden");
+    introRoundKey = null;
+    introAudioElement = null;
+  }
+
   function showHome() {
     stopTimer();
+    stopRoundIntro();
     stopAudioRecording(true);
     currentRoom = null;
     currentGame = null;
@@ -169,6 +290,7 @@
     currentGame = null;
     renderedRoundKey = null;
     stopTimer();
+    stopRoundIntro();
     stopAudioRecording(true);
 
     elements.roomTitle.textContent = room.code;
@@ -670,6 +792,85 @@
     drawingDirty = false;
     drawingActive = false;
     lastDrawingPoint = null;
+    drawingStartPoint = null;
+    drawingStartSnapshot = null;
+    drawingHistory = [
+      {
+        imageData: drawingContext.getImageData(
+          0,
+          0,
+          elements.drawingCanvas.width,
+          elements.drawingCanvas.height
+        ),
+        dirty: false
+      }
+    ];
+    drawingHistoryIndex = 0;
+    updateDrawingHistoryButtons();
+  }
+
+  function updateDrawingHistoryButtons() {
+    elements.undoDrawingButton.disabled = drawingHistoryIndex <= 0;
+    elements.redoDrawingButton.disabled =
+      drawingHistoryIndex >= drawingHistory.length - 1;
+  }
+
+  function commitDrawingHistory(dirty = true) {
+    const state = {
+      imageData: drawingContext.getImageData(
+        0,
+        0,
+        elements.drawingCanvas.width,
+        elements.drawingCanvas.height
+      ),
+      dirty
+    };
+
+    drawingHistory = drawingHistory.slice(0, drawingHistoryIndex + 1);
+    drawingHistory.push(state);
+    if (drawingHistory.length > MAX_DRAWING_HISTORY) {
+      drawingHistory.shift();
+    }
+    drawingHistoryIndex = drawingHistory.length - 1;
+    drawingDirty = dirty;
+    updateDrawingHistoryButtons();
+  }
+
+  function restoreDrawingHistory(index) {
+    const state = drawingHistory[index];
+    if (!state) {
+      return;
+    }
+
+    drawingContext.putImageData(state.imageData, 0, 0);
+    drawingHistoryIndex = index;
+    drawingDirty = state.dirty;
+    updateDrawingHistoryButtons();
+  }
+
+  function undoDrawing() {
+    if (drawingHistoryIndex > 0) {
+      restoreDrawingHistory(drawingHistoryIndex - 1);
+    }
+  }
+
+  function redoDrawing() {
+    if (drawingHistoryIndex < drawingHistory.length - 1) {
+      restoreDrawingHistory(drawingHistoryIndex + 1);
+    }
+  }
+
+  function clearDrawing() {
+    drawingContext.save();
+    drawingContext.fillStyle = "#ffffff";
+    drawingContext.fillRect(
+      0,
+      0,
+      elements.drawingCanvas.width,
+      elements.drawingCanvas.height
+    );
+    drawingContext.restore();
+    commitDrawingHistory(false);
   }
 
   function getCanvasPoint(event) {
@@ -684,25 +885,164 @@
     };
   }
 
+  function drawFreehandSegment(from, to) {
+    const erasing = drawingTool === "eraser";
+    drawingContext.beginPath();
+    drawingContext.moveTo(from.x, from.y);
+    drawingContext.lineTo(to.x, to.y);
+    drawingContext.strokeStyle = erasing ? "#ffffff" : drawingColor;
+    drawingContext.lineWidth = erasing ? drawingSize * 1.5 : drawingSize;
+    drawingContext.lineCap = "round";
+    drawingContext.lineJoin = "round";
+    drawingContext.stroke();
+  }
+
+  function drawDot(point) {
+    const erasing = drawingTool === "eraser";
+    drawingContext.beginPath();
+    drawingContext.arc(
+      point.x,
+      point.y,
+      Math.max(1, (erasing ? drawingSize * 1.5 : drawingSize) / 2),
+      0,
+      Math.PI * 2
+    );
+    drawingContext.fillStyle = erasing ? "#ffffff" : drawingColor;
+    drawingContext.fill();
+  }
+
+  function drawShapePreview(point) {
+    if (!drawingStartSnapshot || !drawingStartPoint) {
+      return;
+    }
+
+    drawingContext.putImageData(drawingStartSnapshot, 0, 0);
+    drawingContext.beginPath();
+    drawingContext.strokeStyle = drawingColor;
+    drawingContext.lineWidth = drawingSize;
+    drawingContext.lineCap = "round";
+    drawingContext.lineJoin = "round";
+
+    if (drawingTool === "line") {
+      drawingContext.moveTo(drawingStartPoint.x, drawingStartPoint.y);
+      drawingContext.lineTo(point.x, point.y);
+    } else {
+      const centerX = (drawingStartPoint.x + point.x) / 2;
+      const centerY = (drawingStartPoint.y + point.y) / 2;
+      const radiusX = Math.abs(point.x - drawingStartPoint.x) / 2;
+      const radiusY = Math.abs(point.y - drawingStartPoint.y) / 2;
+      drawingContext.ellipse(
+        centerX,
+        centerY,
+        Math.max(1, radiusX),
+        Math.max(1, radiusY),
+        0,
+        0,
+        Math.PI * 2
+      );
+    }
+
+    drawingContext.stroke();
+  }
+
+  function hexToRgb(hexColor) {
+    const normalized = hexColor.replace("#", "");
+    return [
+      Number.parseInt(normalized.slice(0, 2), 16),
+      Number.parseInt(normalized.slice(2, 4), 16),
+      Number.parseInt(normalized.slice(4, 6), 16),
+      255
+    ];
+  }
+
+  function colorsMatch(data, offset, color) {
+    return (
+      data[offset] === color[0] &&
+      data[offset + 1] === color[1] &&
+      data[offset + 2] === color[2] &&
+      data[offset + 3] === color[3]
+    );
+  }
+
+  function floodFill(point) {
+    const width = elements.drawingCanvas.width;
+    const height = elements.drawingCanvas.height;
+    const x = Math.max(0, Math.min(width - 1, Math.floor(point.x)));
+    const y = Math.max(0, Math.min(height - 1, Math.floor(point.y)));
+    const imageData = drawingContext.getImageData(0, 0, width, height);
+    const data = imageData.data;
+    const startOffset = (y * width + x) * 4;
+    const targetColor = [
+      data[startOffset],
+      data[startOffset + 1],
+      data[startOffset + 2],
+      data[startOffset + 3]
+    ];
+    const replacement = hexToRgb(drawingColor);
+
+    if (targetColor.every((channel, index) => channel === replacement[index])) {
+      return false;
+    }
+
+    const stack = [y * width + x];
+    while (stack.length > 0) {
+      const pixelIndex = stack.pop();
+      const currentX = pixelIndex % width;
+      const currentY = Math.floor(pixelIndex / width);
+      const offset = pixelIndex * 4;
+      if (!colorsMatch(data, offset, targetColor)) {
+        continue;
+      }
+
+      data[offset] = replacement[0];
+      data[offset + 1] = replacement[1];
+      data[offset + 2] = replacement[2];
+      data[offset + 3] = replacement[3];
+      if (currentX + 1 < width) {
+        stack.push(pixelIndex + 1);
+      }
+      if (currentX > 0) {
+        stack.push(pixelIndex - 1);
+      }
+      if (currentY + 1 < height) {
+        stack.push(pixelIndex + width);
+      }
+      if (currentY > 0) {
+        stack.push(pixelIndex - width);
+      }
+    }
+
+    drawingContext.putImageData(imageData, 0, 0);
+    return true;
+  }
+
   function startDrawing(event) {
     if (currentGame && currentGame.submitted) {
       return;
     }
 
     event.preventDefault();
+    const point = getCanvasPoint(event);
+
+    if (drawingTool === "fill") {
+      if (floodFill(point)) {
+        commitDrawingHistory(true);
+      }
+      return;
+    }
+
     drawingActive = true;
-    lastDrawingPoint = getCanvasPoint(event);
-    drawingContext.beginPath();
-    drawingContext.arc(
-      lastDrawingPoint.x,
-      lastDrawingPoint.y,
-      Math.max(1, Number(elements.drawingSize.value) / 2),
+    lastDrawingPoint = point;
+    drawingStartPoint = point;
+    drawingStartSnapshot = drawingContext.getImageData(
       0,
-      Math.PI * 2
+      0,
+      elements.drawingCanvas.width,
+      elements.drawingCanvas.height
     );
-    drawingContext.fillStyle = elements.drawingColor.value;
-    drawingContext.fill();
-    drawingDirty = true;
+    if (drawingTool === "pencil" || drawingTool === "eraser") {
+      drawDot(point);
+    }
     elements.drawingCanvas.setPointerCapture(event.pointerId);
   }
 
@@ -713,15 +1053,12 @@
 
     event.preventDefault();
     const point = getCanvasPoint(event);
-    drawingContext.beginPath();
-    drawingContext.moveTo(lastDrawingPoint.x, lastDrawingPoint.y);
-    drawingContext.lineTo(point.x, point.y);
-    drawingContext.strokeStyle = elements.drawingColor.value;
-    drawingContext.lineWidth = Number(elements.drawingSize.value);
-    drawingContext.lineCap = "round";
-    drawingContext.lineJoin = "round";
-    drawingContext.stroke();
-    drawingDirty = true;
+
+    if (drawingTool === "pencil" || drawingTool === "eraser") {
+      drawFreehandSegment(lastDrawingPoint, point);
+    } else {
+      drawShapePreview(point);
+    }
     lastDrawingPoint = point;
   }
 
@@ -730,14 +1067,51 @@
       return;
     }
 
+    if (drawingTool === "line" || drawingTool === "circle") {
+      drawShapePreview(lastDrawingPoint || drawingStartPoint);
+    }
+
     drawingActive = false;
+    commitDrawingHistory(true);
     lastDrawingPoint = null;
+    drawingStartPoint = null;
+    drawingStartSnapshot = null;
     if (
       event.pointerId !== undefined &&
       elements.drawingCanvas.hasPointerCapture(event.pointerId)
     ) {
       elements.drawingCanvas.releasePointerCapture(event.pointerId);
     }
+  }
+
+  function selectDrawingTool(tool) {
+    drawingTool = tool;
+    elements.drawingTools.forEach((button) => {
+      button.classList.toggle("active", button.dataset.tool === tool);
+    });
+    elements.drawingCanvas.style.cursor =
+      tool === "fill" ? "cell" : tool === "eraser" ? "grab" : "crosshair";
+  }
+
+  function selectDrawingColor(color) {
+    drawingColor = color;
+    elements.drawingColor.value = color;
+    elements.colorSwatches.forEach((button) => {
+      button.classList.toggle(
+        "active",
+        button.dataset.color.toLowerCase() === color.toLowerCase()
+      );
+    });
+  }
+
+  function selectDrawingSize(size) {
+    drawingSize = Number(size);
+    elements.brushSizes.forEach((button) => {
+      button.classList.toggle(
+        "active",
+        Number(button.dataset.size) === drawingSize
+      );
+    });
   }
 
   function stopStream(stream) {
@@ -752,6 +1126,10 @@
     }
 
     recordingSession.discard = recordingSession.discard || discard;
+    if (recordingSession.timer) {
+      window.clearInterval(recordingSession.timer);
+      recordingSession.timer = null;
+    }
     if (recordingSession.recorder.state !== "inactive") {
       recordingSession.recorder.stop();
     } else {
@@ -761,15 +1139,104 @@
   }
 
   function resetAudio() {
+    audioStartRequestId += 1;
     stopAudioRecording(true);
     audioDataUrl = "";
+    elements.audioPreview.pause();
+    elements.audioPreview.currentTime = 0;
     elements.audioPreview.removeAttribute("src");
-    elements.audioPreview.classList.add("hidden");
-    elements.audioStatus.textContent = "Aucun enregistrement.";
+    elements.audioPreview.load();
+    elements.audioEmptyState.classList.remove("hidden");
+    elements.audioReadyState.classList.add("hidden");
+    elements.audioStatus.textContent = "";
+    elements.recordAudioButton.classList.remove("recording");
     elements.recordAudioButton.disabled = false;
-    elements.stopAudioButton.disabled = true;
-    elements.playAudioButton.disabled = true;
-    elements.resetAudioButton.disabled = true;
+    elements.validateAudioButton.disabled = false;
+    elements.recordButtonLabel.textContent = "Enregistrer un son";
+    elements.playAudioButton.textContent = "▶";
+    elements.playAudioButton.setAttribute(
+      "aria-label",
+      "Lire l'enregistrement"
+    );
+    elements.audioProgress.value = "0";
+    elements.audioCurrentTime.textContent = "00:00";
+    elements.audioDuration.textContent = "00:00";
+  }
+
+  function showRecordedAudio() {
+    elements.audioEmptyState.classList.add("hidden");
+    elements.audioReadyState.classList.remove("hidden");
+    elements.audioProgress.value = "0";
+    elements.audioCurrentTime.textContent = "00:00";
+    elements.playAudioButton.textContent = "▶";
+    applyVolumeToAudio(elements.audioPreview);
+  }
+
+  function updateAudioTimeline() {
+    const duration = Number.isFinite(elements.audioPreview.duration)
+      ? elements.audioPreview.duration
+      : 0;
+    const currentTime = Number.isFinite(elements.audioPreview.currentTime)
+      ? elements.audioPreview.currentTime
+      : 0;
+    elements.audioProgress.value = duration
+      ? String(Math.round((currentTime / duration) * 1000))
+      : "0";
+    elements.audioCurrentTime.textContent =
+      window.GameClientUtils.formatTime(currentTime);
+    elements.audioDuration.textContent =
+      window.GameClientUtils.formatTime(duration);
+  }
+
+  function updateAudioPlayButton() {
+    const isPlaying = !elements.audioPreview.paused;
+    elements.playAudioButton.textContent = isPlaying ? "Ⅱ" : "▶";
+    elements.playAudioButton.setAttribute(
+      "aria-label",
+      isPlaying ? "Mettre en pause" : "Lire l'enregistrement"
+    );
+  }
+
+  async function toggleRecordedAudioPlayback() {
+    try {
+      if (elements.audioPreview.paused) {
+        applyVolumeToAudio(elements.audioPreview);
+        await elements.audioPreview.play();
+      } else {
+        elements.audioPreview.pause();
+      }
+      updateAudioPlayButton();
+    } catch (error) {
+      setMessage(
+        elements.gameMessage,
+        `Le son fait sa diva : ${error.message}`,
+        "error"
+      );
+    }
+  }
+
+  function stopCurrentRecording() {
+    if (!recordingSession) {
+      return;
+    }
+
+    elements.recordAudioButton.disabled = true;
+    elements.recordButtonLabel.textContent = "Préparation du bruit...";
+    stopAudioRecording(false);
+  }
+
+  function updateRecordingDuration(session) {
+    const seconds = (Date.now() - session.startedAt) / 1000;
+    elements.audioStatus.textContent =
+      `Enregistrement en cours : ${window.GameClientUtils.formatTime(seconds)}`;
+  }
+
+  function handleRecordButton() {
+    if (recordingSession) {
+      stopCurrentRecording();
+    } else {
+      startAudioRecording();
+    }
   }
 
   function readBlobAsDataUrl(blob) {
@@ -795,9 +1262,28 @@
       return;
     }
 
+    let stream = null;
+    let requestId = null;
     try {
       resetAudio();
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      requestId = audioStartRequestId;
+      const requestedRoundIndex = currentGame && currentGame.roundIndex;
+      elements.recordAudioButton.disabled = true;
+      elements.recordButtonLabel.textContent = "Ouverture du micro...";
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      if (
+        requestId !== audioStartRequestId ||
+        !currentGame ||
+        currentGame.roundIndex !== requestedRoundIndex ||
+        selectedType !== "audio"
+      ) {
+        stopStream(stream);
+        if (requestId === audioStartRequestId) {
+          resetAudio();
+        }
+        return;
+      }
+
       const preferredType = [
         "audio/webm;codecs=opus",
         "audio/webm",
@@ -815,8 +1301,10 @@
         recorder,
         stream,
         chunks: [],
-        roundIndex: currentGame.roundIndex,
-        discard: false
+        roundIndex: requestedRoundIndex,
+        discard: false,
+        startedAt: Date.now(),
+        timer: null
       };
       recordingSession = session;
 
@@ -853,10 +1341,9 @@
 
           audioDataUrl = dataUrl;
           elements.audioPreview.src = dataUrl;
-          elements.audioPreview.classList.remove("hidden");
-          elements.audioStatus.textContent = "Enregistrement prêt à écouter.";
-          elements.playAudioButton.disabled = false;
-          elements.resetAudioButton.disabled = false;
+          applyVolumeToAudio(elements.audioPreview);
+          showRecordedAudio();
+          elements.audioPreview.load();
         } catch (error) {
           setMessage(elements.gameMessage, error.message, "error");
           resetAudio();
@@ -864,13 +1351,20 @@
       });
 
       recorder.start(250);
-      elements.audioStatus.textContent = "Enregistrement en cours...";
-      elements.recordAudioButton.disabled = true;
-      elements.stopAudioButton.disabled = false;
-      elements.playAudioButton.disabled = true;
-      elements.resetAudioButton.disabled = true;
+      elements.recordAudioButton.disabled = false;
+      session.timer = window.setInterval(
+        () => updateRecordingDuration(session),
+        250
+      );
+      updateRecordingDuration(session);
+      elements.recordAudioButton.classList.add("recording");
+      elements.recordButtonLabel.textContent = "Arrêter l'enregistrement";
       setMessage(elements.gameMessage, "");
     } catch (error) {
+      stopStream(stream);
+      if (requestId !== null && requestId !== audioStartRequestId) {
+        return;
+      }
       console.error("[audio] Accès au microphone impossible :", error);
       setMessage(
         elements.gameMessage,
@@ -905,6 +1399,10 @@
     elements.textEditor.classList.toggle("hidden", type !== "text");
     elements.drawingEditor.classList.toggle("hidden", type !== "drawing");
     elements.audioEditor.classList.toggle("hidden", type !== "audio");
+    elements.submitContributionButton.classList.toggle(
+      "hidden",
+      type === "audio" || Boolean(currentGame && currentGame.submitted)
+    );
   }
 
   function renderContribution(container, contribution) {
@@ -915,7 +1413,7 @@
       empty.className = "empty-contribution";
       empty.textContent = "Aucune contribution n'a été envoyée.";
       container.append(empty);
-      return;
+      return null;
     }
 
     if (contribution.type === "text") {
@@ -923,7 +1421,7 @@
       text.className = "previous-text";
       text.textContent = contribution.content;
       container.append(text);
-      return;
+      return null;
     }
 
     if (contribution.type === "drawing") {
@@ -932,14 +1430,17 @@
       image.src = contribution.content;
       image.alt = `Dessin proposé par ${contribution.nickname}`;
       container.append(image);
-      return;
+      return null;
     }
 
     const audio = document.createElement("audio");
     audio.className = "audio-player";
     audio.src = contribution.content;
     audio.controls = true;
+    audio.preload = "metadata";
+    applyVolumeToAudio(audio);
     container.append(audio);
+    return audio;
   }
 
   function resetRoundEditors() {
@@ -954,17 +1455,21 @@
   function startRoundTimer(gameState) {
     stopTimer();
     const serverOffset = gameState.serverNow - Date.now();
-    const duration = gameState.roundEndsAt - gameState.roundStartedAt;
 
     function updateTimer() {
       const serverTime = Date.now() + serverOffset;
       const remaining = Math.max(0, gameState.roundEndsAt - serverTime);
       const seconds = Math.ceil(remaining / 1000);
-      const ratio = duration > 0 ? remaining / duration : 0;
+      const level = window.GameClientUtils.getTimerLevel(remaining / 1000);
 
-      elements.timerLabel.textContent = String(seconds);
-      elements.timerProgress.style.width = `${Math.max(0, ratio * 100)}%`;
-      elements.timerProgress.classList.toggle("urgent", seconds <= 10);
+      elements.timerLabel.textContent =
+        window.GameClientUtils.formatTime(seconds);
+      elements.gameClock.setAttribute(
+        "aria-label",
+        `Temps restant : ${elements.timerLabel.textContent}`
+      );
+      elements.gameClock.classList.toggle("warning", level === "warning");
+      elements.gameClock.classList.toggle("danger", level === "danger");
 
       if (remaining <= 0) {
         stopTimer();
@@ -973,6 +1478,58 @@
 
     updateTimer();
     timerInterval = window.setInterval(updateTimer, 250);
+  }
+
+  function getHumorousPrompt(gameState) {
+    const expectedType = gameState.assignment.expectedType;
+    if (expectedType === "audio") {
+      return "Transforme cette phrase en bruit. La dignité est optionnelle.";
+    }
+    if (expectedType === "drawing") {
+      return "Dessine la source probable de ce son. Les lois de la physique patienteront.";
+    }
+    if (expectedType === "text") {
+      return "Explique ce dessin avec des mots que l'humanité peut comprendre.";
+    }
+    return "Choisis ton arme créative et lance la première confusion.";
+  }
+
+  async function finishRoundIntro(roundKey, previousAudio) {
+    if (introRoundKey !== roundKey) {
+      return;
+    }
+
+    if (!previousAudio) {
+      elements.roundIntro.classList.add("hidden");
+      return;
+    }
+
+    try {
+      applyVolumeToAudio(previousAudio);
+      previousAudio.currentTime = 0;
+      await previousAudio.play();
+      elements.roundIntro.classList.add("hidden");
+    } catch (error) {
+      console.info("[audio] Autoplay bloqué, bouton affiché :", error);
+      introAudioElement = previousAudio;
+      elements.introAudioPlayButton.classList.remove("hidden");
+    }
+  }
+
+  function startRoundIntro(roundKey, previousContribution, previousAudio) {
+    stopRoundIntro();
+    introRoundKey = roundKey;
+    introAudioElement = previousAudio;
+    elements.roundIntroText.textContent =
+      window.GameClientUtils.getRoundIntro(
+        previousContribution && previousContribution.type
+      );
+    elements.roundIntro.classList.remove("hidden");
+    elements.introAudioPlayButton.classList.add("hidden");
+    introTimeout = window.setTimeout(() => {
+      introTimeout = null;
+      finishRoundIntro(roundKey, previousAudio);
+    }, INTRO_DURATION_MS);
   }
 
   function showGame(gameState) {
@@ -989,14 +1546,17 @@
     showOnly(elements.gameView);
     elements.roundLabel.textContent =
       `Manche ${gameState.roundNumber} / ${gameState.totalRounds}`;
-    elements.gamePrompt.textContent = gameState.assignment.prompt;
+    elements.gamePrompt.textContent = getHumorousPrompt(gameState);
 
     const previous = gameState.assignment.previousContribution;
     elements.previousPanel.classList.toggle("hidden", !previous);
-    if (previous) {
-      renderContribution(elements.previousContent, previous);
-    } else {
-      elements.previousContent.replaceChildren();
+    let previousAudio = null;
+    if (isNewRound) {
+      if (previous) {
+        previousAudio = renderContribution(elements.previousContent, previous);
+      } else {
+        elements.previousContent.replaceChildren();
+      }
     }
 
     const freeChoice = !gameState.assignment.expectedType;
@@ -1009,12 +1569,16 @@
     elements.waitingPanel.classList.toggle("hidden", !gameState.submitted);
     elements.submitContributionButton.classList.toggle(
       "hidden",
-      gameState.submitted
+      gameState.submitted || selectedType === "audio"
     );
     elements.waitingProgress.textContent =
       `${gameState.submittedCount} / ${gameState.participantCount} joueurs ont validé.`;
     elements.submitContributionButton.disabled = false;
     startRoundTimer(gameState);
+
+    if (isNewRound) {
+      startRoundIntro(roundKey, previous, previousAudio);
+    }
   }
 
   function buildContributionPayload() {
@@ -1059,6 +1623,7 @@
     try {
       const contribution = buildContributionPayload();
       elements.submitContributionButton.disabled = true;
+      elements.validateAudioButton.disabled = true;
       setMessage(elements.gameMessage, "Envoi de la contribution...");
       const response = await emitWithAcknowledgment("submitContribution", {
         roundIndex: currentGame.roundIndex,
@@ -1076,6 +1641,7 @@
       console.error("[jeu] Contribution impossible :", error);
       setMessage(elements.gameMessage, error.message, "error");
       elements.submitContributionButton.disabled = false;
+      elements.validateAudioButton.disabled = false;
     }
   }
 
@@ -1116,6 +1682,8 @@
       audio.className = "audio-player";
       audio.src = contribution.content;
       audio.controls = true;
+      audio.preload = "metadata";
+      applyVolumeToAudio(audio);
       content.append(audio);
     }
 
@@ -1143,6 +1711,7 @@
 
   function showResults(resultsState) {
     stopTimer();
+    stopRoundIntro();
     stopAudioRecording(true);
     currentGame = resultsState;
     renderedRoundKey = null;
@@ -1163,6 +1732,7 @@
     currentGame = null;
     shouldRejoin = false;
     stopTimer();
+    stopRoundIntro();
     stopAudioRecording(true);
 
     try {
@@ -1178,11 +1748,36 @@
   function initializeDrawing() {
     drawingContext = elements.drawingCanvas.getContext("2d");
     resetDrawing();
+    selectDrawingTool("pencil");
+    selectDrawingColor("#182034");
+    selectDrawingSize(8);
     elements.drawingCanvas.addEventListener("pointerdown", startDrawing);
     elements.drawingCanvas.addEventListener("pointermove", continueDrawing);
     elements.drawingCanvas.addEventListener("pointerup", endDrawing);
     elements.drawingCanvas.addEventListener("pointercancel", endDrawing);
     elements.drawingCanvas.addEventListener("pointerleave", endDrawing);
+
+    elements.drawingTools.forEach((button) => {
+      button.addEventListener("click", () => {
+        selectDrawingTool(button.dataset.tool);
+      });
+    });
+    elements.colorSwatches.forEach((button) => {
+      button.addEventListener("click", () => {
+        selectDrawingColor(button.dataset.color);
+      });
+    });
+    elements.drawingColor.addEventListener("input", () => {
+      selectDrawingColor(elements.drawingColor.value);
+    });
+    elements.brushSizes.forEach((button) => {
+      button.addEventListener("click", () => {
+        selectDrawingSize(button.dataset.size);
+      });
+    });
+    elements.undoDrawingButton.addEventListener("click", undoDrawing);
+    elements.redoDrawingButton.addEventListener("click", redoDrawing);
+    elements.clearDrawingButton.addEventListener("click", clearDrawing);
   }
 
   function initialize() {
@@ -1202,6 +1797,7 @@
     console.info(`[config] Health check : ${healthUrl}`);
 
     initializeDrawing();
+    loadAudioSettings();
 
     elements.createButton.addEventListener("click", () =>
       prepareAction("create")
@@ -1277,18 +1873,78 @@
       elements.textCounter.textContent =
         `${Array.from(elements.textContribution.value).length} / 500`;
     });
-    elements.clearDrawingButton.addEventListener("click", resetDrawing);
-    elements.recordAudioButton.addEventListener("click", startAudioRecording);
-    elements.stopAudioButton.addEventListener("click", () => {
-      stopAudioRecording(false);
-      elements.stopAudioButton.disabled = true;
-      elements.audioStatus.textContent = "Préparation de l'enregistrement...";
+
+    elements.settingsButton.addEventListener("click", () => {
+      setSettingsOpen(true);
     });
-    elements.playAudioButton.addEventListener("click", async () => {
+    elements.closeSettingsButton.addEventListener("click", () => {
+      setSettingsOpen(false);
+    });
+    elements.settingsModal.addEventListener("click", (event) => {
+      if (event.target === elements.settingsModal) {
+        setSettingsOpen(false);
+      }
+    });
+    document.addEventListener("keydown", (event) => {
+      if (
+        event.key === "Escape" &&
+        !elements.settingsModal.classList.contains("hidden")
+      ) {
+        setSettingsOpen(false);
+      }
+    });
+    elements.volumeSlider.addEventListener("input", () => {
+      setSiteVolume(Number(elements.volumeSlider.value) / 100);
+    });
+    elements.muteButton.addEventListener("click", () => {
+      siteMuted = !siteMuted;
+      saveAudioSettings();
+      updateAudioSettingsUi();
+    });
+
+    elements.recordAudioButton.addEventListener("click", handleRecordButton);
+    elements.playAudioButton.addEventListener(
+      "click",
+      toggleRecordedAudioPlayback
+    );
+    elements.resetAudioButton.addEventListener("click", resetAudio);
+    elements.validateAudioButton.addEventListener(
+      "click",
+      submitContribution
+    );
+    elements.audioPreview.addEventListener(
+      "loadedmetadata",
+      updateAudioTimeline
+    );
+    elements.audioPreview.addEventListener("timeupdate", updateAudioTimeline);
+    elements.audioPreview.addEventListener("play", updateAudioPlayButton);
+    elements.audioPreview.addEventListener("pause", updateAudioPlayButton);
+    elements.audioPreview.addEventListener("ended", () => {
+      elements.audioPreview.currentTime = 0;
+      updateAudioTimeline();
+      updateAudioPlayButton();
+    });
+    elements.audioProgress.addEventListener("input", () => {
+      const duration = elements.audioPreview.duration;
+      if (Number.isFinite(duration) && duration > 0) {
+        elements.audioPreview.currentTime =
+          (Number(elements.audioProgress.value) / 1000) * duration;
+      }
+    });
+    elements.introAudioPlayButton.addEventListener("click", async () => {
+      if (!introAudioElement) {
+        stopRoundIntro();
+        return;
+      }
+
       try {
-        elements.audioPreview.currentTime = 0;
-        await elements.audioPreview.play();
+        applyVolumeToAudio(introAudioElement);
+        introAudioElement.currentTime = 0;
+        await introAudioElement.play();
+        elements.roundIntro.classList.add("hidden");
+        elements.introAudioPlayButton.classList.add("hidden");
       } catch (error) {
+        console.error("[audio] Lecture manuelle impossible :", error);
         setMessage(
           elements.gameMessage,
           `Lecture audio impossible : ${error.message}`,
@@ -1296,7 +1952,6 @@
         );
       }
     });
-    elements.resetAudioButton.addEventListener("click", resetAudio);
     elements.submitContributionButton.addEventListener(
       "click",
       submitContribution

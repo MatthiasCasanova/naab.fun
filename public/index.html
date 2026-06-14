@@ -11,15 +11,67 @@
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
+    <button
+      id="settings-button"
+      class="settings-button"
+      type="button"
+      aria-haspopup="dialog"
+      aria-controls="settings-modal"
+      aria-label="Ouvrir les paramètres"
+    >
+      <span aria-hidden="true">⚙</span>
+      <span class="settings-button-label">Paramètres</span>
+    </button>
+
+    <div id="settings-modal" class="modal-backdrop hidden">
+      <section
+        class="settings-panel"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settings-title"
+      >
+        <div class="settings-heading">
+          <div>
+            <p class="eyebrow">Réglages très sérieux</p>
+            <h2 id="settings-title">Paramètres</h2>
+          </div>
+          <button
+            id="close-settings-button"
+            class="icon-button"
+            type="button"
+            aria-label="Fermer les paramètres"
+          >
+            ×
+          </button>
+        </div>
+
+        <label class="volume-label" for="volume-slider">
+          Volume général
+          <strong id="volume-value">100 %</strong>
+        </label>
+        <input
+          id="volume-slider"
+          class="volume-slider"
+          type="range"
+          min="0"
+          max="100"
+          value="100"
+        >
+        <button id="mute-button" class="button button-secondary" type="button">
+          Couper le son
+        </button>
+      </section>
+    </div>
+
     <main class="app-shell">
       <header class="brand">
         <p class="eyebrow">Téléphone créatif multijoueur</p>
         <h1>Kamoulox 30000</h1>
-        <p class="subtitle">Écris, dessine, enregistre, puis découvre les chaînes.</p>
+        <p class="subtitle">Écris, dessine, fais du bruit. Assume ensuite.</p>
       </header>
 
       <section id="home-view" class="card narrow-card" aria-labelledby="home-title">
-        <h2 id="home-title">Rejoindre le lobby</h2>
+        <h2 id="home-title">Entrer dans la zone de turbulence</h2>
 
         <label for="nickname">Votre pseudonyme</label>
         <input
@@ -29,7 +81,7 @@
           minlength="2"
           maxlength="20"
           autocomplete="nickname"
-          placeholder="2 à 20 caractères"
+          placeholder="2 à 20 caractères, pas un roman"
         >
 
         <button id="create-button" class="button button-primary" type="button">
@@ -52,12 +104,12 @@
         >
 
         <button id="join-button" class="button button-secondary" type="button">
-          Rejoindre une partie
+          Rejoindre la catastrophe
         </button>
 
         <div id="home-message" class="message" role="status" aria-live="polite"></div>
         <button id="retry-button" class="button button-link hidden" type="button">
-          Réessayer
+          Réessayer sans paniquer
         </button>
       </section>
 
@@ -68,7 +120,7 @@
       >
         <div class="room-heading">
           <div>
-            <p class="eyebrow">Code de la partie</p>
+            <p class="eyebrow">Code ultra-secret</p>
             <h2 id="room-title" class="room-code">------</h2>
           </div>
           <button id="copy-button" class="button button-compact" type="button">
@@ -84,14 +136,14 @@
           </span>
         </div>
 
-        <h3>Joueurs connectés</h3>
+        <h3>Artistes présumés</h3>
         <ul id="player-list" class="player-list"></ul>
 
         <div class="lobby-rules">
-          <strong>Comment ça marche ?</strong>
+          <strong>Le plan, si on peut appeler ça un plan</strong>
           <p>
-            Chaque joueur lance une chaîne. À chaque manche, le texte devient
-            son, le son devient dessin et le dessin redevient texte.
+            Texte, son, dessin, puis on recommence jusqu’à ce que le sens
+            original ait officiellement disparu.
           </p>
         </div>
 
@@ -100,126 +152,185 @@
           class="button button-primary hidden"
           type="button"
         >
-          Lancer la partie
+          Lancer les hostilités
         </button>
         <p id="start-help" class="help-text"></p>
         <div id="room-message" class="message" role="status" aria-live="polite"></div>
         <button id="leave-button" class="button button-danger" type="button">
-          Quitter la partie
+          Fuir cette partie
         </button>
       </section>
 
       <section id="game-view" class="card game-card hidden" aria-labelledby="game-title">
+        <div id="round-intro" class="round-intro hidden" aria-live="assertive">
+          <div class="round-intro-content">
+            <span class="round-intro-spark" aria-hidden="true">✦</span>
+            <p id="round-intro-text">Prépare ton chef-d’œuvre douteux.</p>
+            <button
+              id="intro-audio-play-button"
+              class="button button-primary intro-play-button hidden"
+              type="button"
+            >
+              ▶ Écouter le mystérieux son
+            </button>
+          </div>
+        </div>
+
         <div class="game-header">
           <div>
             <p id="round-label" class="eyebrow">Manche 1 / 2</p>
-            <h2 id="game-title">À toi de jouer</h2>
+            <h2 id="game-title">À toi de jouer, le destin tremble</h2>
           </div>
-          <div class="timer" aria-label="Temps restant">
-            <span id="timer-label">60</span>
-            <span class="timer-unit">s</span>
+          <div id="game-clock" class="game-clock" aria-label="Temps restant">
+            <span class="clock-icon" aria-hidden="true">◷</span>
+            <span id="timer-label">01:00</span>
           </div>
         </div>
-        <div class="timer-track" aria-hidden="true">
-          <div id="timer-progress" class="timer-progress"></div>
-        </div>
 
-        <section id="previous-panel" class="previous-panel hidden">
-          <p class="section-label">Contribution reçue</p>
-          <div id="previous-content" class="previous-content"></div>
-        </section>
+        <div id="game-stage">
+          <section id="previous-panel" class="previous-panel hidden">
+            <p class="section-label">Le chef-d’œuvre reçu</p>
+            <div id="previous-content" class="previous-content"></div>
+          </section>
 
-        <div class="prompt-panel">
-          <p id="game-prompt">Commence ta chaîne.</p>
-        </div>
-
-        <div id="type-picker" class="type-picker">
-          <button class="type-button active" data-type="text" type="button">
-            Texte
-          </button>
-          <button class="type-button" data-type="drawing" type="button">
-            Dessin
-          </button>
-          <button class="type-button" data-type="audio" type="button">
-            Audio
-          </button>
-        </div>
-
-        <div id="editor-panel" class="editor-panel">
-          <div id="text-editor" class="contribution-editor">
-            <label for="text-contribution">Votre texte</label>
-            <textarea
-              id="text-contribution"
-              maxlength="500"
-              rows="6"
-              placeholder="Écrivez une idée, une scène ou une phrase..."
-            ></textarea>
-            <span id="text-counter" class="counter">0 / 500</span>
+          <div class="prompt-panel">
+            <p id="game-prompt">Commence ta chaîne, personne ne te jugera. Enfin presque.</p>
           </div>
 
-          <div id="drawing-editor" class="contribution-editor hidden">
-            <div class="drawing-toolbar">
-              <label>
-                Couleur
-                <input id="drawing-color" type="color" value="#182034">
-              </label>
-              <label>
-                Épaisseur
-                <input
-                  id="drawing-size"
-                  type="range"
-                  min="2"
-                  max="30"
-                  value="8"
-                >
-              </label>
-              <button id="clear-drawing-button" class="button button-compact" type="button">
-                Effacer
-              </button>
+          <div id="type-picker" class="type-picker">
+            <button class="type-button active" data-type="text" type="button">
+              Texte
+            </button>
+            <button class="type-button" data-type="drawing" type="button">
+              Dessin
+            </button>
+            <button class="type-button" data-type="audio" type="button">
+              Audio
+            </button>
+          </div>
+
+          <div id="editor-panel" class="editor-panel">
+            <div id="text-editor" class="contribution-editor">
+              <label for="text-contribution">Votre prose immortelle</label>
+              <textarea
+                id="text-contribution"
+                maxlength="500"
+                rows="6"
+                placeholder="Écrivez quelque chose que les autres pourront mal comprendre..."
+              ></textarea>
+              <span id="text-counter" class="counter">0 / 500</span>
             </div>
-            <canvas
-              id="drawing-canvas"
-              width="800"
-              height="500"
-              aria-label="Zone de dessin"
-            ></canvas>
-          </div>
 
-          <div id="audio-editor" class="contribution-editor hidden">
-            <p id="audio-status" class="audio-status">
-              Aucun enregistrement.
-            </p>
-            <div class="audio-actions">
-              <button id="record-audio-button" class="button button-primary" type="button">
-                Enregistrer
-              </button>
-              <button id="stop-audio-button" class="button button-secondary" type="button" disabled>
-                Arrêter
-              </button>
-              <button id="play-audio-button" class="button button-secondary" type="button" disabled>
-                Écouter
-              </button>
-              <button id="reset-audio-button" class="button button-link" type="button" disabled>
-                Recommencer
-              </button>
+            <div id="drawing-editor" class="contribution-editor hidden">
+              <div class="paint-panel">
+                <div class="paint-row">
+                  <span class="paint-label">Couleurs</span>
+                  <div id="color-palette" class="color-palette" aria-label="Palette de couleurs">
+                    <button class="color-swatch active" data-color="#182034" style="--swatch:#182034" type="button" aria-label="Bleu nuit"></button>
+                    <button class="color-swatch" data-color="#ffffff" style="--swatch:#ffffff" type="button" aria-label="Blanc"></button>
+                    <button class="color-swatch" data-color="#ef4444" style="--swatch:#ef4444" type="button" aria-label="Rouge"></button>
+                    <button class="color-swatch" data-color="#f97316" style="--swatch:#f97316" type="button" aria-label="Orange"></button>
+                    <button class="color-swatch" data-color="#facc15" style="--swatch:#facc15" type="button" aria-label="Jaune"></button>
+                    <button class="color-swatch" data-color="#22c55e" style="--swatch:#22c55e" type="button" aria-label="Vert"></button>
+                    <button class="color-swatch" data-color="#06b6d4" style="--swatch:#06b6d4" type="button" aria-label="Cyan"></button>
+                    <button class="color-swatch" data-color="#3b82f6" style="--swatch:#3b82f6" type="button" aria-label="Bleu"></button>
+                    <button class="color-swatch" data-color="#8b5cf6" style="--swatch:#8b5cf6" type="button" aria-label="Violet"></button>
+                    <button class="color-swatch" data-color="#ec4899" style="--swatch:#ec4899" type="button" aria-label="Rose"></button>
+                  </div>
+                  <label class="custom-color-label" title="Couleur personnalisée">
+                    <span aria-hidden="true">+</span>
+                    <input id="drawing-color" type="color" value="#182034" aria-label="Couleur personnalisée">
+                  </label>
+                </div>
+
+                <div class="paint-row paint-scroll-row">
+                  <span class="paint-label">Outils</span>
+                  <div id="drawing-tools" class="tool-group">
+                    <button class="paint-tool active" data-tool="pencil" type="button" title="Crayon">✎<span>Crayon</span></button>
+                    <button class="paint-tool" data-tool="line" type="button" title="Ligne droite">╱<span>Ligne</span></button>
+                    <button class="paint-tool" data-tool="circle" type="button" title="Cercle">○<span>Cercle</span></button>
+                    <button class="paint-tool" data-tool="fill" type="button" title="Pot de peinture">▣<span>Pot</span></button>
+                    <button class="paint-tool" data-tool="eraser" type="button" title="Gomme">◇<span>Gomme</span></button>
+                  </div>
+                </div>
+
+                <div class="paint-row paint-scroll-row">
+                  <span class="paint-label">Taille</span>
+                  <div id="brush-sizes" class="brush-sizes">
+                    <button class="brush-size" data-size="3" type="button" aria-label="Pinceau fin"><span style="--brush-size:3px"></span></button>
+                    <button class="brush-size active" data-size="8" type="button" aria-label="Pinceau moyen"><span style="--brush-size:8px"></span></button>
+                    <button class="brush-size" data-size="15" type="button" aria-label="Pinceau large"><span style="--brush-size:15px"></span></button>
+                    <button class="brush-size" data-size="26" type="button" aria-label="Pinceau très large"><span style="--brush-size:26px"></span></button>
+                  </div>
+                  <div class="history-actions">
+                    <button id="undo-drawing-button" class="paint-action" type="button" disabled title="Annuler">↶</button>
+                    <button id="redo-drawing-button" class="paint-action" type="button" disabled title="Rétablir">↷</button>
+                    <button id="clear-drawing-button" class="paint-action paint-action-danger" type="button" title="Effacer tout">Tout effacer</button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="canvas-shell">
+                <canvas
+                  id="drawing-canvas"
+                  width="800"
+                  height="500"
+                  aria-label="Zone de dessin"
+                ></canvas>
+              </div>
             </div>
-            <audio id="audio-preview" class="audio-player hidden" controls></audio>
+
+            <div id="audio-editor" class="contribution-editor hidden">
+              <div id="audio-empty-state" class="audio-empty-state">
+                <button id="record-audio-button" class="record-button" type="button">
+                  <span class="record-dot" aria-hidden="true"></span>
+                  <span id="record-button-label">Enregistrer un son</span>
+                </button>
+                <p id="audio-status" class="audio-status" aria-live="polite"></p>
+              </div>
+
+              <div id="audio-ready-state" class="audio-ready-state hidden">
+                <audio id="audio-preview" class="hidden" preload="metadata"></audio>
+                <div class="audio-player-card">
+                  <button id="play-audio-button" class="audio-play-button" type="button" aria-label="Lire l'enregistrement">▶</button>
+                  <div class="audio-timeline">
+                    <input
+                      id="audio-progress"
+                      class="audio-progress"
+                      type="range"
+                      min="0"
+                      max="1000"
+                      value="0"
+                      aria-label="Progression audio"
+                    >
+                    <div class="audio-time-row">
+                      <span id="audio-current-time">00:00</span>
+                      <span id="audio-duration">00:00</span>
+                    </div>
+                  </div>
+                  <button id="reset-audio-button" class="audio-delete-button" type="button" aria-label="Supprimer et recommencer">■</button>
+                </div>
+                <button id="validate-audio-button" class="button button-primary" type="button">
+                  Valider ce magnifique bruit
+                </button>
+              </div>
+            </div>
           </div>
-        </div>
 
-        <div id="waiting-panel" class="waiting-panel hidden">
-          <div class="waiting-pulse" aria-hidden="true"></div>
-          <h3>Contribution validée</h3>
-          <p id="waiting-progress">En attente des autres joueurs...</p>
-        </div>
+          <div id="waiting-panel" class="waiting-panel hidden">
+            <div class="waiting-pulse" aria-hidden="true"></div>
+            <h3>Contribution envoyée dans le grand inconnu</h3>
+            <p id="waiting-progress">En attente des autres génies...</p>
+          </div>
 
-        <div id="game-message" class="message" role="status" aria-live="polite"></div>
-        <button id="submit-contribution-button" class="button button-primary" type="button">
-          Valider ma contribution
-        </button>
-        <button id="game-leave-button" class="button button-link danger-link" type="button">
-          Quitter la partie
-        </button>
+          <div id="game-message" class="message" role="status" aria-live="polite"></div>
+          <button id="submit-contribution-button" class="button button-primary" type="button">
+            Valider ce chef-d’œuvre
+          </button>
+          <button id="game-leave-button" class="button button-link danger-link" type="button">
+            Abandonner lâchement
+          </button>
+        </div>
       </section>
 
       <section
@@ -229,14 +340,14 @@
       >
         <div class="results-heading">
           <div>
-            <p class="eyebrow">Résultats</p>
-            <h2 id="results-title">Les chaînes sont terminées</h2>
+            <p class="eyebrow">Résultats scientifiquement discutables</p>
+            <h2 id="results-title">Voici comment tout a dérapé</h2>
           </div>
           <span id="result-chain-count" class="result-count">1 / 2</span>
         </div>
 
         <div class="chain-title">
-          <span>Chaîne commencée par</span>
+          <span>Catastrophe initiée par</span>
           <strong id="result-owner">Joueur</strong>
         </div>
 
@@ -253,7 +364,7 @@
 
         <div id="results-message" class="message" role="status" aria-live="polite"></div>
         <button id="return-lobby-button" class="button button-link" type="button">
-          Revenir au lobby
+          Revenir au lobby, comme si de rien n’était
         </button>
       </section>
     </main>
