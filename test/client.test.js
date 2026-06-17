@@ -335,6 +335,9 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(app, /socket\.on\("chatMessage"/);
   assert.match(app, /emitWithAcknowledgment\("sendChatMessage"/);
   assert.match(app, /emitWithAcknowledgment\("selectRoomGame"/);
+  assert.match(app, /pendingRoomGameId/);
+  assert.match(app, /function createRoomGameSelection/);
+  assert.match(app, /function renderRoomLobbyState/);
   assert.doesNotMatch(app, new RegExp("setPlayer" + "Emo" + "te"));
   assert.doesNotMatch(server, new RegExp("setPlayer" + "Emo" + "te"));
   assert.match(css, /grid-template-areas:\s*"players main chat"/);
@@ -491,4 +494,6 @@ test("les commandes utilisent le sprite d'icones et des animations coherentes", 
   assert.match(css, /@keyframes selected-glint/);
   assert.match(css, /button\[aria-checked="true"\]::after/);
   assert.match(css, /button\[aria-pressed="true"\]::after/);
+  assert.doesNotMatch(css, /button-glint/);
+  assert.doesNotMatch(css, /\.game-tile\.active::after/);
 });

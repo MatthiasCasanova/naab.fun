@@ -27,11 +27,13 @@
     random: {
       id: "random",
       name: "Aléatoire",
+      resolvedId: "kamoulox3000",
       resolvedName: "Kamoulox 3000"
     },
     kamoulox3000: {
       id: "kamoulox3000",
       name: "Kamoulox 3000",
+      resolvedId: "kamoulox3000",
       resolvedName: "Kamoulox 3000"
     }
   });
@@ -206,6 +208,8 @@
   let currentGame = null;
   let currentNickname = "";
   let currentAvatarId = "comet";
+  let pendingRoomGameId = null;
+  let roomGameSelectionRequestId = 0;
   let shouldRejoin = false;
   let timerInterval = null;
   let introTimeout = null;
@@ -1158,6 +1162,19 @@
     return ROOM_GAMES[getSelectedRoomGameId(room)].resolvedName;
   }
 
+  function createRoomGameSelection(gameId) {
+    const selectedGame = ROOM_GAMES[gameId] || ROOM_GAMES[DEFAULT_ROOM_GAME_ID];
+    const resolvedGame =
+      ROOM_GAMES[selectedGame.resolvedId] || selectedGame;
+
+    return {
+      selectedGameId: selectedGame.id,
+      selectedGameName: selectedGame.name,
+      resolvedGameId: resolvedGame.id,
+      resolvedGameName: resolvedGame.name
+    };
+  }
+
   function renderGameSelection(room) {
     const selectedGameId = getSelectedRoomGameId(room);
     const selectedLabel = getRoomGameLabel(room);
@@ -1177,6 +1194,26 @@
       button.setAttribute("aria-pressed", String(isSelected));
       button.disabled = !room || room.phase !== "lobby";
     });
+  }
+
+  function renderRoomLobbyState(room) {
+    renderGameSelection(room);
+    const isHost = Boolean(socket && room.hostId === socket.id);
+    renderGameSettings(room, isHost);
+    elements.startGameButton.classList.toggle("hidden", !isHost);
+    elements.startGameButton.disabled =
+      !isHost || room.playerCount < room.minPlayersToStart;
+    elements.startHelp.textContent = isHost
+      ? room.playerCount < room.minPlayersToStart
+        ? "Il faut au moins 2 joueurs pour lancer la partie."
+        : `${room.settings.effectiveRoundCount} manche${
+            room.settings.effectiveRoundCount > 1 ? "s" : ""
+          } ${
+            room.settings.effectiveRoundCount > 1
+              ? "seront jouées"
+              : "sera jouée"
+          }.`
+      : "En attente du lancement par l'hôte.";
   }
 
   function renderGameSettings(room, isHost) {
@@ -1219,24 +1256,7 @@
       `${room.playerCount} / ${room.maxPlayers}`;
     renderPlayerList(room);
     renderChatMessages(room.chatMessages);
-    renderGameSelection(room);
-
-    const isHost = Boolean(socket && room.hostId === socket.id);
-    renderGameSettings(room, isHost);
-    elements.startGameButton.classList.toggle("hidden", !isHost);
-    elements.startGameButton.disabled =
-      !isHost || room.playerCount < room.minPlayersToStart;
-    elements.startHelp.textContent = isHost
-      ? room.playerCount < room.minPlayersToStart
-        ? "Il faut au moins 2 joueurs pour lancer la partie."
-        : `${room.settings.effectiveRoundCount} manche${
-            room.settings.effectiveRoundCount > 1 ? "s" : ""
-          } ${
-            room.settings.effectiveRoundCount > 1
-              ? "seront jouées"
-              : "sera jouée"
-          }.`
-      : "En attente du lancement par l'hôte.";
+    renderRoomLobbyState(room);
 
     showOnly(elements.roomView);
     setConnectionState(Boolean(socket && socket.connected), "Connecté");
@@ -1542,14 +1562,21 @@
     });
 
     socket.on("roomState", (room) => {
-      currentRoom = room;
-      elements.playerCount.textContent =
-        `${room.playerCount} / ${room.maxPlayers}`;
-      renderPlayerList(room);
-      renderChatMessages(room.chatMessages);
-      if (room.phase === "lobby") {
-        showRoom(room);
+      const displayedRoom =
+        pendingRoomGameId && room.phase === "lobby"
+          ? {
+              ...room,
+              gameSelection: createRoomGameSelection(pendingRoomGameId)
+            }
+          : room;
+      currentRoom = displayedRoom;
+      if (displayedRoom.phase === "lobby") {
+        showRoom(displayedRoom);
       } else if (!currentGame) {
+        elements.playerCount.textContent =
+          `${displayedRoom.playerCount} / ${displayedRoom.maxPlayers}`;
+        renderPlayerList(displayedRoom);
+        renderChatMessages(displayedRoom.chatMessages);
         setSidebarVisible(true);
         setMessage(elements.roomMessage, "La partie démarre...");
       }
@@ -1792,10 +1819,18 @@
     if (!currentRoom || !socket || !ROOM_GAMES[gameId]) {
       return;
     }
+    if (getSelectedRoomGameId(currentRoom) === gameId) {
+      return;
+    }
 
-    elements.gameSelectionButtons.forEach((button) => {
-      button.disabled = true;
-    });
+    const requestId = roomGameSelectionRequestId + 1;
+    roomGameSelectionRequestId = requestId;
+    pendingRoomGameId = gameId;
+    const previousSelection = currentRoom.gameSelection;
+    currentRoom.gameSelection = createRoomGameSelection(gameId);
+    renderRoomLobbyState(currentRoom);
+    setMessage(elements.roomMessage, "");
+
     try {
       const response = await emitWithAcknowledgment("selectRoomGame", {
         gameId
@@ -1805,11 +1840,22 @@
           (response && response.error) || "Sélection refusée."
         );
       }
+      if (requestId !== roomGameSelectionRequestId) {
+        return;
+      }
+      pendingRoomGameId = null;
+      currentRoom.gameSelection = response.gameSelection;
+      renderRoomLobbyState(currentRoom);
       setMessage(elements.roomMessage, "");
     } catch (error) {
+      if (requestId !== roomGameSelectionRequestId) {
+        return;
+      }
+      pendingRoomGameId = null;
       setMessage(elements.roomMessage, error.message, "error");
       if (currentRoom) {
-        renderGameSelection(currentRoom);
+        currentRoom.gameSelection = previousSelection;
+        renderRoomLobbyState(currentRoom);
       }
     }
   }

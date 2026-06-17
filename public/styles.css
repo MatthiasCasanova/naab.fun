@@ -1295,15 +1295,6 @@ label,
   transform: translateY(-3px) scale(1.015);
 }
 
-.game-tile.active::after {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(105deg, transparent 20%, color-mix(in srgb, #fff 18%, transparent) 42%, transparent 62%);
-  content: "";
-  pointer-events: none;
-  animation: button-glint 1.9s ease-in-out infinite;
-}
-
 .game-tile-mark {
   position: absolute;
   top: 12px;
