@@ -1299,13 +1299,6 @@ label,
   transform: translateY(-3px) scale(1.015);
 }
 
-.game-tile.has-self-vote:not(.active) {
-  border-color: color-mix(in srgb, var(--primary) 70%, var(--border));
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--primary) 28%, transparent),
-    0 12px 28px color-mix(in srgb, var(--primary) 14%, rgba(5, 8, 22, 0.16));
-}
-
 .game-tile-mark {
   position: absolute;
   top: 12px;
@@ -1657,7 +1650,19 @@ label,
 #drawing-editor {
   display: grid;
   grid-template-columns: 56px minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
+}
+
+.editor-label {
+  margin: 0;
+  color: var(--text);
+  font-size: 0.78rem;
+  font-weight: 850;
+}
+
+#drawing-editor .editor-label {
+  grid-column: 1 / -1;
 }
 
 .paint-panel {

@@ -24,18 +24,25 @@ const ROOM_CODE_LENGTH = 6;
 const DEFAULT_INPUT_TYPE_COUNT = 3;
 const DEFAULT_AVATAR_ID = "comet";
 const DEFAULT_ROOM_GAME_ID = "random";
-const PLAYABLE_ROOM_GAME_ID = "kamoulox3000";
+const KAMOULOX_GAME_ID = "kamoulox3000";
+const LEAUGE_OF_NAAB_GAME_ID = "leaugeOfNaab";
 const ROOM_GAMES = Object.freeze([
   {
     id: "random",
     name: "Aléatoire",
-    resolvedId: PLAYABLE_ROOM_GAME_ID,
+    resolvedId: KAMOULOX_GAME_ID,
     available: true
   },
   {
-    id: PLAYABLE_ROOM_GAME_ID,
+    id: KAMOULOX_GAME_ID,
     name: "Kamoulox 3000",
-    resolvedId: PLAYABLE_ROOM_GAME_ID,
+    resolvedId: KAMOULOX_GAME_ID,
+    available: true
+  },
+  {
+    id: LEAUGE_OF_NAAB_GAME_ID,
+    name: "Leauge Of Naab",
+    resolvedId: LEAUGE_OF_NAAB_GAME_ID,
     available: true
   }
 ]);
@@ -61,6 +68,53 @@ const CONTRIBUTION_TYPES = Object.freeze({
 const CONTRIBUTION_TYPE_VALUES = Object.freeze(
   Object.values(CONTRIBUTION_TYPES)
 );
+const LEAUGE_OF_NAAB_STEPS = Object.freeze([
+  {
+    key: "champion-name",
+    label: "Nom du champion",
+    type: CONTRIBUTION_TYPES.TEXT,
+    inputLabel: "Nom du champion",
+    placeholder: "Ex: Jean-Michel Flash Inting, gardien du buisson..."
+  },
+  {
+    key: "spell-kit",
+    label: "3 sorts + ulti",
+    type: CONTRIBUTION_TYPES.TEXT,
+    inputLabel: "Kit de sorts",
+    placeholder:
+      "Donne 3 sorts et un ulti. Format conseillé : Q, W, E, R."
+  },
+  {
+    key: "quote-1",
+    label: "Réplique audio 1",
+    type: CONTRIBUTION_TYPES.AUDIO
+  },
+  {
+    key: "quote-2",
+    label: "Réplique audio 2",
+    type: CONTRIBUTION_TYPES.AUDIO
+  },
+  {
+    key: "quote-3",
+    label: "Réplique audio 3",
+    type: CONTRIBUTION_TYPES.AUDIO
+  },
+  {
+    key: "champion-sketch",
+    label: "Croquis du champion",
+    type: CONTRIBUTION_TYPES.DRAWING
+  },
+  {
+    key: "champion-lore",
+    label: "Lore",
+    type: CONTRIBUTION_TYPES.TEXT,
+    inputLabel: "Lore du champion",
+    placeholder:
+      "Raconte son origine dramatique, son passif social et sa dette morale."
+  }
+]);
+const LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT =
+  LEAUGE_OF_NAAB_STEPS.length + 1;
 
 function normalizeConfiguredOrigin(value) {
   const trimmedValue = value.trim();
@@ -131,6 +185,31 @@ function getRequestOrigin(req) {
 
 function getAssignedChainIndex(playerIndex, roundIndex, playerCount) {
   return (playerIndex - roundIndex + playerCount) % playerCount;
+}
+
+function getLeaugeOfNaabAssignedChainIndex(
+  playerIndex,
+  roundIndex,
+  playerCount
+) {
+  return (playerIndex + roundIndex + 1) % playerCount;
+}
+
+function getAssignedChainIndexForGame(
+  gameId,
+  playerIndex,
+  roundIndex,
+  playerCount
+) {
+  if (gameId === LEAUGE_OF_NAAB_GAME_ID && playerCount > 1) {
+    return getLeaugeOfNaabAssignedChainIndex(
+      playerIndex,
+      roundIndex,
+      playerCount
+    );
+  }
+
+  return getAssignedChainIndex(playerIndex, roundIndex, playerCount);
 }
 
 function getExpectedContributionType(
@@ -361,6 +440,35 @@ function createGameServer(options = {}) {
     return game && game.available ? game.id : null;
   }
 
+  function getResolvedRoomGame(room) {
+    const selectedGame =
+      findRoomGame(room.selectedGameId) || findRoomGame(DEFAULT_ROOM_GAME_ID);
+    return findRoomGame(selectedGame.resolvedId) || selectedGame;
+  }
+
+  function getMaxRoundsForGame(gameId, playerCount) {
+    if (gameId === LEAUGE_OF_NAAB_GAME_ID) {
+      return Math.max(
+        1,
+        Math.min(LEAUGE_OF_NAAB_STEPS.length, playerCount - 1)
+      );
+    }
+
+    return Math.max(1, Math.min(playerCount, MAX_PLAYERS));
+  }
+
+  function getEffectiveRoundCount(room) {
+    const resolvedGame = getResolvedRoomGame(room);
+    const maxRounds = getMaxRoundsForGame(
+      resolvedGame.id,
+      room.players.size
+    );
+
+    return room.settings.roundCount === null
+      ? maxRounds
+      : Math.min(room.settings.roundCount, maxRounds);
+  }
+
   function serializeGameSelection(room) {
     const selectedGame =
       findRoomGame(room.selectedGameId) || findRoomGame(DEFAULT_ROOM_GAME_ID);
@@ -457,10 +565,6 @@ function createGameServer(options = {}) {
   }
 
   function serializeRoom(room) {
-    const automaticRoundCount = Math.max(
-      1,
-      Math.min(room.players.size, MAX_PLAYERS)
-    );
     const host = room.players.get(room.hostId);
 
     return {
@@ -477,10 +581,7 @@ function createGameServer(options = {}) {
       gameVotes: serializeGameVotes(room),
       settings: {
         roundCount: room.settings.roundCount,
-        effectiveRoundCount:
-          room.settings.roundCount === null
-            ? automaticRoundCount
-            : Math.min(room.settings.roundCount, automaticRoundCount),
+        effectiveRoundCount: getEffectiveRoundCount(room),
         inputTypeCount: room.settings.inputTypeCount
       },
       players: Array.from(room.players.values())
@@ -534,7 +635,8 @@ function createGameServer(options = {}) {
       return null;
     }
 
-    const chainIndex = getAssignedChainIndex(
+    const chainIndex = getAssignedChainIndexForGame(
+      game.gameId,
       playerIndex,
       game.roundIndex,
       game.participantOrder.length
@@ -546,15 +648,55 @@ function createGameServer(options = {}) {
         : null;
     const expectedType =
       game.typePlans.get(chain.id)[game.roundIndex] || null;
+    const roundSpec =
+      Array.isArray(game.roundSpecs) && game.roundSpecs[game.roundIndex]
+        ? game.roundSpecs[game.roundIndex]
+        : null;
 
     return {
       chain,
       previousContribution,
-      expectedType
+      expectedType,
+      roundSpec
     };
   }
 
-  function getPrompt(expectedType, previousType) {
+  function getLeaugeOfNaabPrompt(roundSpec, targetNickname) {
+    if (!roundSpec) {
+      return `Crée un champion douteux pour ${targetNickname}.`;
+    }
+
+    if (roundSpec.key === "champion-name") {
+      return `Invente le nom du champion League de ${targetNickname}. Fais mal, mais avec panache.`;
+    }
+    if (roundSpec.key === "spell-kit") {
+      return `Donne 3 sorts et un ulti au champion de ${targetNickname}. Oui, l'équilibrage est déjà mort.`;
+    }
+    if (roundSpec.key.startsWith("quote-")) {
+      const quoteNumber = roundSpec.key.replace("quote-", "");
+      return `Enregistre la réplique audio ${quoteNumber} du champion de ${targetNickname}. Cinq secondes, maximum ego.`;
+    }
+    if (roundSpec.key === "champion-sketch") {
+      return `Croque le champion de ${targetNickname}. Les anatomies impossibles sont acceptées.`;
+    }
+    if (roundSpec.key === "champion-lore") {
+      return `Écris le lore du champion de ${targetNickname}. Tragédie, mauvaise foi, et un soupçon de ranked.`;
+    }
+
+    return `Ajoute une idée dangereuse au champion de ${targetNickname}.`;
+  }
+
+  function getPrompt(game, assignment) {
+    const expectedType = assignment.expectedType;
+    if (game.gameId === LEAUGE_OF_NAAB_GAME_ID) {
+      return getLeaugeOfNaabPrompt(
+        assignment.roundSpec,
+        assignment.chain.ownerNickname
+      );
+    }
+
+    const previousType =
+      assignment.previousContribution && assignment.previousContribution.type;
     if (!expectedType) {
       return "Aucune contribution n'est attendue.";
     }
@@ -587,6 +729,8 @@ function createGameServer(options = {}) {
       avatarId: contribution.avatarId,
       type: contribution.type,
       content: contribution.content,
+      stepKey: contribution.stepKey || null,
+      stepLabel: contribution.stepLabel || null,
       empty: contribution.empty
     };
   }
@@ -626,6 +770,16 @@ function createGameServer(options = {}) {
           player.id === room.hostId &&
           room.players.size >= MIN_PLAYERS_TO_START
       ),
+      gameId: game.gameId,
+      gameName: game.gameName,
+      resultTitle:
+        game.gameId === LEAUGE_OF_NAAB_GAME_ID
+          ? "Le vestiaire des champions douteux"
+          : "Voici comment tout a dérapé",
+      resultOwnerLabel:
+        game.gameId === LEAUGE_OF_NAAB_GAME_ID
+          ? "Champion créé pour"
+          : "Catastrophe initiée par",
       chains: game.chains.map((chain) => ({
         id: chain.id,
         ownerNickname: chain.ownerNickname,
@@ -673,15 +827,27 @@ function createGameServer(options = {}) {
       submitted: game.roundSubmissions.has(participantId),
       submittedCount: game.roundSubmissions.size,
       participantCount: game.participants.length,
+      gameId: game.gameId,
+      gameName: game.gameName,
+      optimalPlayerCount:
+        game.gameId === LEAUGE_OF_NAAB_GAME_ID
+          ? LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT
+          : null,
       assignment: {
         chainId: assignment.chain.id,
+        targetNickname: assignment.chain.ownerNickname,
+        targetAvatarId: assignment.chain.ownerAvatarId,
         expectedType: assignment.expectedType,
         allowedTypes: [assignment.expectedType],
-        prompt: getPrompt(
-          assignment.expectedType,
-          assignment.previousContribution &&
-            assignment.previousContribution.type
-        ),
+        prompt: getPrompt(game, assignment),
+        step: assignment.roundSpec
+          ? {
+              key: assignment.roundSpec.key,
+              label: assignment.roundSpec.label,
+              inputLabel: assignment.roundSpec.inputLabel || null,
+              placeholder: assignment.roundSpec.placeholder || null
+            }
+          : null,
         previousContribution: serializeContribution(
           assignment.previousContribution
         )
@@ -734,6 +900,8 @@ function createGameServer(options = {}) {
       chainId: assignment.chain.id,
       type,
       content: "",
+      stepKey: assignment.roundSpec && assignment.roundSpec.key,
+      stepLabel: assignment.roundSpec && assignment.roundSpec.label,
       empty: true,
       submittedAt: Date.now()
     };
@@ -856,6 +1024,8 @@ function createGameServer(options = {}) {
     const orderedPlayers = Array.from(room.players.values()).sort(
       (first, second) => first.joinOrder - second.joinOrder
     );
+    const resolvedGame = getResolvedRoomGame(room);
+    const gameId = resolvedGame.id;
     const participants = orderedPlayers.map((player) => ({
       id: player.participantId,
       nickname: player.nickname,
@@ -870,35 +1040,47 @@ function createGameServer(options = {}) {
       ownerAvatarId: participant.avatarId,
       contributions: []
     }));
+    const maxRounds = getMaxRoundsForGame(gameId, participants.length);
     const totalRounds = Math.max(
       1,
       Math.min(
-        room.settings.roundCount === null
-          ? participants.length
-          : room.settings.roundCount,
-        participants.length
+        room.settings.roundCount === null ? maxRounds : room.settings.roundCount,
+        maxRounds
       )
     );
-    const activeTypes = selectActiveContributionTypes(
-      room.settings.inputTypeCount,
-      randomInt
-    );
-    const generatedPlans = createTypePlan(
-      chains.length,
-      totalRounds,
-      activeTypes,
-      randomInt
-    );
+    const roundSpecs =
+      gameId === LEAUGE_OF_NAAB_GAME_ID
+        ? LEAUGE_OF_NAAB_STEPS.slice(0, totalRounds)
+        : [];
+    const activeTypes =
+      gameId === LEAUGE_OF_NAAB_GAME_ID
+        ? [...new Set(roundSpecs.map((step) => step.type))]
+        : selectActiveContributionTypes(
+            room.settings.inputTypeCount,
+            randomInt
+          );
+    const generatedPlans =
+      gameId === LEAUGE_OF_NAAB_GAME_ID
+        ? chains.map(() => roundSpecs.map((step) => step.type))
+        : createTypePlan(
+            chains.length,
+            totalRounds,
+            activeTypes,
+            randomInt
+          );
     const typePlans = new Map(
       chains.map((chain, index) => [chain.id, generatedPlans[index]])
     );
 
     return {
       status: "countdown",
+      gameId,
+      gameName: resolvedGame.name,
       participants,
       participantOrder: participants.map((participant) => participant.id),
       chains,
       activeTypes,
+      roundSpecs,
       typePlans,
       roundIndex: 0,
       totalRounds,
@@ -915,11 +1097,12 @@ function createGameServer(options = {}) {
     };
   }
 
-  function normalizeGameSettings(payload, playerCount) {
+  function normalizeGameSettings(payload, playerCount, gameId) {
     if (!payload || typeof payload !== "object") {
       return { error: "Paramètres de partie invalides." };
     }
 
+    const maxRounds = getMaxRoundsForGame(gameId, playerCount);
     let roundCount = null;
     if (
       payload.roundCount !== null &&
@@ -930,13 +1113,10 @@ function createGameServer(options = {}) {
       if (
         !Number.isInteger(roundCount) ||
         roundCount < 1 ||
-        roundCount > Math.min(playerCount, MAX_PLAYERS)
+        roundCount > maxRounds
       ) {
         return {
-          error: `Le nombre de manches doit être compris entre 1 et ${Math.min(
-            playerCount,
-            MAX_PLAYERS
-          )}.`
+          error: `Le nombre de manches doit être compris entre 1 et ${maxRounds}.`
         };
       }
     }
@@ -1408,7 +1588,11 @@ function createGameServer(options = {}) {
         return;
       }
 
-      const normalized = normalizeGameSettings(payload, room.players.size);
+      const normalized = normalizeGameSettings(
+        payload,
+        room.players.size,
+        getResolvedRoomGame(room).id
+      );
       if (normalized.error) {
         answer(socket, acknowledgment, {
           ok: false,
@@ -1526,6 +1710,8 @@ function createGameServer(options = {}) {
         chainId: assignment.chain.id,
         type: normalized.type,
         content: normalized.content,
+        stepKey: assignment.roundSpec && assignment.roundSpec.key,
+        stepLabel: assignment.roundSpec && assignment.roundSpec.label,
         empty: false,
         submittedAt: Date.now()
       });
@@ -1600,6 +1786,8 @@ function createGameServer(options = {}) {
           chainId: assignment.chain.id,
           type: normalized.type,
           content: normalized.content,
+          stepKey: assignment.roundSpec && assignment.roundSpec.key,
+          stepLabel: assignment.roundSpec && assignment.roundSpec.label,
           empty: false,
           savedAt: Date.now()
         });
@@ -1837,6 +2025,10 @@ module.exports = {
   AVATAR_IDS,
   CONTRIBUTION_TYPES,
   GAME_COUNTDOWN_MS,
+  KAMOULOX_GAME_ID,
+  LEAUGE_OF_NAAB_GAME_ID,
+  LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT,
+  LEAUGE_OF_NAAB_STEPS,
   MAX_PLAYERS,
   ROUND_DURATION_MS,
   ROUND_PREVIEW_MS,
@@ -1845,6 +2037,8 @@ module.exports = {
   createTypePlan,
   createGameServer,
   getAssignedChainIndex,
+  getAssignedChainIndexForGame,
+  getLeaugeOfNaabAssignedChainIndex,
   getExpectedContributionType,
   selectActiveContributionTypes
 };

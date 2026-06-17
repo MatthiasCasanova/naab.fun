@@ -5,11 +5,15 @@ const { test } = require("node:test");
 const { io: createClient } = require("socket.io-client");
 const {
   GAME_COUNTDOWN_MS,
+  LEAUGE_OF_NAAB_GAME_ID,
+  LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT,
+  LEAUGE_OF_NAAB_STEPS,
   ROUND_DURATION_MS,
   ROUND_PREVIEW_MS,
   createGameServer,
   createTypePlan,
   getAssignedChainIndex,
+  getLeaugeOfNaabAssignedChainIndex,
   getExpectedContributionType,
   selectActiveContributionTypes
 } = require("../server");
@@ -197,6 +201,38 @@ test("les types sont imposés aléatoirement sans répétition immédiate", () =
     "audio",
     "audio"
   ]);
+});
+
+test("Leauge Of Naab est optimal à 8 joueurs sans auto-attribution", () => {
+  assert.equal(LEAUGE_OF_NAAB_STEPS.length, 7);
+  assert.equal(LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT, 8);
+  assert.deepEqual(
+    LEAUGE_OF_NAAB_STEPS.map((step) => step.key),
+    [
+      "champion-name",
+      "spell-kit",
+      "quote-1",
+      "quote-2",
+      "quote-3",
+      "champion-sketch",
+      "champion-lore"
+    ]
+  );
+
+  const playerCount = LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT;
+  for (let playerIndex = 0; playerIndex < playerCount; playerIndex += 1) {
+    const assignments = [];
+    for (let roundIndex = 0; roundIndex < LEAUGE_OF_NAAB_STEPS.length; roundIndex += 1) {
+      const chainIndex = getLeaugeOfNaabAssignedChainIndex(
+        playerIndex,
+        roundIndex,
+        playerCount
+      );
+      assignments.push(chainIndex);
+      assert.notEqual(chainIndex, playerIndex);
+    }
+    assert.equal(new Set(assignments).size, LEAUGE_OF_NAAB_STEPS.length);
+  }
 });
 
 test("seul l'hôte configure et lance la partie", async () => {
@@ -490,6 +526,110 @@ test("une partie complète respecte rotations et types aléatoires imposés", as
     const guestReturn = await emitAck(clients[1], "returnToLobby");
     assert.equal(guestReturn.ok, false);
     assert.match(guestReturn.error, /Seul l'hôte/);
+  } finally {
+    await cleanup(game, clients);
+  }
+});
+
+test("Leauge Of Naab construit un champion complet pour chaque joueur", async () => {
+  const { game, url } = await startTestServer({
+    gameCountdownMs: 0,
+    roundPreviewMs: 0,
+    roundDurationMs: 5000
+  });
+  let clients = [];
+
+  try {
+    const names = [
+      "Alice",
+      "Bob",
+      "Claire",
+      "David",
+      "Emma",
+      "Farid",
+      "Gina",
+      "Hugo"
+    ];
+    const setup = await createRoomWithPlayers(url, names);
+    clients = setup.clients;
+    const [host] = clients;
+
+    const selected = await emitAck(host, "selectRoomGame", {
+      gameId: LEAUGE_OF_NAAB_GAME_ID
+    });
+    assert.equal(selected.ok, true);
+
+    const firstRoundPromises = clients.map((client) =>
+      waitForEvent(
+        client,
+        "gameState",
+        (state) => state.phase === "playing" && state.roundIndex === 0
+      )
+    );
+    await emitAck(host, "startGame");
+    let states = await Promise.all(firstRoundPromises);
+
+    assert.equal(states[0].gameId, LEAUGE_OF_NAAB_GAME_ID);
+    assert.equal(states[0].totalRounds, LEAUGE_OF_NAAB_STEPS.length);
+    assert.equal(states[0].optimalPlayerCount, 8);
+
+    for (let roundIndex = 0; roundIndex < LEAUGE_OF_NAAB_STEPS.length; roundIndex += 1) {
+      const step = LEAUGE_OF_NAAB_STEPS[roundIndex];
+      states.forEach((state, playerIndex) => {
+        assert.equal(state.assignment.step.key, step.key);
+        assert.equal(state.assignment.expectedType, step.type);
+        assert.notEqual(state.assignment.targetNickname, names[playerIndex]);
+        assert.equal(
+          state.assignment.targetNickname,
+          names[(playerIndex + roundIndex + 1) % names.length]
+        );
+      });
+
+      const nextPromises =
+        roundIndex < LEAUGE_OF_NAAB_STEPS.length - 1
+          ? clients.map((client) =>
+              waitForEvent(
+                client,
+                "gameState",
+                (state) =>
+                  state.phase === "playing" &&
+                  state.roundIndex === roundIndex + 1
+              )
+            )
+          : clients.map((client) =>
+              waitForEvent(
+                client,
+                "gameState",
+                (state) => state.phase === "results"
+              )
+            );
+
+      await Promise.all(
+        clients.map((client, index) =>
+          submitExpected(
+            client,
+            states[index],
+            `Champion ${roundIndex}-${index}`
+          )
+        )
+      );
+      states = await Promise.all(nextPromises);
+    }
+
+    const results = states[0];
+    assert.equal(results.resultTitle, "Le vestiaire des champions douteux");
+    assert.equal(results.resultOwnerLabel, "Champion créé pour");
+    assert.equal(results.resultStepCount, names.length * LEAUGE_OF_NAAB_STEPS.length);
+    results.chains.forEach((chain) => {
+      assert.equal(chain.contributions.length, LEAUGE_OF_NAAB_STEPS.length);
+      assert.deepEqual(
+        chain.contributions.map((contribution) => contribution.stepKey),
+        LEAUGE_OF_NAAB_STEPS.map((step) => step.key)
+      );
+    });
+
+    const room = game.rooms.get(setup.code);
+    assert.equal(room.game.gameId, LEAUGE_OF_NAAB_GAME_ID);
   } finally {
     await cleanup(game, clients);
   }

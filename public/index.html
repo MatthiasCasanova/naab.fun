@@ -426,11 +426,11 @@
                     <strong>Kamoulox 3000</strong>
                     <small>Écris, dessine, fais du bruit.</small>
                   </button>
-                  <article class="game-tile game-tile-empty" aria-label="Emplacement de jeu à venir">
-                    <span class="game-tile-mark">+</span>
-                    <strong>Bientôt</strong>
-                    <small>Un futur problème.</small>
-                  </article>
+                  <button class="game-tile" type="button" data-game-id="leaugeOfNaab" aria-pressed="false">
+                    <span class="game-tile-mark">LN</span>
+                    <strong>Leauge Of Naab</strong>
+                    <small>Crée des champions juridiquement douteux.</small>
+                  </button>
                   <article class="game-tile game-tile-empty" aria-label="Emplacement de jeu à venir">
                     <span class="game-tile-mark">+</span>
                     <strong>Bientôt</strong>
@@ -524,12 +524,13 @@
 
                 <div id="editor-panel" class="editor-panel">
                   <div id="text-editor" class="contribution-editor">
-                    <label for="text-contribution">Votre prose immortelle</label>
+                    <label id="text-editor-label" for="text-contribution">Votre prose immortelle</label>
                     <textarea id="text-contribution" maxlength="500" rows="6" placeholder="Écrivez quelque chose que les autres pourront mal comprendre..."></textarea>
                     <span id="text-counter" class="counter">0 / 500</span>
                   </div>
 
                   <div id="drawing-editor" class="contribution-editor hidden">
+                    <p id="drawing-editor-label" class="editor-label">Votre œuvre assumée</p>
                     <div class="paint-panel">
                       <div class="paint-row colors-row">
                         <div id="color-palette" class="color-palette" aria-label="Palette de couleurs">
@@ -655,7 +656,7 @@
             </div>
 
             <div class="chain-title">
-              <span>Catastrophe initiée par</span>
+              <span id="result-owner-label">Catastrophe initiée par</span>
               <strong id="result-owner">Joueur</strong>
             </div>
             <ol id="result-contributions" class="result-contributions"></ol>

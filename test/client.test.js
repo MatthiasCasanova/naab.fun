@@ -325,7 +325,9 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(html, /id="game-selection-grid"/);
   assert.match(html, /data-game-id="random"/);
   assert.match(html, /data-game-id="kamoulox3000"/);
+  assert.match(html, /data-game-id="leaugeOfNaab"/);
   assert.match(html, /Kamoulox 3000/);
+  assert.match(html, /Leauge Of Naab/);
   assert.match(html, /class="game-tile game-tile-empty"/);
   assert.match(html, /id="sidebar-game-summary"/);
   assert.doesNotMatch(html, new RegExp("emo" + "te-option"));
@@ -343,6 +345,11 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(app, /function renderGameVotes/);
   assert.match(app, /function handleRoomGameClick/);
   assert.match(app, /function renderRoomLobbyState/);
+  assert.match(app, /CONTRIBUTION_STEP_LABELS/);
+  assert.match(app, /function applyEditorCopy/);
+  assert.match(html, /id="text-editor-label"/);
+  assert.match(html, /id="drawing-editor-label"/);
+  assert.match(html, /id="result-owner-label"/);
   assert.match(app, /renderedPlayerListSignature/);
   assert.match(app, /function getPlayerListSignature/);
   assert.doesNotMatch(app, new RegExp("setPlayer" + "Emo" + "te"));
@@ -351,6 +358,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.game-selection-grid/);
   assert.match(css, /\.game-vote-stack\s*\{[\s\S]*right:\s*10px/);
   assert.match(css, /\.game-vote-avatar/);
+  assert.doesNotMatch(css, /\.game-tile\.has-self-vote/);
   assert.match(css, /\.sidebar-lobby-signal/);
   assert.match(css, /\.chat-sidebar\.mobile-open/);
   assert.match(css, /\.chat-messages\s*\{[\s\S]*overflow:\s*hidden/);

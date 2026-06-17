@@ -13,6 +13,15 @@
     drawing: "Dessin",
     audio: "Audio"
   };
+  const CONTRIBUTION_STEP_LABELS = {
+    "champion-name": "Nom",
+    "spell-kit": "Sorts",
+    "quote-1": "Réplique 1",
+    "quote-2": "Réplique 2",
+    "quote-3": "Réplique 3",
+    "champion-sketch": "Croquis",
+    "champion-lore": "Lore"
+  };
   const AVATARS = Object.freeze({
     comet: "☄️",
     robot: "🤖",
@@ -35,6 +44,12 @@
       name: "Kamoulox 3000",
       resolvedId: "kamoulox3000",
       resolvedName: "Kamoulox 3000"
+    },
+    leaugeOfNaab: {
+      id: "leaugeOfNaab",
+      name: "Leauge Of Naab",
+      resolvedId: "leaugeOfNaab",
+      resolvedName: "Leauge Of Naab"
     }
   });
   const DEFAULT_ROOM_GAME_ID = "random";
@@ -151,7 +166,9 @@
     typeButtons: Array.from(document.querySelectorAll(".type-button")),
     editorPanel: document.querySelector("#editor-panel"),
     textEditor: document.querySelector("#text-editor"),
+    textEditorLabel: document.querySelector("#text-editor-label"),
     drawingEditor: document.querySelector("#drawing-editor"),
+    drawingEditorLabel: document.querySelector("#drawing-editor-label"),
     audioEditor: document.querySelector("#audio-editor"),
     textContribution: document.querySelector("#text-contribution"),
     textCounter: document.querySelector("#text-counter"),
@@ -185,6 +202,8 @@
       "#submit-contribution-button"
     ),
     gameLeaveButton: document.querySelector("#game-leave-button"),
+    resultsTitle: document.querySelector("#results-title"),
+    resultOwnerLabel: document.querySelector("#result-owner-label"),
     resultChainCount: document.querySelector("#result-chain-count"),
     resultOwner: document.querySelector("#result-owner"),
     resultContributions: document.querySelector("#result-contributions"),
@@ -1134,21 +1153,34 @@
     );
   }
 
+  function getRoomGameRoundLimit(room) {
+    if (!room) {
+      return 1;
+    }
+
+    if (getSelectedRoomGameId(room) === "leaugeOfNaab") {
+      return Math.max(1, Math.min(7, room.playerCount - 1));
+    }
+
+    return Math.max(1, room.playerCount);
+  }
+
   function populateRoundCountOptions(room) {
+    const roundLimit = getRoomGameRoundLimit(room);
     const selectedValue =
       room.settings.roundCount === null
         ? "auto"
-        : String(room.settings.roundCount);
+        : String(Math.min(room.settings.roundCount, roundLimit));
     const options = [
       {
         value: "auto",
-        label: `Automatique (${room.playerCount} manche${
-          room.playerCount > 1 ? "s" : ""
+        label: `Automatique (${roundLimit} manche${
+          roundLimit > 1 ? "s" : ""
         })`
       }
     ];
 
-    for (let roundCount = 1; roundCount <= room.playerCount; roundCount += 1) {
+    for (let roundCount = 1; roundCount <= roundLimit; roundCount += 1) {
       options.push({
         value: String(roundCount),
         label: `${roundCount} manche${roundCount > 1 ? "s" : ""}`
@@ -1317,10 +1349,15 @@
     const resolvedLabel = getResolvedRoomGameLabel(room);
 
     elements.selectedGameName.textContent = selectedLabel;
-    elements.gameSelectionHelp.textContent =
-      selectedGameId === DEFAULT_ROOM_GAME_ID
-        ? `Aléatoire choisira ${resolvedLabel}. Suspense administratif.`
-        : `${resolvedLabel} est prêt. Les mauvaises idées aussi.`;
+    if (selectedGameId === "leaugeOfNaab") {
+      elements.gameSelectionHelp.textContent =
+        "Optimal à 8 joueurs : 7 étapes de champion sans autoportrait gênant.";
+    } else {
+      elements.gameSelectionHelp.textContent =
+        selectedGameId === DEFAULT_ROOM_GAME_ID
+          ? `Aléatoire choisira ${resolvedLabel}. Suspense administratif.`
+          : `${resolvedLabel} est prêt. Les mauvaises idées aussi.`;
+    }
     elements.sidebarGameSummary.textContent =
       `${selectedLabel} sélectionné. L'hôte appuie quand le cirque est complet.`;
 
@@ -2644,7 +2681,9 @@
     elements.recordAudioButton.disabled = false;
     elements.validateAudioButton.disabled = false;
     elements.recordButtonLabel.textContent =
-      "Enregistrer pendant 5 secondes";
+      currentGame && currentGame.gameId === "leaugeOfNaab"
+        ? "Réplique de 5 secondes"
+        : "Enregistrer pendant 5 secondes";
     elements.audioPlayIconUse.setAttribute("href", "#icon-play");
     elements.playAudioButton.setAttribute(
       "aria-label",
@@ -3197,6 +3236,14 @@
   }
 
   function getHumorousPrompt(gameState) {
+    if (
+      gameState.gameId === "leaugeOfNaab" &&
+      gameState.assignment &&
+      gameState.assignment.prompt
+    ) {
+      return gameState.assignment.prompt;
+    }
+
     const expectedType = gameState.assignment.expectedType;
     const hasPrevious = Boolean(
       gameState.assignment.previousContribution
@@ -3217,6 +3264,30 @@
         : "Lance la chaîne avec une phrase que quelqu'un pourra massacrer.";
     }
     return "Le serveur réfléchit très fort au prochain problème.";
+  }
+
+  function getAssignmentStep(gameState) {
+    return gameState && gameState.assignment && gameState.assignment.step
+      ? gameState.assignment.step
+      : null;
+  }
+
+  function applyEditorCopy(gameState) {
+    const step = getAssignmentStep(gameState);
+    const isLeaugeOfNaab = gameState.gameId === "leaugeOfNaab";
+
+    elements.textEditorLabel.textContent =
+      (step && step.inputLabel) ||
+      (isLeaugeOfNaab ? "Fiche de champion" : "Votre prose immortelle");
+    elements.textContribution.placeholder =
+      (step && step.placeholder) ||
+      (isLeaugeOfNaab
+        ? "Écris une idée qui passera difficilement l'équilibrage..."
+        : "Écrivez quelque chose que les autres pourront mal comprendre...");
+    elements.drawingEditorLabel.textContent =
+      isLeaugeOfNaab ? "Croquis du champion" : "Votre œuvre assumée";
+    elements.recordButtonLabel.textContent =
+      isLeaugeOfNaab ? "Réplique de 5 secondes" : "5 secondes de bruit";
   }
 
   async function autoplayPreviewAudio(previousAudio) {
@@ -3351,6 +3422,7 @@
     showOnly(elements.gameView);
     elements.roundLabel.textContent =
       `Manche ${gameState.roundNumber} / ${gameState.totalRounds}`;
+    applyEditorCopy(gameState);
     elements.gamePrompt.textContent = getHumorousPrompt(gameState);
 
     const previous = gameState.assignment.previousContribution;
@@ -3484,7 +3556,11 @@
     player.className = "result-player";
     player.textContent = `${index + 1}. ${contribution.nickname}`;
     badge.className = "type-badge";
-    badge.textContent = TYPE_LABELS[contribution.type] || contribution.type;
+    badge.textContent =
+      contribution.stepLabel ||
+      CONTRIBUTION_STEP_LABELS[contribution.stepKey] ||
+      TYPE_LABELS[contribution.type] ||
+      contribution.type;
     meta.append(player, badge);
     item.append(meta);
 
@@ -3571,6 +3647,10 @@
 
     const chains = currentGame.chains;
     const chain = chains[resultChainIndex];
+    elements.resultsTitle.textContent =
+      currentGame.resultTitle || "Voici comment tout a dérapé";
+    elements.resultOwnerLabel.textContent =
+      currentGame.resultOwnerLabel || "Catastrophe initiée par";
     elements.resultChainCount.textContent =
       `Étape ${currentGame.resultStepNumber} / ${currentGame.resultStepCount}`;
     elements.resultOwner.textContent = chain.ownerNickname;
