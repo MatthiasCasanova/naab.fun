@@ -1,8 +1,8 @@
 {
-  "name": "kamoulox-30000",
+  "name": "naab-fun",
   "version": "1.0.0",
   "private": true,
-  "description": "Jeu multijoueur de chaînes texte, dessin et audio avec Express et Socket.IO.",
+  "description": "naab.fun, mini-site de jeux multijoueurs absurdes avec Express et Socket.IO.",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

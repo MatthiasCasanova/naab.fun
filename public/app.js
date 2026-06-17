@@ -23,6 +23,19 @@
     cat: "😺",
     frog: "🐸"
   });
+  const ROOM_GAMES = Object.freeze({
+    random: {
+      id: "random",
+      name: "Aléatoire",
+      resolvedName: "Kamoulox 3000"
+    },
+    kamoulox3000: {
+      id: "kamoulox3000",
+      name: "Kamoulox 3000",
+      resolvedName: "Kamoulox 3000"
+    }
+  });
+  const DEFAULT_ROOM_GAME_ID = "random";
   const PLAYER_STATUS_LABELS = Object.freeze({
     ready: "Prêt",
     playing: "En création",
@@ -54,7 +67,6 @@
     chatInput: document.querySelector("#chat-input"),
     chatSendButton: document.querySelector("#chat-send-button"),
     chatMessage: document.querySelector("#chat-message"),
-    emoteButtons: Array.from(document.querySelectorAll(".emote-option")),
     homeView: document.querySelector("#home-view"),
     roomView: document.querySelector("#room-view"),
     gameView: document.querySelector("#game-view"),
@@ -97,6 +109,12 @@
       "#input-type-count-select"
     ),
     gameSettingsSummary: document.querySelector("#game-settings-summary"),
+    sidebarGameSummary: document.querySelector("#sidebar-game-summary"),
+    selectedGameName: document.querySelector("#selected-game-name"),
+    gameSelectionHelp: document.querySelector("#game-selection-help"),
+    gameSelectionButtons: Array.from(
+      document.querySelectorAll("[data-game-id]")
+    ),
     startGameButton: document.querySelector("#start-game-button"),
     startHelp: document.querySelector("#start-help"),
     leaveButton: document.querySelector("#leave-button"),
@@ -934,7 +952,7 @@
   function renderPlayerList(room) {
     elements.playerList.replaceChildren();
     elements.playersSidebarTitle.textContent =
-      room.name || "Kamoulox's Room";
+      room.name || "naab.fun room";
 
     room.players.forEach((player) => {
       const item = document.createElement("li");
@@ -957,13 +975,6 @@
       name.className = "player-name";
       name.textContent = player.nickname;
       nameLine.append(name);
-      if (player.emote) {
-        const emote = document.createElement("span");
-        emote.className = "player-emote";
-        emote.textContent = player.emote;
-        emote.setAttribute("aria-label", `Emote de ${player.nickname}`);
-        nameLine.append(emote);
-      }
       status.className =
         `player-state status-${player.status || "ready"}`;
       status.textContent =
@@ -980,17 +991,6 @@
       }
 
       elements.playerList.append(item);
-    });
-
-    const self = socket
-      ? room.players.find((player) => player.id === socket.id)
-      : null;
-    elements.emoteButtons.forEach((button) => {
-      button.classList.toggle(
-        "active",
-        Boolean(self && button.dataset.emote === self.emote)
-      );
-      button.disabled = !self;
     });
   }
 
@@ -1132,6 +1132,53 @@
     elements.roundCountSelect.value = selectedValue;
   }
 
+  function getSelectedRoomGameId(room) {
+    return (
+      room &&
+      room.gameSelection &&
+      ROOM_GAMES[room.gameSelection.selectedGameId]
+        ? room.gameSelection.selectedGameId
+        : DEFAULT_ROOM_GAME_ID
+    );
+  }
+
+  function getRoomGameLabel(room) {
+    const selection = room && room.gameSelection;
+    if (selection && selection.selectedGameName) {
+      return selection.selectedGameName;
+    }
+    return ROOM_GAMES[getSelectedRoomGameId(room)].name;
+  }
+
+  function getResolvedRoomGameLabel(room) {
+    const selection = room && room.gameSelection;
+    if (selection && selection.resolvedGameName) {
+      return selection.resolvedGameName;
+    }
+    return ROOM_GAMES[getSelectedRoomGameId(room)].resolvedName;
+  }
+
+  function renderGameSelection(room) {
+    const selectedGameId = getSelectedRoomGameId(room);
+    const selectedLabel = getRoomGameLabel(room);
+    const resolvedLabel = getResolvedRoomGameLabel(room);
+
+    elements.selectedGameName.textContent = selectedLabel;
+    elements.gameSelectionHelp.textContent =
+      selectedGameId === DEFAULT_ROOM_GAME_ID
+        ? `Aléatoire choisira ${resolvedLabel}. Suspense administratif.`
+        : `${resolvedLabel} est prêt. Les mauvaises idées aussi.`;
+    elements.sidebarGameSummary.textContent =
+      `${selectedLabel} sélectionné. L'hôte appuie quand le cirque est complet.`;
+
+    elements.gameSelectionButtons.forEach((button) => {
+      const isSelected = button.dataset.gameId === selectedGameId;
+      button.classList.toggle("active", isSelected);
+      button.setAttribute("aria-pressed", String(isSelected));
+      button.disabled = !room || room.phase !== "lobby";
+    });
+  }
+
   function renderGameSettings(room, isHost) {
     populateRoundCountOptions(room);
     elements.inputTypeCountSelect.value = String(
@@ -1145,6 +1192,7 @@
     const rounds = room.settings.effectiveRoundCount;
     const typeCount = room.settings.inputTypeCount;
     elements.gameSettingsSummary.textContent =
+      `${getRoomGameLabel(room)} · ` +
       `${room.settings.roundCount === null ? "Auto : " : ""}` +
       `${rounds} manche${rounds > 1 ? "s" : ""}, ` +
       `${typeCount} type${typeCount > 1 ? "s" : ""} possible${
@@ -1171,6 +1219,7 @@
       `${room.playerCount} / ${room.maxPlayers}`;
     renderPlayerList(room);
     renderChatMessages(room.chatMessages);
+    renderGameSelection(room);
 
     const isHost = Boolean(socket && room.hostId === socket.id);
     renderGameSettings(room, isHost);
@@ -1739,30 +1788,28 @@
     }
   }
 
-  async function setPlayerEmote(emote) {
-    if (!currentRoom || !socket) {
+  async function selectRoomGame(gameId) {
+    if (!currentRoom || !socket || !ROOM_GAMES[gameId]) {
       return;
     }
 
-    elements.emoteButtons.forEach((button) => {
+    elements.gameSelectionButtons.forEach((button) => {
       button.disabled = true;
     });
     try {
-      const response = await emitWithAcknowledgment("setPlayerEmote", {
-        emote
+      const response = await emitWithAcknowledgment("selectRoomGame", {
+        gameId
       });
       if (!response || !response.ok) {
         throw new Error(
-          (response && response.error) || "Emote refusée."
+          (response && response.error) || "Sélection refusée."
         );
       }
+      setMessage(elements.roomMessage, "");
     } catch (error) {
-      const target = currentGame
-        ? elements.gameMessage
-        : elements.roomMessage;
-      setMessage(target, error.message, "error");
+      setMessage(elements.roomMessage, error.message, "error");
       if (currentRoom) {
-        renderPlayerList(currentRoom);
+        renderGameSelection(currentRoom);
       }
     }
   }
@@ -3491,9 +3538,9 @@
       event.preventDefault();
       sendChatMessage();
     });
-    elements.emoteButtons.forEach((button) => {
+    elements.gameSelectionButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        setPlayerEmote(button.dataset.emote || "");
+        selectRoomGame(button.dataset.gameId);
       });
     });
 

@@ -1,6 +1,7 @@
-# Kamoulox 30000
+# naab.fun
 
-Jeu multijoueur de chaînes créatives inspiré du téléphone arabe dessiné. Le
+Mini-site de jeux multijoueurs absurdes. Le premier jeu disponible,
+**Kamoulox 3000**, reprend des chaînes créatives inspirées du téléphone arabe dessiné. Le
 serveur impose à chaque joueur un texte, un audio ou un dessin selon les
 paramètres choisis par l'hôte. Les rooms, contributions et enregistrements
 restent uniquement en mémoire dans le processus Node.js.

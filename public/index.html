@@ -7,7 +7,7 @@
       name="description"
       content="Un jeu multijoueur de chaînes créatives avec textes, dessins et sons."
     >
-    <title>Kamoulox 30000</title>
+    <title>naab.fun</title>
     <script>
       (() => {
         try {
@@ -212,10 +212,10 @@
     <main class="app-shell">
       <header class="topbar">
         <div class="brand">
-          <span class="brand-mark">K3</span>
+          <span class="brand-mark">nf</span>
           <div>
-            <h1>Kamoulox 30000</h1>
-            <p>Écris, dessine, fais du bruit.</p>
+            <h1>naab.fun</h1>
+            <p>Des jeux idiots, des preuves numériques.</p>
           </div>
         </div>
         <div class="topbar-actions">
@@ -261,22 +261,17 @@
           <div class="sidebar-heading">
             <svg class="icon"><use href="#icon-users"></use></svg>
             <div>
-              <strong id="players-sidebar-title">Kamoulox's Room</strong>
+              <strong id="players-sidebar-title">naab.fun room</strong>
               <span id="player-count">0 / 10</span>
             </div>
           </div>
           <ul id="player-list" class="player-list"></ul>
-          <div class="emote-panel">
-            <span>Ton humeur officielle</span>
-            <div id="emote-picker" class="emote-picker" aria-label="Choisir une emote">
-              <button class="emote-option" type="button" data-emote="😂" aria-label="Rire">😂</button>
-              <button class="emote-option" type="button" data-emote="🔥" aria-label="Feu">🔥</button>
-              <button class="emote-option" type="button" data-emote="👏" aria-label="Applaudir">👏</button>
-              <button class="emote-option" type="button" data-emote="💀" aria-label="Crâne">💀</button>
-              <button class="emote-option" type="button" data-emote="❤️" aria-label="Cœur">❤️</button>
-              <button class="emote-option" type="button" data-emote="🤯" aria-label="Explosion">🤯</button>
-              <button class="emote-option emote-clear" type="button" data-emote="" aria-label="Retirer l'emote">×</button>
+          <div class="sidebar-lobby-signal" aria-live="polite">
+            <div class="mini-lobby-orbit" aria-hidden="true">
+              <span>T</span><span>S</span><span>D</span>
             </div>
+            <strong>En attente du signal de l'hôte</strong>
+            <span id="sidebar-game-summary">Choix du terrain d'accident...</span>
           </div>
           <div id="connection-status" class="sidebar-connection">
             <span class="status-dot" aria-hidden="true"></span>
@@ -414,10 +409,49 @@
             </div>
 
             <div class="lobby-center">
-              <div class="lobby-orbit" aria-hidden="true">
-                <span>📝</span><span>🎙️</span><span>🎨</span>
+              <section class="game-selection-panel" aria-labelledby="game-selection-title">
+                <div class="game-selection-heading">
+                  <p class="eyebrow">Choix du jeu</p>
+                  <h3 id="game-selection-title">Sélectionne le chaos de la room</h3>
+                  <p id="game-selection-help">Aléatoire est prêt à faire semblant d'hésiter.</p>
+                </div>
+                <div id="game-selection-grid" class="game-selection-grid" aria-label="Sélection de jeu">
+                  <button class="game-tile game-tile-random" type="button" data-game-id="random" aria-pressed="true">
+                    <span class="game-tile-mark">?</span>
+                    <strong>Aléatoire</strong>
+                    <small>Le destin clique à ta place.</small>
+                  </button>
+                  <button class="game-tile" type="button" data-game-id="kamoulox3000" aria-pressed="false">
+                    <span class="game-tile-mark">K3</span>
+                    <strong>Kamoulox 3000</strong>
+                    <small>Écris, dessine, fais du bruit.</small>
+                  </button>
+                  <article class="game-tile game-tile-empty" aria-label="Emplacement de jeu à venir">
+                    <span class="game-tile-mark">+</span>
+                    <strong>Bientôt</strong>
+                    <small>Un futur problème.</small>
+                  </article>
+                  <article class="game-tile game-tile-empty" aria-label="Emplacement de jeu à venir">
+                    <span class="game-tile-mark">+</span>
+                    <strong>Bientôt</strong>
+                    <small>Place réservée au désastre.</small>
+                  </article>
+                  <article class="game-tile game-tile-empty" aria-label="Emplacement de jeu à venir">
+                    <span class="game-tile-mark">+</span>
+                    <strong>Bientôt</strong>
+                    <small>Ne pas nourrir après minuit.</small>
+                  </article>
+                  <article class="game-tile game-tile-empty" aria-label="Emplacement de jeu à venir">
+                    <span class="game-tile-mark">+</span>
+                    <strong>Bientôt</strong>
+                    <small>Concept juridiquement flou.</small>
+                  </article>
+                </div>
+              </section>
+              <div class="selected-game-strip">
+                <span>Jeu sélectionné</span>
+                <strong id="selected-game-name">Aléatoire</strong>
               </div>
-              <h3>En attente du signal de l'hôte</h3>
               <p id="game-settings-summary" class="game-settings-summary"></p>
               <p id="start-help" class="help-text"></p>
             </div>

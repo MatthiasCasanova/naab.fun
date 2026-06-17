@@ -294,7 +294,8 @@ test("l'accueil propose les avatars et la room conserve une liste laterale", () 
   assert.match(html, /id="room-name"/);
   assert.match(html, /maxlength="30"/);
   assert.match(html, /class="home-features"/);
-  assert.match(html, /<span>📝<\/span><span>🎙️<\/span><span>🎨<\/span>/);
+  assert.match(html, /id="sidebar-game-summary"/);
+  assert.match(html, /id="game-selection-grid"/);
 });
 
 test("la création transmet un nom de room et le serveur le valide", () => {
@@ -308,23 +309,37 @@ test("la création transmet un nom de room et le serveur le valide", () => {
   assert.match(server, /room\.customName \|\|/);
 });
 
-test("la room expose le chat, les emotes et son nom d'hôte", () => {
+test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   const html = readPublicFile("index.html");
   const app = readPublicFile("app.js");
   const css = readPublicFile("styles.css");
+  const server = readProjectFile("server.js");
 
+  assert.match(html, /<title>naab\.fun<\/title>/);
+  assert.match(html, /<h1>naab\.fun<\/h1>/);
   assert.match(html, /id="chat-sidebar"/);
   assert.match(html, /id="chat-messages"/);
   assert.match(html, /id="chat-form"/);
   assert.match(html, /id="chat-toggle-button"/);
-  assert.match(html, /class="emote-option"/);
-  assert.match(html, /id="players-sidebar-title">Kamoulox's Room</);
+  assert.match(html, /id="players-sidebar-title">naab\.fun room</);
+  assert.match(html, /id="game-selection-grid"/);
+  assert.match(html, /data-game-id="random"/);
+  assert.match(html, /data-game-id="kamoulox3000"/);
+  assert.match(html, /Kamoulox 3000/);
+  assert.match(html, /class="game-tile game-tile-empty"/);
+  assert.match(html, /id="sidebar-game-summary"/);
+  assert.doesNotMatch(html, new RegExp("emo" + "te-option"));
+  assert.doesNotMatch(html, new RegExp("emo" + "te-picker"));
   assert.doesNotMatch(html, />La bande</);
-  assert.match(app, /room\.name \|\| "Kamoulox's Room"/);
+  assert.match(app, /room\.name \|\| "naab\.fun room"/);
   assert.match(app, /socket\.on\("chatMessage"/);
   assert.match(app, /emitWithAcknowledgment\("sendChatMessage"/);
-  assert.match(app, /emitWithAcknowledgment\("setPlayerEmote"/);
+  assert.match(app, /emitWithAcknowledgment\("selectRoomGame"/);
+  assert.doesNotMatch(app, new RegExp("setPlayer" + "Emo" + "te"));
+  assert.doesNotMatch(server, new RegExp("setPlayer" + "Emo" + "te"));
   assert.match(css, /grid-template-areas:\s*"players main chat"/);
+  assert.match(css, /\.game-selection-grid/);
+  assert.match(css, /\.sidebar-lobby-signal/);
   assert.match(css, /\.chat-sidebar\.mobile-open/);
   assert.match(css, /\.chat-messages\s*\{[\s\S]*overflow:\s*hidden/);
   assert.match(app, /function trimChatToFit/);

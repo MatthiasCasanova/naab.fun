@@ -23,6 +23,22 @@ const MIN_ROOM_NAME_LENGTH = 2;
 const ROOM_CODE_LENGTH = 6;
 const DEFAULT_INPUT_TYPE_COUNT = 3;
 const DEFAULT_AVATAR_ID = "comet";
+const DEFAULT_ROOM_GAME_ID = "random";
+const PLAYABLE_ROOM_GAME_ID = "kamoulox3000";
+const ROOM_GAMES = Object.freeze([
+  {
+    id: "random",
+    name: "Aléatoire",
+    resolvedId: PLAYABLE_ROOM_GAME_ID,
+    available: true
+  },
+  {
+    id: PLAYABLE_ROOM_GAME_ID,
+    name: "Kamoulox 3000",
+    resolvedId: PLAYABLE_ROOM_GAME_ID,
+    available: true
+  }
+]);
 const AVATAR_IDS = Object.freeze([
   "comet",
   "robot",
@@ -45,7 +61,6 @@ const CONTRIBUTION_TYPES = Object.freeze({
 const CONTRIBUTION_TYPE_VALUES = Object.freeze(
   Object.values(CONTRIBUTION_TYPES)
 );
-const ROOM_EMOTES = Object.freeze(["😂", "🔥", "👏", "💀", "❤️", "🤯"]);
 
 function normalizeConfiguredOrigin(value) {
   const trimmedValue = value.trim();
@@ -337,6 +352,29 @@ function createGameServer(options = {}) {
       : null;
   }
 
+  function findRoomGame(gameId) {
+    return ROOM_GAMES.find((game) => game.id === gameId) || null;
+  }
+
+  function normalizeRoomGameId(value) {
+    const game = typeof value === "string" ? findRoomGame(value) : null;
+    return game && game.available ? game.id : null;
+  }
+
+  function serializeGameSelection(room) {
+    const selectedGame =
+      findRoomGame(room.selectedGameId) || findRoomGame(DEFAULT_ROOM_GAME_ID);
+    const resolvedGame =
+      findRoomGame(selectedGame.resolvedId) || selectedGame;
+
+    return {
+      selectedGameId: selectedGame.id,
+      selectedGameName: selectedGame.name,
+      resolvedGameId: resolvedGame.id,
+      resolvedGameName: resolvedGame.name
+    };
+  }
+
   function normalizeRoomCode(value) {
     if (typeof value !== "string") {
       return null;
@@ -370,7 +408,6 @@ function createGameServer(options = {}) {
       participantId,
       nickname,
       avatarId,
-      emote: "",
       joinedAt: Date.now(),
       joinOrder: joinSequence++
     };
@@ -401,12 +438,13 @@ function createGameServer(options = {}) {
       code: room.code,
       name:
         room.customName ||
-        `${host ? host.nickname : "Kamoulox"}'s Room`,
+        `${host ? host.nickname : "naab.fun"}'s Room`,
       hostId: room.hostId,
       phase: room.game ? room.game.status : "lobby",
       playerCount: room.players.size,
       maxPlayers: MAX_PLAYERS,
       minPlayersToStart: MIN_PLAYERS_TO_START,
+      gameSelection: serializeGameSelection(room),
       settings: {
         roundCount: room.settings.roundCount,
         effectiveRoundCount:
@@ -421,7 +459,6 @@ function createGameServer(options = {}) {
           id: player.id,
           nickname: player.nickname,
           avatarId: player.avatarId,
-          emote: player.emote,
           isHost: player.id === room.hostId,
           status: getPlayerStatus(room, player)
         })),
@@ -793,7 +830,6 @@ function createGameServer(options = {}) {
       id: player.participantId,
       nickname: player.nickname,
       avatarId: player.avatarId,
-      emote: player.emote,
       connected: true,
       socketId: player.id
     }));
@@ -1089,6 +1125,7 @@ function createGameServer(options = {}) {
         code: roomCode,
         customName: customRoomName,
         hostId: socket.id,
+        selectedGameId: DEFAULT_ROOM_GAME_ID,
         players: new Map([[socket.id, player]]),
         settings: {
           roundCount: null,
@@ -1189,7 +1226,6 @@ function createGameServer(options = {}) {
           participant.avatarId,
           participant.id
         );
-        player.emote = participant.emote || "";
         participant.connected = true;
         participant.socketId = socket.id;
       } else {
@@ -1215,6 +1251,43 @@ function createGameServer(options = {}) {
       answer(socket, acknowledgment, { ok: true, room: roomState });
       emitRoomState(room);
       emitGameStateToSocket(room, socket.id, player.participantId);
+    });
+
+    socket.on("selectRoomGame", (payload, acknowledgment) => {
+      const room = rooms.get(socket.data.roomCode);
+      const player = room && room.players.get(socket.id);
+      const selectedGameId = normalizeRoomGameId(payload && payload.gameId);
+
+      if (!room || !player) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "La room n'existe plus."
+        });
+        return;
+      }
+
+      if (room.game) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Le jeu est déjà lancé, rangez le menu Smash."
+        });
+        return;
+      }
+
+      if (!selectedGameId) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Ce jeu n'est pas encore disponible."
+        });
+        return;
+      }
+
+      room.selectedGameId = selectedGameId;
+      answer(socket, acknowledgment, {
+        ok: true,
+        gameSelection: serializeGameSelection(room)
+      });
+      emitRoomState(room);
     });
 
     socket.on("updateGameSettings", (payload, acknowledgment) => {
@@ -1486,43 +1559,6 @@ function createGameServer(options = {}) {
       io.to(room.code).emit("chatMessage", message);
     });
 
-    socket.on("setPlayerEmote", (payload, acknowledgment) => {
-      const room = rooms.get(socket.data.roomCode);
-      const player = room && room.players.get(socket.id);
-      const emote =
-        payload && typeof payload.emote === "string" ? payload.emote : "";
-
-      if (!room || !player) {
-        answer(socket, acknowledgment, {
-          ok: false,
-          error: "La room n'existe plus."
-        });
-        return;
-      }
-
-      if (emote && !ROOM_EMOTES.includes(emote)) {
-        answer(socket, acknowledgment, {
-          ok: false,
-          error: "Cette emote n'est pas disponible."
-        });
-        return;
-      }
-
-      player.emote = emote;
-      if (room.game) {
-        const participant = getGameParticipant(
-          room.game,
-          player.participantId
-        );
-        if (participant) {
-          participant.emote = emote;
-        }
-      }
-
-      answer(socket, acknowledgment, { ok: true });
-      emitRoomState(room);
-    });
-
     socket.on("navigateResults", (payload, acknowledgment) => {
       const room = rooms.get(socket.data.roomCode);
       const game = room && room.game;
@@ -1711,6 +1747,7 @@ module.exports = {
   MAX_PLAYERS,
   ROUND_DURATION_MS,
   ROUND_PREVIEW_MS,
+  ROOM_GAMES,
   ROOM_CODE_CHARACTERS,
   createTypePlan,
   createGameServer,

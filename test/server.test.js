@@ -214,6 +214,8 @@ test("la création valide les pseudonymes et génère un code non ambigu", async
     assert.equal(created.room.players[0].avatarId, "robot");
     assert.equal(created.room.players[0].status, "ready");
     assert.equal(created.room.name, "Le Laboratoire");
+    assert.equal(created.room.gameSelection.selectedGameId, "random");
+    assert.equal(created.room.gameSelection.resolvedGameId, "kamoulox3000");
     assert.deepEqual(created.room.chatMessages, []);
     assert.deepEqual(AVATAR_IDS, [
       "comet",
@@ -380,7 +382,7 @@ test("le rôle d'hôte est transféré et une room vide est supprimée", async (
   }
 });
 
-test("le chat et les emotes sont synchronisés dans toute la room", async () => {
+test("le chat et la sélection de jeu sont synchronisés dans toute la room", async () => {
   const { game, url } = await startTestServer();
   const clients = [];
 
@@ -421,23 +423,26 @@ test("le chat et les emotes sont synchronisés dans toute la room", async () => 
     assert.equal(joinedLate.room.chatMessages.length, 1);
     assert.equal(joinedLate.room.chatMessages[0].content, "Salut la room");
 
-    const emoteUpdate = waitForEvent(
+    const gameSelectionUpdate = waitForEvent(
       guest,
       "roomState",
-      (room) =>
-        room.players.some(
-          (player) => player.nickname === "Alice" && player.emote === "🔥"
-        )
+      (room) => room.gameSelection.selectedGameId === "kamoulox3000"
     );
-    const emote = await emitAck(host, "setPlayerEmote", { emote: "🔥" });
-    assert.equal(emote.ok, true);
-    await emoteUpdate;
-
-    const invalidEmote = await emitAck(host, "setPlayerEmote", {
-      emote: "🐉"
+    const gameSelection = await emitAck(guest, "selectRoomGame", {
+      gameId: "kamoulox3000"
     });
-    assert.equal(invalidEmote.ok, false);
-    assert.match(invalidEmote.error, /emote/);
+    assert.equal(gameSelection.ok, true);
+    assert.equal(
+      gameSelection.gameSelection.selectedGameName,
+      "Kamoulox 3000"
+    );
+    await gameSelectionUpdate;
+
+    const invalidSelection = await emitAck(host, "selectRoomGame", {
+      gameId: "totally-real-game"
+    });
+    assert.equal(invalidSelection.ok, false);
+    assert.match(invalidSelection.error, /jeu/);
 
     const tooLong = await emitAck(host, "sendChatMessage", {
       content: "x".repeat(201)
