@@ -209,7 +209,9 @@
   let currentNickname = "";
   let currentAvatarId = "comet";
   let pendingRoomGameId = null;
+  let pendingRoomGameVoteId = null;
   let roomGameSelectionRequestId = 0;
+  let roomGameVoteRequestId = 0;
   let shouldRejoin = false;
   let timerInterval = null;
   let introTimeout = null;
@@ -1175,6 +1177,112 @@
     };
   }
 
+  function getCurrentRoomPlayer(room) {
+    if (!socket || !room || !Array.isArray(room.players)) {
+      return null;
+    }
+
+    return room.players.find((player) => player.id === socket.id) || null;
+  }
+
+  function getGameVotes(room, gameId) {
+    const votes = room && room.gameVotes && room.gameVotes[gameId];
+    return Array.isArray(votes) ? votes : [];
+  }
+
+  function getCurrentGameVoteId(room) {
+    if (!socket || !room || !room.gameVotes) {
+      return null;
+    }
+
+    return Object.entries(room.gameVotes).reduce(
+      (currentVoteId, [gameId, votes]) => {
+        if (currentVoteId || !Array.isArray(votes)) {
+          return currentVoteId;
+        }
+
+        return votes.some((vote) => vote.playerId === socket.id)
+          ? gameId
+          : null;
+      },
+      null
+    );
+  }
+
+  function createRoomGameVotesWithCurrentVote(room, gameId) {
+    const player = getCurrentRoomPlayer(room);
+    const nextVotes = {};
+
+    Object.entries((room && room.gameVotes) || {}).forEach(
+      ([voteGameId, votes]) => {
+        const filteredVotes = Array.isArray(votes)
+          ? votes.filter((vote) => !player || vote.playerId !== player.id)
+          : [];
+        if (filteredVotes.length > 0) {
+          nextVotes[voteGameId] = filteredVotes;
+        }
+      }
+    );
+
+    if (player && !player.isHost && ROOM_GAMES[gameId]) {
+      nextVotes[gameId] = [
+        ...(nextVotes[gameId] || []),
+        {
+          playerId: player.id,
+          nickname: player.nickname,
+          avatarId: player.avatarId || currentAvatarId
+        }
+      ];
+    }
+
+    return nextVotes;
+  }
+
+  function renderGameVotes(button, votes) {
+    const previousStack = button.querySelector(".game-vote-stack");
+    if (previousStack) {
+      previousStack.remove();
+    }
+
+    button.classList.toggle("has-votes", votes.length > 0);
+    button.classList.toggle(
+      "has-self-vote",
+      Boolean(socket && votes.some((vote) => vote.playerId === socket.id))
+    );
+
+    if (votes.length === 0) {
+      return;
+    }
+
+    const stack = document.createElement("span");
+    const visibleVotes = votes.slice(0, 5);
+    stack.className = "game-vote-stack";
+    stack.title =
+      `Votes : ${votes.map((vote) => vote.nickname).join(", ")}`;
+    stack.setAttribute(
+      "aria-label",
+      `${votes.length} vote${votes.length > 1 ? "s" : ""}`
+    );
+
+    visibleVotes.forEach((vote) => {
+      const avatar = document.createElement("span");
+      avatar.className =
+        `game-vote-avatar avatar-${vote.avatarId || "comet"}`;
+      avatar.textContent = AVATARS[vote.avatarId] || AVATARS.comet;
+      avatar.title = vote.nickname;
+      stack.append(avatar);
+    });
+
+    if (votes.length > visibleVotes.length) {
+      const extra = document.createElement("span");
+      extra.className = "game-vote-avatar game-vote-extra";
+      extra.textContent = `+${votes.length - visibleVotes.length}`;
+      stack.append(extra);
+    }
+
+    button.append(stack);
+  }
+
   function renderGameSelection(room) {
     const selectedGameId = getSelectedRoomGameId(room);
     const selectedLabel = getRoomGameLabel(room);
@@ -1190,9 +1298,11 @@
 
     elements.gameSelectionButtons.forEach((button) => {
       const isSelected = button.dataset.gameId === selectedGameId;
+      const votes = getGameVotes(room, button.dataset.gameId);
       button.classList.toggle("active", isSelected);
       button.setAttribute("aria-pressed", String(isSelected));
       button.disabled = !room || room.phase !== "lobby";
+      renderGameVotes(button, votes);
     });
   }
 
@@ -1562,13 +1672,24 @@
     });
 
     socket.on("roomState", (room) => {
-      const displayedRoom =
-        pendingRoomGameId && room.phase === "lobby"
-          ? {
-              ...room,
-              gameSelection: createRoomGameSelection(pendingRoomGameId)
-            }
-          : room;
+      let displayedRoom = room;
+      if (room.phase === "lobby") {
+        if (pendingRoomGameId) {
+          displayedRoom = {
+            ...displayedRoom,
+            gameSelection: createRoomGameSelection(pendingRoomGameId)
+          };
+        }
+        if (pendingRoomGameVoteId) {
+          displayedRoom = {
+            ...displayedRoom,
+            gameVotes: createRoomGameVotesWithCurrentVote(
+              displayedRoom,
+              pendingRoomGameVoteId
+            )
+          };
+        }
+      }
       currentRoom = displayedRoom;
       if (displayedRoom.phase === "lobby") {
         showRoom(displayedRoom);
@@ -1858,6 +1979,71 @@
         renderRoomLobbyState(currentRoom);
       }
     }
+  }
+
+  async function voteRoomGame(gameId) {
+    if (!currentRoom || !socket || !ROOM_GAMES[gameId]) {
+      return;
+    }
+    if (currentRoom.hostId === socket.id) {
+      await selectRoomGame(gameId);
+      return;
+    }
+    if (getCurrentGameVoteId(currentRoom) === gameId) {
+      return;
+    }
+
+    const requestId = roomGameVoteRequestId + 1;
+    roomGameVoteRequestId = requestId;
+    pendingRoomGameVoteId = gameId;
+    const previousVotes = currentRoom.gameVotes;
+    currentRoom.gameVotes = createRoomGameVotesWithCurrentVote(
+      currentRoom,
+      gameId
+    );
+    renderRoomLobbyState(currentRoom);
+    setMessage(elements.roomMessage, "");
+
+    try {
+      const response = await emitWithAcknowledgment("voteRoomGame", {
+        gameId
+      });
+      if (!response || !response.ok) {
+        throw new Error(
+          (response && response.error) || "Vote refusé par le grand conseil."
+        );
+      }
+      if (requestId !== roomGameVoteRequestId) {
+        return;
+      }
+      pendingRoomGameVoteId = null;
+      currentRoom.gameVotes = response.gameVotes;
+      renderRoomLobbyState(currentRoom);
+      setMessage(elements.roomMessage, "");
+    } catch (error) {
+      if (requestId !== roomGameVoteRequestId) {
+        return;
+      }
+      pendingRoomGameVoteId = null;
+      setMessage(elements.roomMessage, error.message, "error");
+      if (currentRoom) {
+        currentRoom.gameVotes = previousVotes;
+        renderRoomLobbyState(currentRoom);
+      }
+    }
+  }
+
+  function handleRoomGameClick(gameId) {
+    if (!currentRoom || !socket) {
+      return;
+    }
+
+    if (currentRoom.hostId === socket.id) {
+      selectRoomGame(gameId);
+      return;
+    }
+
+    voteRoomGame(gameId);
   }
 
   async function updateRoomSettings() {
@@ -3586,7 +3772,7 @@
     });
     elements.gameSelectionButtons.forEach((button) => {
       button.addEventListener("click", () => {
-        selectRoomGame(button.dataset.gameId);
+        handleRoomGameClick(button.dataset.gameId);
       });
     });
 

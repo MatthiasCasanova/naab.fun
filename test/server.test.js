@@ -216,6 +216,7 @@ test("la création valide les pseudonymes et génère un code non ambigu", async
     assert.equal(created.room.name, "Le Laboratoire");
     assert.equal(created.room.gameSelection.selectedGameId, "random");
     assert.equal(created.room.gameSelection.resolvedGameId, "kamoulox3000");
+    assert.deepEqual(created.room.gameVotes, {});
     assert.deepEqual(created.room.chatMessages, []);
     assert.deepEqual(AVATAR_IDS, [
       "comet",
@@ -428,7 +429,7 @@ test("le chat et la sélection de jeu sont synchronisés dans toute la room", as
       "roomState",
       (room) => room.gameSelection.selectedGameId === "kamoulox3000"
     );
-    const gameSelection = await emitAck(guest, "selectRoomGame", {
+    const gameSelection = await emitAck(host, "selectRoomGame", {
       gameId: "kamoulox3000"
     });
     assert.equal(gameSelection.ok, true);
@@ -437,6 +438,36 @@ test("le chat et la sélection de jeu sont synchronisés dans toute la room", as
       "Kamoulox 3000"
     );
     await gameSelectionUpdate;
+
+    const deniedSelection = await emitAck(guest, "selectRoomGame", {
+      gameId: "random"
+    });
+    assert.equal(deniedSelection.ok, false);
+    assert.match(deniedSelection.error, /hôte|hote/i);
+
+    const voteUpdate = waitForEvent(
+      host,
+      "roomState",
+      (room) =>
+        room.gameVotes &&
+        room.gameVotes.kamoulox3000 &&
+        room.gameVotes.kamoulox3000.some(
+          (vote) => vote.nickname === "Bob"
+        )
+    );
+    const vote = await emitAck(guest, "voteRoomGame", {
+      gameId: "kamoulox3000"
+    });
+    assert.equal(vote.ok, true);
+    assert.equal(vote.gameVotes.kamoulox3000[0].nickname, "Bob");
+    assert.equal(vote.gameVotes.kamoulox3000[0].avatarId, "comet");
+    await voteUpdate;
+
+    const deniedHostVote = await emitAck(host, "voteRoomGame", {
+      gameId: "random"
+    });
+    assert.equal(deniedHostVote.ok, false);
+    assert.match(deniedHostVote.error, /hôte|hote/i);
 
     const invalidSelection = await emitAck(host, "selectRoomGame", {
       gameId: "totally-real-game"

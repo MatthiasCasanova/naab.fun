@@ -375,6 +375,35 @@ function createGameServer(options = {}) {
     };
   }
 
+  function serializeGameVotes(room) {
+    const votes = {};
+
+    Array.from(room.players.values())
+      .sort((first, second) => first.joinOrder - second.joinOrder)
+      .forEach((player) => {
+        if (player.id === room.hostId || !room.gameVotes) {
+          return;
+        }
+
+        const gameId = room.gameVotes.get(player.participantId);
+        if (!normalizeRoomGameId(gameId)) {
+          return;
+        }
+
+        if (!votes[gameId]) {
+          votes[gameId] = [];
+        }
+
+        votes[gameId].push({
+          playerId: player.id,
+          nickname: player.nickname,
+          avatarId: player.avatarId
+        });
+      });
+
+    return votes;
+  }
+
   function normalizeRoomCode(value) {
     if (typeof value !== "string") {
       return null;
@@ -445,6 +474,7 @@ function createGameServer(options = {}) {
       maxPlayers: MAX_PLAYERS,
       minPlayersToStart: MIN_PLAYERS_TO_START,
       gameSelection: serializeGameSelection(room),
+      gameVotes: serializeGameVotes(room),
       settings: {
         roundCount: room.settings.roundCount,
         effectiveRoundCount:
@@ -1015,6 +1045,10 @@ function createGameServer(options = {}) {
       return false;
     }
 
+    if (room.gameVotes && participantId) {
+      room.gameVotes.delete(participantId);
+    }
+
     if (room.game && participantId) {
       const participant = getGameParticipant(room.game, participantId);
       if (participant && participant.socketId === socket.id) {
@@ -1038,6 +1072,10 @@ function createGameServer(options = {}) {
 
     if (room.hostId === socket.id) {
       room.hostId = findLongestConnectedPlayer(room).id;
+      const newHost = room.players.get(room.hostId);
+      if (room.gameVotes && newHost) {
+        room.gameVotes.delete(newHost.participantId);
+      }
     }
 
     if (
@@ -1126,6 +1164,7 @@ function createGameServer(options = {}) {
         customName: customRoomName,
         hostId: socket.id,
         selectedGameId: DEFAULT_ROOM_GAME_ID,
+        gameVotes: new Map(),
         players: new Map([[socket.id, player]]),
         settings: {
           roundCount: null,
@@ -1282,10 +1321,63 @@ function createGameServer(options = {}) {
         return;
       }
 
+      if (room.hostId !== socket.id) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Seul l'hôte choisit le jeu officiel. Vous pouvez voter."
+        });
+        return;
+      }
+
       room.selectedGameId = selectedGameId;
       answer(socket, acknowledgment, {
         ok: true,
         gameSelection: serializeGameSelection(room)
+      });
+      emitRoomState(room);
+    });
+
+    socket.on("voteRoomGame", (payload, acknowledgment) => {
+      const room = rooms.get(socket.data.roomCode);
+      const player = room && room.players.get(socket.id);
+      const gameId = normalizeRoomGameId(payload && payload.gameId);
+
+      if (!room || !player) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "La room n'existe plus."
+        });
+        return;
+      }
+
+      if (room.game) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Le jeu est déjà lancé, le vote part à la poubelle cosmique."
+        });
+        return;
+      }
+
+      if (room.hostId === socket.id) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "L'hôte choisit le jeu officiel au lieu de voter."
+        });
+        return;
+      }
+
+      if (!gameId) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Ce jeu n'est pas encore disponible."
+        });
+        return;
+      }
+
+      room.gameVotes.set(player.participantId, gameId);
+      answer(socket, acknowledgment, {
+        ok: true,
+        gameVotes: serializeGameVotes(room)
       });
       emitRoomState(room);
     });
@@ -1367,6 +1459,7 @@ function createGameServer(options = {}) {
         return;
       }
 
+      room.gameVotes.clear();
       room.game = createGame(room);
       answer(socket, acknowledgment, { ok: true });
       beginGameCountdown(room);
