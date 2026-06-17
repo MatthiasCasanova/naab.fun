@@ -212,6 +212,7 @@
   let pendingRoomGameVoteId = null;
   let roomGameSelectionRequestId = 0;
   let roomGameVoteRequestId = 0;
+  let renderedPlayerListSignature = "";
   let shouldRejoin = false;
   let timerInterval = null;
   let introTimeout = null;
@@ -950,12 +951,39 @@
     renderedRoundKey = null;
     roundPreviousAudio = null;
     codeVisible = false;
+    renderedPlayerListSignature = "";
     setGameSettingsOpen(false);
     showOnly(elements.homeView);
     setConnectionState(Boolean(socket && socket.connected), "Connecté");
   }
 
+  function getPlayerListSignature(room) {
+    if (!room || !Array.isArray(room.players)) {
+      return "";
+    }
+
+    return [
+      room.code,
+      room.name,
+      ...room.players.map((player) =>
+        [
+          player.id,
+          player.nickname,
+          player.avatarId,
+          player.isHost ? "host" : "guest",
+          player.status || "ready"
+        ].join(":")
+      )
+    ].join("|");
+  }
+
   function renderPlayerList(room) {
+    const signature = getPlayerListSignature(room);
+    if (signature && signature === renderedPlayerListSignature) {
+      return;
+    }
+    renderedPlayerListSignature = signature;
+
     elements.playerList.replaceChildren();
     elements.playersSidebarTitle.textContent =
       room.name || "naab.fun room";

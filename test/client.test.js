@@ -343,11 +343,13 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(app, /function renderGameVotes/);
   assert.match(app, /function handleRoomGameClick/);
   assert.match(app, /function renderRoomLobbyState/);
+  assert.match(app, /renderedPlayerListSignature/);
+  assert.match(app, /function getPlayerListSignature/);
   assert.doesNotMatch(app, new RegExp("setPlayer" + "Emo" + "te"));
   assert.doesNotMatch(server, new RegExp("setPlayer" + "Emo" + "te"));
   assert.match(css, /grid-template-areas:\s*"players main chat"/);
   assert.match(css, /\.game-selection-grid/);
-  assert.match(css, /\.game-vote-stack/);
+  assert.match(css, /\.game-vote-stack\s*\{[\s\S]*right:\s*10px/);
   assert.match(css, /\.game-vote-avatar/);
   assert.match(css, /\.sidebar-lobby-signal/);
   assert.match(css, /\.chat-sidebar\.mobile-open/);
