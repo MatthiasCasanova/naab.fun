@@ -1314,7 +1314,7 @@ label,
   position: absolute;
   z-index: 6;
   top: 12px;
-  left: 12px;
+  right: 12px;
   display: grid;
   width: 42px;
   height: 42px;
@@ -1340,10 +1340,6 @@ label,
     0 14px 30px color-mix(in srgb, var(--primary) 24%, transparent);
   outline: 0;
   transform: translateY(-1px) scale(1.04);
-}
-
-.game-tile.settings-visible .game-tile-mark {
-  left: 64px;
 }
 
 .game-tile-mark {

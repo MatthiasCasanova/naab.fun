@@ -372,7 +372,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.game-vote-avatar/);
   assert.match(css, /\.game-tile\.self-voted-only/);
   assert.match(css, /\.game-tile-settings/);
-  assert.match(css, /\.game-tile\.settings-visible \.game-tile-mark/);
+  assert.match(css, /\.game-tile-settings\s*\{[\s\S]*right:\s*12px/);
   assert.match(css, /\.spell-kit-editor/);
   assert.match(css, /\.quote-audio-slots/);
   assert.match(css, /\.player-reference/);
