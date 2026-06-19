@@ -5,6 +5,7 @@ const { test } = require("node:test");
 const { io: createClient } = require("socket.io-client");
 const {
   GAME_COUNTDOWN_MS,
+  KAMOULOX_GAME_ID,
   LEAGUE_OF_NAABS_GAME_ID,
   LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT,
   LEAGUE_OF_NAABS_REVEAL_STEPS_PER_CHAMPION,
@@ -311,6 +312,72 @@ test("seul l'hôte configure et lance la partie", async () => {
     assert.ok(state.assignment.expectedType);
 
     const room = game.rooms.get(setup.code);
+    assert.equal(room.game.activeTypes.length, 2);
+  } finally {
+    await cleanup(game, clients);
+  }
+});
+
+test("les réglages de partie restent propres à chaque jeu", async () => {
+  const { game, url } = await startTestServer();
+  let clients = [];
+
+  try {
+    const setup = await createRoomWithPlayers(url, [
+      "Alice",
+      "Bob",
+      "Claire",
+      "David"
+    ]);
+    clients = setup.clients;
+    const [host] = clients;
+
+    await emitAck(host, "selectRoomGame", { gameId: KAMOULOX_GAME_ID });
+    const kamouloxSettings = await emitAck(host, "updateGameSettings", {
+      gameId: KAMOULOX_GAME_ID,
+      roundCount: 3,
+      inputTypeCount: 2
+    });
+    assert.equal(kamouloxSettings.ok, true);
+    assert.equal(kamouloxSettings.settings.gameId, KAMOULOX_GAME_ID);
+    assert.equal(kamouloxSettings.settings.roundCount, 3);
+    assert.equal(kamouloxSettings.settings.inputTypeCount, 2);
+
+    await emitAck(host, "selectRoomGame", {
+      gameId: LEAGUE_OF_NAABS_GAME_ID
+    });
+    const leagueSettings = await emitAck(host, "updateGameSettings", {
+      gameId: LEAGUE_OF_NAABS_GAME_ID,
+      roundCount: 1,
+      inputTypeCount: 3
+    });
+    assert.equal(leagueSettings.ok, true);
+    assert.equal(leagueSettings.settings.gameId, LEAGUE_OF_NAABS_GAME_ID);
+    assert.equal(leagueSettings.settings.roundCount, 1);
+
+    const selectedBack = await emitAck(host, "selectRoomGame", {
+      gameId: KAMOULOX_GAME_ID
+    });
+    assert.equal(selectedBack.ok, true);
+    assert.equal(selectedBack.settings.gameId, KAMOULOX_GAME_ID);
+    assert.equal(selectedBack.settings.roundCount, 3);
+    assert.equal(selectedBack.settings.inputTypeCount, 2);
+
+    const roundPromise = waitForEvent(
+      host,
+      "gameState",
+      (state) => state.phase === "playing"
+    );
+    await emitAck(host, "startGame");
+    const round = await roundPromise;
+    assert.equal(round.totalRounds, 3);
+
+    const room = game.rooms.get(setup.code);
+    assert.equal(room.gameSettings.get(KAMOULOX_GAME_ID).roundCount, 3);
+    assert.equal(
+      room.gameSettings.get(LEAGUE_OF_NAABS_GAME_ID).roundCount,
+      1
+    );
     assert.equal(room.game.activeTypes.length, 2);
   } finally {
     await cleanup(game, clients);

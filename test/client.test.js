@@ -271,7 +271,9 @@ test("le lobby masque le code et expose les réglages de l'hôte", () => {
 
   assert.match(html, /id="room-title" class="room-code">\*{6}</);
   assert.match(html, /id="toggle-code-button"/);
-  assert.match(html, /id="game-settings-button"/);
+  assert.doesNotMatch(html, /id="game-settings-button"/);
+  assert.match(html, /class="game-tile-settings hidden"/);
+  assert.match(html, /data-game-settings-id="kamoulox3000"/);
   assert.match(html, /id="game-settings-modal"/);
   assert.match(html, /id="game-settings-panel"/);
   assert.match(html, /id="round-count-select"/);
@@ -369,6 +371,8 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.game-vote-stack\s*\{[\s\S]*right:\s*10px/);
   assert.match(css, /\.game-vote-avatar/);
   assert.match(css, /\.game-tile\.self-voted-only/);
+  assert.match(css, /\.game-tile-settings/);
+  assert.match(css, /\.game-tile\.settings-visible \.game-tile-mark/);
   assert.match(css, /\.spell-kit-editor/);
   assert.match(css, /\.quote-audio-slots/);
   assert.match(css, /\.player-reference/);
@@ -518,7 +522,7 @@ test("les commandes utilisent le sprite d'icones et des animations coherentes", 
   assert.match(html, /id="icon-moon"/);
   assert.match(
     html,
-    /id="game-settings-button"[\s\S]*href="#icon-settings"/
+    /class="game-tile-settings hidden"[\s\S]*href="#icon-settings"/
   );
   assert.match(css, /button,\s*\.button\s*\{[\s\S]*transition:/);
   assert.match(css, /\.icon-button:hover:not\(:disabled\)/);

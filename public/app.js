@@ -117,8 +117,11 @@
     copyButton: document.querySelector("#copy-button"),
     toggleCodeButton: document.querySelector("#toggle-code-button"),
     codeIconUse: document.querySelector("#code-icon-use"),
-    gameSettingsButton: document.querySelector("#game-settings-button"),
+    gameSettingsButtons: Array.from(
+      document.querySelectorAll(".game-tile-settings")
+    ),
     gameSettingsPanel: document.querySelector("#game-settings-panel"),
+    gameSettingsTitle: document.querySelector("#game-settings-title"),
     roundCountSelect: document.querySelector("#round-count-select"),
     inputTypeCountSelect: document.querySelector(
       "#input-type-count-select"
@@ -816,7 +819,7 @@
     }
     if (
       button.id === "settings-button" ||
-      button.id === "game-settings-button" ||
+      button.classList.contains("game-tile-settings") ||
       button.id === "close-settings-button" ||
       button.id === "close-game-settings-button"
     ) {
@@ -871,6 +874,13 @@
     }
   }
 
+  function getSelectedGameSettingsButton() {
+    const selectedGameId = getSelectedRoomGameId(currentRoom);
+    return elements.gameSettingsButtons.find(
+      (button) => button.dataset.gameSettingsId === selectedGameId
+    ) || null;
+  }
+
   function setGameSettingsOpen(isOpen) {
     const wasOpen = !elements.gameSettingsModal.classList.contains("hidden");
     const canOpen =
@@ -887,7 +897,10 @@
     if (isOpen && canOpen) {
       elements.closeGameSettingsButton.focus();
     } else if (wasOpen && canOpen) {
-      elements.gameSettingsButton.focus();
+      const button = getSelectedGameSettingsButton();
+      if (button) {
+        button.focus();
+      }
     }
   }
 
@@ -1372,16 +1385,28 @@
     elements.gameSelectionButtons.forEach((button) => {
       const isSelected = button.dataset.gameId === selectedGameId;
       const votes = getGameVotes(room, button.dataset.gameId);
+      const settingsButton = button.querySelector(".game-tile-settings");
+      const settingsVisible = Boolean(
+        socket && room.hostId === socket.id && room.phase === "lobby" && isSelected
+      );
       const hasSelfVote = Boolean(
         socket && votes.some((vote) => vote.playerId === socket.id)
       );
       button.classList.toggle("active", isSelected);
+      button.classList.toggle("settings-visible", settingsVisible);
       button.classList.toggle(
         "self-voted-only",
         Boolean(socket && room.hostId !== socket.id && hasSelfVote && !isSelected)
       );
       button.setAttribute("aria-pressed", String(isSelected));
-      button.disabled = !room || room.phase !== "lobby";
+      button.setAttribute(
+        "aria-disabled",
+        String(!room || room.phase !== "lobby")
+      );
+      button.tabIndex = room && room.phase === "lobby" ? 0 : -1;
+      if (settingsButton) {
+        settingsButton.classList.toggle("hidden", !settingsVisible);
+      }
       renderGameVotes(button, votes);
     });
   }
@@ -1411,10 +1436,11 @@
     elements.inputTypeCountSelect.value = String(
       room.settings.inputTypeCount
     );
-    elements.gameSettingsButton.classList.toggle("hidden", !isHost);
     if (!isHost) {
       setGameSettingsOpen(false);
     }
+    elements.gameSettingsTitle.textContent =
+      `Réglages de ${getRoomGameLabel(room)}`;
 
     const rounds = room.settings.effectiveRoundCount;
     const typeCount = room.settings.inputTypeCount;
@@ -2046,6 +2072,9 @@
       }
       pendingRoomGameId = null;
       currentRoom.gameSelection = response.gameSelection;
+      if (response.settings) {
+        currentRoom.settings = response.settings;
+      }
       renderRoomLobbyState(currentRoom);
       setMessage(elements.roomMessage, "");
     } catch (error) {
@@ -2133,6 +2162,7 @@
 
     const roundValue = elements.roundCountSelect.value;
     const payload = {
+      gameId: getSelectedRoomGameId(currentRoom),
       roundCount: roundValue === "auto" ? null : Number(roundValue),
       inputTypeCount: Number(elements.inputTypeCountSelect.value)
     };
@@ -2150,6 +2180,10 @@
         throw new Error(
           (response && response.error) || "Réglages refusés."
         );
+      }
+      if (currentRoom && response.settings) {
+        currentRoom.settings = response.settings;
+        renderRoomLobbyState(currentRoom);
       }
       setMessage(elements.roomMessage, "");
     } catch (error) {
@@ -4350,7 +4384,29 @@
     });
     elements.gameSelectionButtons.forEach((button) => {
       button.addEventListener("click", () => {
+        if (button.getAttribute("aria-disabled") === "true") {
+          return;
+        }
         handleRoomGameClick(button.dataset.gameId);
+      });
+      button.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") {
+          return;
+        }
+        event.preventDefault();
+        if (button.getAttribute("aria-disabled") === "true") {
+          return;
+        }
+        handleRoomGameClick(button.dataset.gameId);
+      });
+    });
+    elements.gameSettingsButtons.forEach((button) => {
+      button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        if (button.classList.contains("hidden")) {
+          return;
+        }
+        setGameSettingsOpen(true);
       });
     });
 
@@ -4418,9 +4474,6 @@
     elements.toggleCodeButton.addEventListener("click", () => {
       codeVisible = !codeVisible;
       renderRoomCode();
-    });
-    elements.gameSettingsButton.addEventListener("click", () => {
-      setGameSettingsOpen(true);
     });
     elements.closeGameSettingsButton.addEventListener("click", () => {
       setGameSettingsOpen(false);

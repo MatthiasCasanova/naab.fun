@@ -107,6 +107,13 @@ const LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT =
   LEAGUE_OF_NAABS_STEPS.length + 1;
 const LEAGUE_OF_NAABS_REVEAL_STEPS_PER_CHAMPION = 11;
 
+function createDefaultGameSettings() {
+  return {
+    roundCount: null,
+    inputTypeCount: DEFAULT_INPUT_TYPE_COUNT
+  };
+}
+
 function normalizeConfiguredOrigin(value) {
   const trimmedValue = value.trim();
 
@@ -437,6 +444,12 @@ function createGameServer(options = {}) {
     return findRoomGame(selectedGame.resolvedId) || selectedGame;
   }
 
+  function getResolvedRoomGameForId(gameId) {
+    const selectedGame =
+      findRoomGame(gameId) || findRoomGame(DEFAULT_ROOM_GAME_ID);
+    return findRoomGame(selectedGame.resolvedId) || selectedGame;
+  }
+
   function getMaxRoundsForGame(gameId, playerCount) {
     if (gameId === LEAGUE_OF_NAABS_GAME_ID) {
       return Math.max(
@@ -448,16 +461,49 @@ function createGameServer(options = {}) {
     return Math.max(1, Math.min(playerCount, MAX_PLAYERS));
   }
 
+  function getRoomGameSettings(room, gameId = room.selectedGameId) {
+    const normalizedGameId =
+      normalizeRoomGameId(gameId) || DEFAULT_ROOM_GAME_ID;
+    if (!room.gameSettings) {
+      room.gameSettings = new Map();
+    }
+    if (!room.gameSettings.has(normalizedGameId)) {
+      room.gameSettings.set(normalizedGameId, createDefaultGameSettings());
+    }
+
+    return room.gameSettings.get(normalizedGameId);
+  }
+
+  function serializeSettings(room, gameId = room.selectedGameId) {
+    const selectedGame =
+      findRoomGame(gameId) || findRoomGame(DEFAULT_ROOM_GAME_ID);
+    const resolvedGame = getResolvedRoomGameForId(selectedGame.id);
+    const settings = getRoomGameSettings(room, selectedGame.id);
+    const maxRounds = getMaxRoundsForGame(resolvedGame.id, room.players.size);
+    const effectiveRoundCount =
+      settings.roundCount === null
+        ? maxRounds
+        : Math.min(settings.roundCount, maxRounds);
+
+    return {
+      gameId: selectedGame.id,
+      roundCount: settings.roundCount,
+      effectiveRoundCount,
+      inputTypeCount: settings.inputTypeCount
+    };
+  }
+
   function getEffectiveRoundCount(room) {
     const resolvedGame = getResolvedRoomGame(room);
+    const settings = getRoomGameSettings(room);
     const maxRounds = getMaxRoundsForGame(
       resolvedGame.id,
       room.players.size
     );
 
-    return room.settings.roundCount === null
+    return settings.roundCount === null
       ? maxRounds
-      : Math.min(room.settings.roundCount, maxRounds);
+      : Math.min(settings.roundCount, maxRounds);
   }
 
   function serializeGameSelection(room) {
@@ -570,11 +616,7 @@ function createGameServer(options = {}) {
       minPlayersToStart: MIN_PLAYERS_TO_START,
       gameSelection: serializeGameSelection(room),
       gameVotes: serializeGameVotes(room),
-      settings: {
-        roundCount: room.settings.roundCount,
-        effectiveRoundCount: getEffectiveRoundCount(room),
-        inputTypeCount: room.settings.inputTypeCount
-      },
+      settings: serializeSettings(room),
       players: Array.from(room.players.values())
         .sort((first, second) => first.joinOrder - second.joinOrder)
         .map((player) => ({
@@ -1024,6 +1066,7 @@ function createGameServer(options = {}) {
     );
     const resolvedGame = getResolvedRoomGame(room);
     const gameId = resolvedGame.id;
+    const settings = getRoomGameSettings(room, room.selectedGameId);
     const participants = orderedPlayers.map((player) => ({
       id: player.participantId,
       nickname: player.nickname,
@@ -1042,7 +1085,7 @@ function createGameServer(options = {}) {
     const totalRounds = Math.max(
       1,
       Math.min(
-        room.settings.roundCount === null ? maxRounds : room.settings.roundCount,
+        settings.roundCount === null ? maxRounds : settings.roundCount,
         maxRounds
       )
     );
@@ -1054,7 +1097,7 @@ function createGameServer(options = {}) {
       gameId === LEAGUE_OF_NAABS_GAME_ID
         ? [...new Set(roundSpecs.map((step) => step.type))]
         : selectActiveContributionTypes(
-            room.settings.inputTypeCount,
+            settings.inputTypeCount,
             randomInt
           );
     const generatedPlans =
@@ -1363,12 +1406,21 @@ function createGameServer(options = {}) {
       }
     }
 
-    if (
-      !room.game &&
-      room.settings.roundCount !== null &&
-      room.settings.roundCount > room.players.size
-    ) {
-      room.settings.roundCount = Math.max(1, room.players.size);
+    if (!room.game && room.gameSettings) {
+      room.gameSettings.forEach((settings, gameId) => {
+        const resolvedGame = getResolvedRoomGameForId(gameId);
+        const maxRounds = getMaxRoundsForGame(
+          resolvedGame.id,
+          room.players.size
+        );
+        if (
+          settings.roundCount !== null &&
+          settings.roundCount > maxRounds
+        ) {
+          settings.roundCount = maxRounds;
+        }
+      });
+      room.settings = getRoomGameSettings(room);
     }
 
     emitRoomState(room);
@@ -1451,10 +1503,10 @@ function createGameServer(options = {}) {
         selectedGameId: DEFAULT_ROOM_GAME_ID,
         gameVotes: new Map(),
         players: new Map([[socket.id, player]]),
-        settings: {
-          roundCount: null,
-          inputTypeCount: DEFAULT_INPUT_TYPE_COUNT
-        },
+        settings: createDefaultGameSettings(),
+        gameSettings: new Map([
+          [DEFAULT_ROOM_GAME_ID, createDefaultGameSettings()]
+        ]),
         game: null,
         chatMessages: []
       };
@@ -1615,9 +1667,11 @@ function createGameServer(options = {}) {
       }
 
       room.selectedGameId = selectedGameId;
+      room.settings = getRoomGameSettings(room, selectedGameId);
       answer(socket, acknowledgment, {
         ok: true,
-        gameSelection: serializeGameSelection(room)
+        gameSelection: serializeGameSelection(room),
+        settings: serializeSettings(room)
       });
       emitRoomState(room);
     });
@@ -1693,10 +1747,21 @@ function createGameServer(options = {}) {
         return;
       }
 
+      const targetGameId =
+        normalizeRoomGameId(payload && payload.gameId) ||
+        room.selectedGameId;
+      if (targetGameId !== room.selectedGameId) {
+        answer(socket, acknowledgment, {
+          ok: false,
+          error: "Ces paramètres ne correspondent pas au jeu sélectionné."
+        });
+        return;
+      }
+
       const normalized = normalizeGameSettings(
         payload,
         room.players.size,
-        getResolvedRoomGame(room).id
+        getResolvedRoomGameForId(targetGameId).id
       );
       if (normalized.error) {
         answer(socket, acknowledgment, {
@@ -1706,7 +1771,8 @@ function createGameServer(options = {}) {
         return;
       }
 
-      room.settings = normalized;
+      room.gameSettings.set(targetGameId, normalized);
+      room.settings = getRoomGameSettings(room, targetGameId);
       answer(socket, acknowledgment, {
         ok: true,
         settings: serializeRoom(room).settings
