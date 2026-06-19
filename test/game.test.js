@@ -5,15 +5,16 @@ const { test } = require("node:test");
 const { io: createClient } = require("socket.io-client");
 const {
   GAME_COUNTDOWN_MS,
-  LEAUGE_OF_NAAB_GAME_ID,
-  LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT,
-  LEAUGE_OF_NAAB_STEPS,
+  LEAGUE_OF_NAABS_GAME_ID,
+  LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT,
+  LEAGUE_OF_NAABS_REVEAL_STEPS_PER_CHAMPION,
+  LEAGUE_OF_NAABS_STEPS,
   ROUND_DURATION_MS,
   ROUND_PREVIEW_MS,
   createGameServer,
   createTypePlan,
   getAssignedChainIndex,
-  getLeaugeOfNaabAssignedChainIndex,
+  getLeagueOfNaabsAssignedChainIndex,
   getExpectedContributionType,
   selectActiveContributionTypes
 } = require("../server");
@@ -149,12 +150,36 @@ function contentForType(type, label = "Une idée étrange") {
   return label;
 }
 
+function contentForGameState(gameState, label = "Une idée étrange") {
+  const stepKey =
+    gameState.assignment &&
+    gameState.assignment.step &&
+    gameState.assignment.step.key;
+
+  if (stepKey === "spell-kit") {
+    return JSON.stringify({
+      spells: [
+        `${label} Q`,
+        `${label} W`,
+        `${label} E`,
+        `${label} R`
+      ]
+    });
+  }
+
+  if (stepKey === "quote-pack") {
+    return JSON.stringify({ quotes: [AUDIO, AUDIO, AUDIO, AUDIO] });
+  }
+
+  return contentForType(gameState.assignment.expectedType, label);
+}
+
 async function submitExpected(socket, gameState, label) {
   const type = gameState.assignment.expectedType;
   const response = await emitAck(socket, "submitContribution", {
     roundIndex: gameState.roundIndex,
     type,
-    content: contentForType(type, label)
+    content: contentForGameState(gameState, label)
   });
   assert.equal(response.ok, true);
 }
@@ -203,27 +228,25 @@ test("les types sont imposés aléatoirement sans répétition immédiate", () =
   ]);
 });
 
-test("Leauge Of Naab est optimal à 8 joueurs sans auto-attribution", () => {
-  assert.equal(LEAUGE_OF_NAAB_STEPS.length, 7);
-  assert.equal(LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT, 8);
+test("League Of Naabs est optimal à 6 joueurs sans auto-attribution", () => {
+  assert.equal(LEAGUE_OF_NAABS_STEPS.length, 5);
+  assert.equal(LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT, 6);
   assert.deepEqual(
-    LEAUGE_OF_NAAB_STEPS.map((step) => step.key),
+    LEAGUE_OF_NAABS_STEPS.map((step) => step.key),
     [
+      "champion-sketch",
       "champion-name",
       "spell-kit",
-      "quote-1",
-      "quote-2",
-      "quote-3",
-      "champion-sketch",
+      "quote-pack",
       "champion-lore"
     ]
   );
 
-  const playerCount = LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT;
+  const playerCount = LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT;
   for (let playerIndex = 0; playerIndex < playerCount; playerIndex += 1) {
     const assignments = [];
-    for (let roundIndex = 0; roundIndex < LEAUGE_OF_NAAB_STEPS.length; roundIndex += 1) {
-      const chainIndex = getLeaugeOfNaabAssignedChainIndex(
+    for (let roundIndex = 0; roundIndex < LEAGUE_OF_NAABS_STEPS.length; roundIndex += 1) {
+      const chainIndex = getLeagueOfNaabsAssignedChainIndex(
         playerIndex,
         roundIndex,
         playerCount
@@ -231,7 +254,7 @@ test("Leauge Of Naab est optimal à 8 joueurs sans auto-attribution", () => {
       assignments.push(chainIndex);
       assert.notEqual(chainIndex, playerIndex);
     }
-    assert.equal(new Set(assignments).size, LEAUGE_OF_NAAB_STEPS.length);
+    assert.equal(new Set(assignments).size, LEAGUE_OF_NAABS_STEPS.length);
   }
 });
 
@@ -531,7 +554,7 @@ test("une partie complète respecte rotations et types aléatoires imposés", as
   }
 });
 
-test("Leauge Of Naab construit un champion complet pour chaque joueur", async () => {
+test("League Of Naabs construit un champion complet pour chaque joueur", async () => {
   const { game, url } = await startTestServer({
     gameCountdownMs: 0,
     roundPreviewMs: 0,
@@ -546,16 +569,14 @@ test("Leauge Of Naab construit un champion complet pour chaque joueur", async ()
       "Claire",
       "David",
       "Emma",
-      "Farid",
-      "Gina",
-      "Hugo"
+      "Farid"
     ];
     const setup = await createRoomWithPlayers(url, names);
     clients = setup.clients;
     const [host] = clients;
 
     const selected = await emitAck(host, "selectRoomGame", {
-      gameId: LEAUGE_OF_NAAB_GAME_ID
+      gameId: LEAGUE_OF_NAABS_GAME_ID
     });
     assert.equal(selected.ok, true);
 
@@ -569,12 +590,12 @@ test("Leauge Of Naab construit un champion complet pour chaque joueur", async ()
     await emitAck(host, "startGame");
     let states = await Promise.all(firstRoundPromises);
 
-    assert.equal(states[0].gameId, LEAUGE_OF_NAAB_GAME_ID);
-    assert.equal(states[0].totalRounds, LEAUGE_OF_NAAB_STEPS.length);
-    assert.equal(states[0].optimalPlayerCount, 8);
+    assert.equal(states[0].gameId, LEAGUE_OF_NAABS_GAME_ID);
+    assert.equal(states[0].totalRounds, LEAGUE_OF_NAABS_STEPS.length);
+    assert.equal(states[0].optimalPlayerCount, 6);
 
-    for (let roundIndex = 0; roundIndex < LEAUGE_OF_NAAB_STEPS.length; roundIndex += 1) {
-      const step = LEAUGE_OF_NAAB_STEPS[roundIndex];
+    for (let roundIndex = 0; roundIndex < LEAGUE_OF_NAABS_STEPS.length; roundIndex += 1) {
+      const step = LEAGUE_OF_NAABS_STEPS[roundIndex];
       states.forEach((state, playerIndex) => {
         assert.equal(state.assignment.step.key, step.key);
         assert.equal(state.assignment.expectedType, step.type);
@@ -586,7 +607,7 @@ test("Leauge Of Naab construit un champion complet pour chaque joueur", async ()
       });
 
       const nextPromises =
-        roundIndex < LEAUGE_OF_NAAB_STEPS.length - 1
+        roundIndex < LEAGUE_OF_NAABS_STEPS.length - 1
           ? clients.map((client) =>
               waitForEvent(
                 client,
@@ -619,17 +640,28 @@ test("Leauge Of Naab construit un champion complet pour chaque joueur", async ()
     const results = states[0];
     assert.equal(results.resultTitle, "Le vestiaire des champions douteux");
     assert.equal(results.resultOwnerLabel, "Champion créé pour");
-    assert.equal(results.resultStepCount, names.length * LEAUGE_OF_NAAB_STEPS.length);
+    assert.equal(
+      results.resultStepCount,
+      names.length * LEAGUE_OF_NAABS_REVEAL_STEPS_PER_CHAMPION
+    );
     results.chains.forEach((chain) => {
-      assert.equal(chain.contributions.length, LEAUGE_OF_NAAB_STEPS.length);
+      assert.equal(chain.contributions.length, LEAGUE_OF_NAABS_STEPS.length);
       assert.deepEqual(
         chain.contributions.map((contribution) => contribution.stepKey),
-        LEAUGE_OF_NAAB_STEPS.map((step) => step.key)
+        LEAGUE_OF_NAABS_STEPS.map((step) => step.key)
       );
+      const spellKit = chain.contributions.find(
+        (contribution) => contribution.stepKey === "spell-kit"
+      );
+      const quotePack = chain.contributions.find(
+        (contribution) => contribution.stepKey === "quote-pack"
+      );
+      assert.equal(JSON.parse(spellKit.content).spells.length, 4);
+      assert.equal(JSON.parse(quotePack.content).quotes.length, 4);
     });
 
     const room = game.rooms.get(setup.code);
-    assert.equal(room.game.gameId, LEAUGE_OF_NAAB_GAME_ID);
+    assert.equal(room.game.gameId, LEAGUE_OF_NAABS_GAME_ID);
   } finally {
     await cleanup(game, clients);
   }

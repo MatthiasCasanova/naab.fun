@@ -25,7 +25,7 @@ const DEFAULT_INPUT_TYPE_COUNT = 3;
 const DEFAULT_AVATAR_ID = "comet";
 const DEFAULT_ROOM_GAME_ID = "random";
 const KAMOULOX_GAME_ID = "kamoulox3000";
-const LEAUGE_OF_NAAB_GAME_ID = "leaugeOfNaab";
+const LEAGUE_OF_NAABS_GAME_ID = "leagueOfNaabs";
 const ROOM_GAMES = Object.freeze([
   {
     id: "random",
@@ -40,9 +40,9 @@ const ROOM_GAMES = Object.freeze([
     available: true
   },
   {
-    id: LEAUGE_OF_NAAB_GAME_ID,
-    name: "Leauge Of Naab",
-    resolvedId: LEAUGE_OF_NAAB_GAME_ID,
+    id: LEAGUE_OF_NAABS_GAME_ID,
+    name: "League Of Naabs",
+    resolvedId: LEAGUE_OF_NAABS_GAME_ID,
     available: true
   }
 ]);
@@ -68,7 +68,12 @@ const CONTRIBUTION_TYPES = Object.freeze({
 const CONTRIBUTION_TYPE_VALUES = Object.freeze(
   Object.values(CONTRIBUTION_TYPES)
 );
-const LEAUGE_OF_NAAB_STEPS = Object.freeze([
+const LEAGUE_OF_NAABS_STEPS = Object.freeze([
+  {
+    key: "champion-sketch",
+    label: "Croquis du champion",
+    type: CONTRIBUTION_TYPES.DRAWING
+  },
   {
     key: "champion-name",
     label: "Nom du champion",
@@ -85,24 +90,9 @@ const LEAUGE_OF_NAAB_STEPS = Object.freeze([
       "Donne 3 sorts et un ulti. Format conseillé : Q, W, E, R."
   },
   {
-    key: "quote-1",
-    label: "Réplique audio 1",
+    key: "quote-pack",
+    label: "4 répliques audio",
     type: CONTRIBUTION_TYPES.AUDIO
-  },
-  {
-    key: "quote-2",
-    label: "Réplique audio 2",
-    type: CONTRIBUTION_TYPES.AUDIO
-  },
-  {
-    key: "quote-3",
-    label: "Réplique audio 3",
-    type: CONTRIBUTION_TYPES.AUDIO
-  },
-  {
-    key: "champion-sketch",
-    label: "Croquis du champion",
-    type: CONTRIBUTION_TYPES.DRAWING
   },
   {
     key: "champion-lore",
@@ -113,8 +103,9 @@ const LEAUGE_OF_NAAB_STEPS = Object.freeze([
       "Raconte son origine dramatique, son passif social et sa dette morale."
   }
 ]);
-const LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT =
-  LEAUGE_OF_NAAB_STEPS.length + 1;
+const LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT =
+  LEAGUE_OF_NAABS_STEPS.length + 1;
+const LEAGUE_OF_NAABS_REVEAL_STEPS_PER_CHAMPION = 11;
 
 function normalizeConfiguredOrigin(value) {
   const trimmedValue = value.trim();
@@ -187,7 +178,7 @@ function getAssignedChainIndex(playerIndex, roundIndex, playerCount) {
   return (playerIndex - roundIndex + playerCount) % playerCount;
 }
 
-function getLeaugeOfNaabAssignedChainIndex(
+function getLeagueOfNaabsAssignedChainIndex(
   playerIndex,
   roundIndex,
   playerCount
@@ -201,8 +192,8 @@ function getAssignedChainIndexForGame(
   roundIndex,
   playerCount
 ) {
-  if (gameId === LEAUGE_OF_NAAB_GAME_ID && playerCount > 1) {
-    return getLeaugeOfNaabAssignedChainIndex(
+  if (gameId === LEAGUE_OF_NAABS_GAME_ID && playerCount > 1) {
+    return getLeagueOfNaabsAssignedChainIndex(
       playerIndex,
       roundIndex,
       playerCount
@@ -447,10 +438,10 @@ function createGameServer(options = {}) {
   }
 
   function getMaxRoundsForGame(gameId, playerCount) {
-    if (gameId === LEAUGE_OF_NAAB_GAME_ID) {
+    if (gameId === LEAGUE_OF_NAABS_GAME_ID) {
       return Math.max(
         1,
-        Math.min(LEAUGE_OF_NAAB_STEPS.length, playerCount - 1)
+        Math.min(LEAGUE_OF_NAABS_STEPS.length, playerCount - 1)
       );
     }
 
@@ -661,23 +652,22 @@ function createGameServer(options = {}) {
     };
   }
 
-  function getLeaugeOfNaabPrompt(roundSpec, targetNickname) {
+  function getLeagueOfNaabsPrompt(roundSpec, targetNickname) {
     if (!roundSpec) {
       return `Crée un champion douteux pour ${targetNickname}.`;
     }
 
+    if (roundSpec.key === "champion-sketch") {
+      return `Dessine le champion League Of Legends que ${targetNickname} pourrait incarner. Ne respecte aucune anatomie inutile.`;
+    }
     if (roundSpec.key === "champion-name") {
-      return `Invente le nom du champion League de ${targetNickname}. Fais mal, mais avec panache.`;
+      return `Trouve le nom du champion League Of Legends que ${targetNickname} pourrait incarner. Fais sérieux, donc ridicule.`;
     }
     if (roundSpec.key === "spell-kit") {
-      return `Donne 3 sorts et un ulti au champion de ${targetNickname}. Oui, l'équilibrage est déjà mort.`;
+      return `Donne 3 sorts et un ulti au champion de ${targetNickname}. Quatre boutons, zéro équilibrage.`;
     }
-    if (roundSpec.key.startsWith("quote-")) {
-      const quoteNumber = roundSpec.key.replace("quote-", "");
-      return `Enregistre la réplique audio ${quoteNumber} du champion de ${targetNickname}. Cinq secondes, maximum ego.`;
-    }
-    if (roundSpec.key === "champion-sketch") {
-      return `Croque le champion de ${targetNickname}. Les anatomies impossibles sont acceptées.`;
+    if (roundSpec.key === "quote-pack") {
+      return `Enregistre les 4 répliques audio du champion de ${targetNickname}. Une personne, quatre moments gênants.`;
     }
     if (roundSpec.key === "champion-lore") {
       return `Écris le lore du champion de ${targetNickname}. Tragédie, mauvaise foi, et un soupçon de ranked.`;
@@ -688,8 +678,8 @@ function createGameServer(options = {}) {
 
   function getPrompt(game, assignment) {
     const expectedType = assignment.expectedType;
-    if (game.gameId === LEAUGE_OF_NAAB_GAME_ID) {
-      return getLeaugeOfNaabPrompt(
+    if (game.gameId === LEAGUE_OF_NAABS_GAME_ID) {
+      return getLeagueOfNaabsPrompt(
         assignment.roundSpec,
         assignment.chain.ownerNickname
       );
@@ -735,20 +725,28 @@ function createGameServer(options = {}) {
     };
   }
 
+  function getResultStepCountForChain(game, chain) {
+    if (game.gameId === LEAGUE_OF_NAABS_GAME_ID) {
+      return LEAGUE_OF_NAABS_REVEAL_STEPS_PER_CHAMPION;
+    }
+
+    return chain.contributions.length;
+  }
+
   function serializeResults(room, participantId) {
     const game = room.game;
     const player = Array.from(room.players.values()).find(
       (candidate) => candidate.participantId === participantId
     );
     const resultStepCount = game.chains.reduce(
-      (total, chain) => total + chain.contributions.length,
+      (total, chain) => total + getResultStepCountForChain(game, chain),
       0
     );
     const resultStepNumber =
       game.chains
         .slice(0, game.resultChainIndex)
         .reduce(
-          (total, chain) => total + chain.contributions.length,
+          (total, chain) => total + getResultStepCountForChain(game, chain),
           0
         ) +
       game.resultContributionIndex +
@@ -773,11 +771,11 @@ function createGameServer(options = {}) {
       gameId: game.gameId,
       gameName: game.gameName,
       resultTitle:
-        game.gameId === LEAUGE_OF_NAAB_GAME_ID
+        game.gameId === LEAGUE_OF_NAABS_GAME_ID
           ? "Le vestiaire des champions douteux"
           : "Voici comment tout a dérapé",
       resultOwnerLabel:
-        game.gameId === LEAUGE_OF_NAAB_GAME_ID
+        game.gameId === LEAGUE_OF_NAABS_GAME_ID
           ? "Champion créé pour"
           : "Catastrophe initiée par",
       chains: game.chains.map((chain) => ({
@@ -830,8 +828,8 @@ function createGameServer(options = {}) {
       gameId: game.gameId,
       gameName: game.gameName,
       optimalPlayerCount:
-        game.gameId === LEAUGE_OF_NAAB_GAME_ID
-          ? LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT
+        game.gameId === LEAGUE_OF_NAABS_GAME_ID
+          ? LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT
           : null,
       assignment: {
         chainId: assignment.chain.id,
@@ -1049,18 +1047,18 @@ function createGameServer(options = {}) {
       )
     );
     const roundSpecs =
-      gameId === LEAUGE_OF_NAAB_GAME_ID
-        ? LEAUGE_OF_NAAB_STEPS.slice(0, totalRounds)
+      gameId === LEAGUE_OF_NAABS_GAME_ID
+        ? LEAGUE_OF_NAABS_STEPS.slice(0, totalRounds)
         : [];
     const activeTypes =
-      gameId === LEAUGE_OF_NAAB_GAME_ID
+      gameId === LEAGUE_OF_NAABS_GAME_ID
         ? [...new Set(roundSpecs.map((step) => step.type))]
         : selectActiveContributionTypes(
             room.settings.inputTypeCount,
             randomInt
           );
     const generatedPlans =
-      gameId === LEAUGE_OF_NAAB_GAME_ID
+      gameId === LEAGUE_OF_NAABS_GAME_ID
         ? chains.map(() => roundSpecs.map((step) => step.type))
         : createTypePlan(
             chains.length,
@@ -1135,10 +1133,103 @@ function createGameServer(options = {}) {
     return { roundCount, inputTypeCount };
   }
 
+  function parseJsonObject(value) {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function isValidAudioDataUrl(value) {
+    return (
+      typeof value === "string" &&
+      /^data:audio\/[a-z0-9.+-]+(?:;[^,]*)*;base64,[a-z0-9+/=]+$/i.test(
+        value
+      )
+    );
+  }
+
+  function normalizeLeagueSpellKitContent(content, allowEmpty) {
+    if (allowEmpty && content === "") {
+      return { type: CONTRIBUTION_TYPES.TEXT, content: "" };
+    }
+
+    const parsed = parseJsonObject(content);
+    const spells = parsed && Array.isArray(parsed.spells)
+      ? parsed.spells
+      : null;
+
+    if (!spells || spells.length !== 4) {
+      return { error: "Le kit doit contenir exactement 4 sorts." };
+    }
+
+    const normalizedSpells = spells.map((spell) =>
+      typeof spell === "string" ? spell.trim() : ""
+    );
+    if (!allowEmpty && normalizedSpells.some((spell) => !spell)) {
+      return { error: "Renseignez les 3 sorts et l'ulti avant de valider." };
+    }
+
+    const totalLength = normalizedSpells.join("").length;
+    if (totalLength > MAX_TEXT_LENGTH) {
+      return {
+        error: `Le kit de sorts doit rester sous ${MAX_TEXT_LENGTH} caractères.`
+      };
+    }
+
+    return {
+      type: CONTRIBUTION_TYPES.TEXT,
+      content: JSON.stringify({ spells: normalizedSpells })
+    };
+  }
+
+  function normalizeLeagueQuotePackContent(content, allowEmpty) {
+    if (allowEmpty && content === "") {
+      return { type: CONTRIBUTION_TYPES.AUDIO, content: "" };
+    }
+
+    const parsed = parseJsonObject(content);
+    const quotes = parsed && Array.isArray(parsed.quotes)
+      ? parsed.quotes
+      : null;
+
+    if (!quotes || quotes.length !== 4) {
+      return { error: "Les répliques doivent contenir exactement 4 audios." };
+    }
+
+    const normalizedQuotes = quotes.map((quote) =>
+      typeof quote === "string" ? quote : ""
+    );
+    if (!allowEmpty && normalizedQuotes.some((quote) => !quote)) {
+      return { error: "Enregistrez les 4 répliques avant de valider." };
+    }
+
+    const totalLength = normalizedQuotes.join("").length;
+    if (totalLength > MAX_MEDIA_DATA_LENGTH) {
+      return { error: "Les enregistrements envoyés sont trop volumineux." };
+    }
+
+    if (
+      normalizedQuotes.some(
+        (quote) => quote && !isValidAudioDataUrl(quote)
+      )
+    ) {
+      return { error: "Une des répliques audio est invalide." };
+    }
+
+    return {
+      type: CONTRIBUTION_TYPES.AUDIO,
+      content: JSON.stringify({ quotes: normalizedQuotes })
+    };
+  }
+
   function normalizeContribution(
     payload,
     expectedType,
     roundIndex,
+    roundSpec = null,
     allowEmpty = false
   ) {
     if (!payload || typeof payload !== "object") {
@@ -1163,6 +1254,22 @@ function createGameServer(options = {}) {
 
     if (typeof payload.content !== "string") {
       return { error: "Le contenu de la contribution est invalide." };
+    }
+
+    if (
+      roundSpec &&
+      roundSpec.key === "spell-kit" &&
+      type === CONTRIBUTION_TYPES.TEXT
+    ) {
+      return normalizeLeagueSpellKitContent(payload.content, allowEmpty);
+    }
+
+    if (
+      roundSpec &&
+      roundSpec.key === "quote-pack" &&
+      type === CONTRIBUTION_TYPES.AUDIO
+    ) {
+      return normalizeLeagueQuotePackContent(payload.content, allowEmpty);
     }
 
     if (type === CONTRIBUTION_TYPES.TEXT) {
@@ -1193,9 +1300,7 @@ function createGameServer(options = {}) {
 
     if (
       type === CONTRIBUTION_TYPES.AUDIO &&
-      !/^data:audio\/[a-z0-9.+-]+(?:;[^,]*)*;base64,[a-z0-9+/=]+$/i.test(
-        payload.content
-      )
+      !isValidAudioDataUrl(payload.content)
     ) {
       return { error: "L'enregistrement audio est invalide." };
     }
@@ -1690,7 +1795,8 @@ function createGameServer(options = {}) {
       const normalized = normalizeContribution(
         payload,
         assignment.expectedType,
-        game.roundIndex
+        game.roundIndex,
+        assignment.roundSpec
       );
 
       if (normalized.error) {
@@ -1763,6 +1869,7 @@ function createGameServer(options = {}) {
         payload,
         assignment.expectedType,
         game.roundIndex,
+        assignment.roundSpec,
         true
       );
 
@@ -1873,7 +1980,7 @@ function createGameServer(options = {}) {
         const currentChain = game.chains[game.resultChainIndex];
         if (
           game.resultContributionIndex <
-          currentChain.contributions.length - 1
+          getResultStepCountForChain(game, currentChain) - 1
         ) {
           game.resultContributionIndex += 1;
         } else if (game.resultChainIndex < game.chains.length - 1) {
@@ -1885,7 +1992,10 @@ function createGameServer(options = {}) {
       } else if (game.resultChainIndex > 0) {
         game.resultChainIndex -= 1;
         game.resultContributionIndex =
-          game.chains[game.resultChainIndex].contributions.length - 1;
+          getResultStepCountForChain(
+            game,
+            game.chains[game.resultChainIndex]
+          ) - 1;
       }
       answer(socket, acknowledgment, {
         ok: true,
@@ -2026,9 +2136,10 @@ module.exports = {
   CONTRIBUTION_TYPES,
   GAME_COUNTDOWN_MS,
   KAMOULOX_GAME_ID,
-  LEAUGE_OF_NAAB_GAME_ID,
-  LEAUGE_OF_NAAB_OPTIMAL_PLAYER_COUNT,
-  LEAUGE_OF_NAAB_STEPS,
+  LEAGUE_OF_NAABS_GAME_ID,
+  LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT,
+  LEAGUE_OF_NAABS_REVEAL_STEPS_PER_CHAMPION,
+  LEAGUE_OF_NAABS_STEPS,
   MAX_PLAYERS,
   ROUND_DURATION_MS,
   ROUND_PREVIEW_MS,
@@ -2038,7 +2149,7 @@ module.exports = {
   createGameServer,
   getAssignedChainIndex,
   getAssignedChainIndexForGame,
-  getLeaugeOfNaabAssignedChainIndex,
+  getLeagueOfNaabsAssignedChainIndex,
   getExpectedContributionType,
   selectActiveContributionTypes
 };

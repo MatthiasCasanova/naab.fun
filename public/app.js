@@ -16,9 +16,7 @@
   const CONTRIBUTION_STEP_LABELS = {
     "champion-name": "Nom",
     "spell-kit": "Sorts",
-    "quote-1": "Réplique 1",
-    "quote-2": "Réplique 2",
-    "quote-3": "Réplique 3",
+    "quote-pack": "Répliques",
     "champion-sketch": "Croquis",
     "champion-lore": "Lore"
   };
@@ -45,11 +43,11 @@
       resolvedId: "kamoulox3000",
       resolvedName: "Kamoulox 3000"
     },
-    leaugeOfNaab: {
-      id: "leaugeOfNaab",
-      name: "Leauge Of Naab",
-      resolvedId: "leaugeOfNaab",
-      resolvedName: "Leauge Of Naab"
+    leagueOfNaabs: {
+      id: "leagueOfNaabs",
+      name: "League Of Naabs",
+      resolvedId: "leagueOfNaabs",
+      resolvedName: "League Of Naabs"
     }
   });
   const DEFAULT_ROOM_GAME_ID = "random";
@@ -167,6 +165,10 @@
     editorPanel: document.querySelector("#editor-panel"),
     textEditor: document.querySelector("#text-editor"),
     textEditorLabel: document.querySelector("#text-editor-label"),
+    spellKitEditor: document.querySelector("#spell-kit-editor"),
+    spellInputs: Array.from(
+      document.querySelectorAll("[id^='spell-input-']")
+    ),
     drawingEditor: document.querySelector("#drawing-editor"),
     drawingEditorLabel: document.querySelector("#drawing-editor-label"),
     audioEditor: document.querySelector("#audio-editor"),
@@ -181,6 +183,10 @@
     redoDrawingButton: document.querySelector("#redo-drawing-button"),
     clearDrawingButton: document.querySelector("#clear-drawing-button"),
     audioEmptyState: document.querySelector("#audio-empty-state"),
+    quoteAudioSlots: document.querySelector("#quote-audio-slots"),
+    quoteAudioSlotButtons: Array.from(
+      document.querySelectorAll(".quote-audio-slot")
+    ),
     audioReadyState: document.querySelector("#audio-ready-state"),
     audioStatus: document.querySelector("#audio-status"),
     recordAudioButton: document.querySelector("#record-audio-button"),
@@ -255,6 +261,8 @@
   let recordingSession = null;
   let audioStartRequestId = 0;
   let audioDataUrl = "";
+  let audioQuoteDataUrls = ["", "", "", ""];
+  let activeAudioQuoteIndex = 0;
   let recordedAudioTimelineFrame = null;
   let resultChainIndex = 0;
   let resultContributionIndex = 0;
@@ -1158,8 +1166,8 @@
       return 1;
     }
 
-    if (getSelectedRoomGameId(room) === "leaugeOfNaab") {
-      return Math.max(1, Math.min(7, room.playerCount - 1));
+    if (getSelectedRoomGameId(room) === "leagueOfNaabs") {
+      return Math.max(1, Math.min(5, room.playerCount - 1));
     }
 
     return Math.max(1, room.playerCount);
@@ -1349,9 +1357,9 @@
     const resolvedLabel = getResolvedRoomGameLabel(room);
 
     elements.selectedGameName.textContent = selectedLabel;
-    if (selectedGameId === "leaugeOfNaab") {
+    if (selectedGameId === "leagueOfNaabs") {
       elements.gameSelectionHelp.textContent =
-        "Optimal à 8 joueurs : 7 étapes de champion sans autoportrait gênant.";
+        "Optimal à 6 joueurs : 5 étapes de champion, aucune dignité requise.";
     } else {
       elements.gameSelectionHelp.textContent =
         selectedGameId === DEFAULT_ROOM_GAME_ID
@@ -1364,7 +1372,14 @@
     elements.gameSelectionButtons.forEach((button) => {
       const isSelected = button.dataset.gameId === selectedGameId;
       const votes = getGameVotes(room, button.dataset.gameId);
+      const hasSelfVote = Boolean(
+        socket && votes.some((vote) => vote.playerId === socket.id)
+      );
       button.classList.toggle("active", isSelected);
+      button.classList.toggle(
+        "self-voted-only",
+        Boolean(socket && room.hostId !== socket.id && hasSelfVote && !isSelected)
+      );
       button.setAttribute("aria-pressed", String(isSelected));
       button.disabled = !room || room.phase !== "lobby";
       renderGameVotes(button, votes);
@@ -2190,6 +2205,14 @@
     }
 
     if (selectedType === "text") {
+      if (isSpellKitStep()) {
+        const spells = elements.spellInputs.map((input) => input.value.trim());
+        return {
+          type: "text",
+          content: spells.some(Boolean) ? JSON.stringify({ spells }) : ""
+        };
+      }
+
       return {
         type: "text",
         content: elements.textContribution.value
@@ -2205,10 +2228,14 @@
       };
     }
 
-    return {
-      type: "audio",
-      content: audioDataUrl
-    };
+    if (isQuotePackStep()) {
+      return {
+        type: "audio",
+        content: hasAnyQuoteAudio() ? buildQuotePackContent() : ""
+      };
+    }
+
+    return { type: "audio", content: audioDataUrl };
   }
 
   function flushDraftSave() {
@@ -2633,6 +2660,97 @@
     });
   }
 
+  function isLeagueOfNaabsGame(value) {
+    return value && value.gameId === "leagueOfNaabs";
+  }
+
+  function getCurrentStepKey() {
+    return (
+      currentGame &&
+      currentGame.assignment &&
+      currentGame.assignment.step &&
+      currentGame.assignment.step.key
+    );
+  }
+
+  function isSpellKitStep() {
+    return isLeagueOfNaabsGame(currentGame) && getCurrentStepKey() === "spell-kit";
+  }
+
+  function isQuotePackStep() {
+    return isLeagueOfNaabsGame(currentGame) && getCurrentStepKey() === "quote-pack";
+  }
+
+  function parseJsonPayload(content, fallback) {
+    try {
+      const parsed = JSON.parse(content);
+      return parsed && typeof parsed === "object" ? parsed : fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  function parseSpellKit(content) {
+    const parsed = parseJsonPayload(content, null);
+    const spells =
+      parsed && Array.isArray(parsed.spells)
+        ? parsed.spells.map((spell) =>
+            typeof spell === "string" ? spell : ""
+          )
+        : [];
+    while (spells.length < 4) {
+      spells.push("");
+    }
+    return spells.slice(0, 4);
+  }
+
+  function parseQuotePack(content) {
+    const parsed = parseJsonPayload(content, null);
+    const quotes =
+      parsed && Array.isArray(parsed.quotes)
+        ? parsed.quotes.map((quote) =>
+            typeof quote === "string" ? quote : ""
+          )
+        : [];
+    while (quotes.length < 4) {
+      quotes.push("");
+    }
+    return quotes.slice(0, 4);
+  }
+
+  function buildQuotePackContent() {
+    return JSON.stringify({ quotes: audioQuoteDataUrls });
+  }
+
+  function hasAnyQuoteAudio() {
+    return audioQuoteDataUrls.some(Boolean);
+  }
+
+  function hasAllQuoteAudios() {
+    return audioQuoteDataUrls.every(Boolean);
+  }
+
+  function renderPlayerReferenceText(element, text, playerName) {
+    element.replaceChildren();
+    if (!playerName || !text.includes(playerName)) {
+      element.textContent = text;
+      return;
+    }
+
+    const parts = text.split(playerName);
+    parts.forEach((part, index) => {
+      if (part) {
+        element.append(document.createTextNode(part));
+      }
+      if (index < parts.length - 1) {
+        const highlight = document.createElement("span");
+        highlight.className = "player-reference";
+        highlight.textContent = playerName;
+        element.append(highlight);
+      }
+    });
+  }
+
   function stopStream(stream) {
     if (stream) {
       stream.getTracks().forEach((track) => track.stop());
@@ -2665,10 +2783,71 @@
     }
   }
 
-  function resetAudio() {
+  function updateQuoteAudioSlots() {
+    const quotePack = isQuotePackStep();
+    elements.quoteAudioSlots.classList.toggle("hidden", !quotePack);
+    elements.quoteAudioSlotButtons.forEach((button, index) => {
+      const recorded = Boolean(audioQuoteDataUrls[index]);
+      button.classList.toggle("active", index === activeAudioQuoteIndex);
+      button.classList.toggle("recorded", recorded);
+      button.setAttribute("aria-pressed", String(index === activeAudioQuoteIndex));
+      button.title = recorded
+        ? `Réplique ${index + 1} enregistrée`
+        : `Réplique ${index + 1} à enregistrer`;
+    });
+
+    if (quotePack) {
+      elements.validateAudioButton.disabled = !hasAllQuoteAudios();
+    }
+  }
+
+  function showAudioSlotPreview(dataUrl) {
+    audioDataUrl = dataUrl || "";
+    stopRecordedAudioTimelineAnimation();
+    elements.audioPreview.pause();
+    elements.audioPreview.currentTime = 0;
+    elements.audioPreview.removeAttribute("src");
+
+    if (!audioDataUrl) {
+      elements.audioPreview.load();
+      elements.audioEmptyState.classList.remove("hidden");
+      elements.audioReadyState.classList.add("hidden");
+      updateAudioProgressUi(
+        elements.audioProgress,
+        elements.audioWaveform,
+        elements.audioPlayhead,
+        0
+      );
+      clearWaveform(elements.audioWaveform);
+      elements.audioCurrentTime.textContent = "00:00";
+      elements.audioDuration.textContent = "00:00";
+      return;
+    }
+
+    elements.audioPreview.src = audioDataUrl;
+    applyVolumeToAudio(elements.audioPreview);
+    showRecordedAudio();
+    elements.audioPreview.load();
+  }
+
+  function selectAudioQuoteSlot(index) {
+    activeAudioQuoteIndex = Math.max(0, Math.min(3, Number(index) || 0));
+    showAudioSlotPreview(audioQuoteDataUrls[activeAudioQuoteIndex]);
+    updateQuoteAudioSlots();
+  }
+
+  function resetAudio(clearQuotePack = true) {
     audioStartRequestId += 1;
     stopAudioRecording(true);
     stopRecordedAudioTimelineAnimation();
+    if (isQuotePackStep()) {
+      if (clearQuotePack) {
+        audioQuoteDataUrls = ["", "", "", ""];
+        activeAudioQuoteIndex = 0;
+      } else {
+        audioQuoteDataUrls[activeAudioQuoteIndex] = "";
+      }
+    }
     audioDataUrl = "";
     elements.audioPreview.pause();
     elements.audioPreview.currentTime = 0;
@@ -2681,8 +2860,8 @@
     elements.recordAudioButton.disabled = false;
     elements.validateAudioButton.disabled = false;
     elements.recordButtonLabel.textContent =
-      currentGame && currentGame.gameId === "leaugeOfNaab"
-        ? "Réplique de 5 secondes"
+      isQuotePackStep()
+        ? `Réplique ${activeAudioQuoteIndex + 1} de 5 secondes`
         : "Enregistrer pendant 5 secondes";
     elements.audioPlayIconUse.setAttribute("href", "#icon-play");
     elements.playAudioButton.setAttribute(
@@ -2698,6 +2877,7 @@
     clearWaveform(elements.audioWaveform);
     elements.audioCurrentTime.textContent = "00:00";
     elements.audioDuration.textContent = "00:00";
+    updateQuoteAudioSlots();
   }
 
   function showRecordedAudio() {
@@ -2803,7 +2983,9 @@
     elements.audioStatus.textContent =
       `Enregistrement automatique : ${Math.max(0, remainingSeconds)} s restantes`;
     elements.recordButtonLabel.textContent =
-      `Fais du bruit... ${Math.max(0, remainingSeconds)} s`;
+      isQuotePackStep()
+        ? `Réplique ${activeAudioQuoteIndex + 1}... ${Math.max(0, remainingSeconds)} s`
+        : `Fais du bruit... ${Math.max(0, remainingSeconds)} s`;
   }
 
   function readBlobAsDataUrl(blob) {
@@ -2832,7 +3014,7 @@
     let stream = null;
     let requestId = null;
     try {
-      resetAudio();
+      resetAudio(!isQuotePackStep());
       requestId = audioStartRequestId;
       const requestedRoundIndex = currentGame && currentGame.roundIndex;
       elements.recordAudioButton.disabled = true;
@@ -2914,12 +3096,16 @@
             );
           }
 
-          audioDataUrl = dataUrl;
-          sendDraft("audio", dataUrl, session.roundIndex);
-          elements.audioPreview.src = dataUrl;
-          applyVolumeToAudio(elements.audioPreview);
-          showRecordedAudio();
-          elements.audioPreview.load();
+          if (isQuotePackStep()) {
+            audioQuoteDataUrls[activeAudioQuoteIndex] = dataUrl;
+            audioDataUrl = dataUrl;
+            sendDraft("audio", buildQuotePackContent(), session.roundIndex);
+            updateQuoteAudioSlots();
+          } else {
+            audioDataUrl = dataUrl;
+            sendDraft("audio", dataUrl, session.roundIndex);
+          }
+          showAudioSlotPreview(dataUrl);
         } catch (error) {
           setMessage(elements.gameMessage, error.message, "error");
           resetAudio();
@@ -2985,6 +3171,7 @@
       "hidden",
       type === "audio" || Boolean(currentGame && currentGame.submitted)
     );
+    updateQuoteAudioSlots();
   }
 
   function createSvgIcon(symbolId) {
@@ -3152,6 +3339,67 @@
     return { element: player, audio, playButton };
   }
 
+  function createSpellKitView(content) {
+    const spellLabels = ["01", "02", "03", "04"];
+    const spellNames = ["Sort 1", "Sort 2", "Sort 3", "Ulti"];
+    const spells = parseSpellKit(content);
+    const list = document.createElement("div");
+    list.className = "spell-kit-view";
+
+    spells.forEach((spell, index) => {
+      const item = document.createElement("article");
+      const badge = document.createElement("span");
+      const body = document.createElement("div");
+      const title = document.createElement("strong");
+      const text = document.createElement("p");
+
+      item.className = "spell-kit-view-item";
+      if (index === 3) {
+        item.classList.add("ultimate");
+      }
+      badge.className = "spell-kit-view-badge";
+      badge.textContent = spellLabels[index];
+      title.textContent = spellNames[index];
+      text.textContent = spell || "Sort avalé par le brouillard.";
+      body.append(title, text);
+      item.append(badge, body);
+      list.append(item);
+    });
+
+    return list;
+  }
+
+  function createQuotePackView(content, compact = true) {
+    const quotes = parseQuotePack(content);
+    const wrapper = document.createElement("div");
+    const audioPlayers = [];
+    wrapper.className = "quote-pack-view";
+
+    quotes.forEach((source, index) => {
+      const row = document.createElement("article");
+      const badge = document.createElement("span");
+      row.className = "quote-pack-row";
+      badge.className = "quote-pack-badge";
+      badge.textContent = String(index + 1).padStart(2, "0");
+      row.append(badge);
+
+      if (source) {
+        const audioPlayer = createAudioPlayer(source, compact);
+        audioPlayers.push(audioPlayer);
+        row.append(audioPlayer.element);
+      } else {
+        const empty = document.createElement("p");
+        empty.className = "empty-contribution";
+        empty.textContent = "Réplique perdue dans le lobby.";
+        row.append(empty);
+      }
+
+      wrapper.append(row);
+    });
+
+    return { element: wrapper, audioPlayers };
+  }
+
   function renderContribution(container, contribution) {
     container.replaceChildren();
 
@@ -3164,6 +3412,11 @@
     }
 
     if (contribution.type === "text") {
+      if (contribution.stepKey === "spell-kit") {
+        container.append(createSpellKitView(contribution.content));
+        return null;
+      }
+
       const text = document.createElement("p");
       text.className = "previous-text";
       text.textContent = contribution.content;
@@ -3180,6 +3433,12 @@
       return null;
     }
 
+    if (contribution.stepKey === "quote-pack") {
+      const quotePack = createQuotePackView(contribution.content);
+      container.append(quotePack.element);
+      return quotePack.audioPlayers[0] && quotePack.audioPlayers[0].audio;
+    }
+
     const audioPlayer = createAudioPlayer(contribution.content);
     container.append(audioPlayer.element);
     return audioPlayer.audio;
@@ -3189,6 +3448,9 @@
     cancelDraftSave();
     stopAudioRecording(true);
     elements.textContribution.value = "";
+    elements.spellInputs.forEach((input) => {
+      input.value = "";
+    });
     elements.textCounter.textContent = "0 / 500";
     resetDrawing();
     resetAudio();
@@ -3237,7 +3499,7 @@
 
   function getHumorousPrompt(gameState) {
     if (
-      gameState.gameId === "leaugeOfNaab" &&
+      gameState.gameId === "leagueOfNaabs" &&
       gameState.assignment &&
       gameState.assignment.prompt
     ) {
@@ -3274,20 +3536,30 @@
 
   function applyEditorCopy(gameState) {
     const step = getAssignmentStep(gameState);
-    const isLeaugeOfNaab = gameState.gameId === "leaugeOfNaab";
+    const isLeagueOfNaabs = gameState.gameId === "leagueOfNaabs";
+    const spellKit = step && step.key === "spell-kit";
+    const quotePack = step && step.key === "quote-pack";
 
     elements.textEditorLabel.textContent =
       (step && step.inputLabel) ||
-      (isLeaugeOfNaab ? "Fiche de champion" : "Votre prose immortelle");
+      (isLeagueOfNaabs ? "Fiche de champion" : "Votre prose immortelle");
+    elements.textContribution.classList.toggle("hidden", spellKit);
+    elements.spellKitEditor.classList.toggle("hidden", !spellKit);
+    elements.textCounter.classList.toggle("hidden", spellKit);
     elements.textContribution.placeholder =
       (step && step.placeholder) ||
-      (isLeaugeOfNaab
+      (isLeagueOfNaabs
         ? "Écris une idée qui passera difficilement l'équilibrage..."
         : "Écrivez quelque chose que les autres pourront mal comprendre...");
     elements.drawingEditorLabel.textContent =
-      isLeaugeOfNaab ? "Croquis du champion" : "Votre œuvre assumée";
+      isLeagueOfNaabs ? "Croquis du champion" : "Votre œuvre assumée";
     elements.recordButtonLabel.textContent =
-      isLeaugeOfNaab ? "Réplique de 5 secondes" : "5 secondes de bruit";
+      quotePack
+        ? `Réplique ${activeAudioQuoteIndex + 1} de 5 secondes`
+        : isLeagueOfNaabs
+          ? "Réplique de 5 secondes"
+          : "5 secondes de bruit";
+    updateQuoteAudioSlots();
   }
 
   async function autoplayPreviewAudio(previousAudio) {
@@ -3359,7 +3631,11 @@
     stopRoundIntro();
     introRoundKey = roundKey;
     introAudioElement = previousAudio;
-    elements.roundIntroText.textContent = getHumorousPrompt(gameState);
+    renderPlayerReferenceText(
+      elements.roundIntroText,
+      getHumorousPrompt(gameState),
+      gameState.assignment && gameState.assignment.targetNickname
+    );
     elements.previousPanel.classList.toggle(
       "hidden",
       !previousContribution
@@ -3423,7 +3699,11 @@
     elements.roundLabel.textContent =
       `Manche ${gameState.roundNumber} / ${gameState.totalRounds}`;
     applyEditorCopy(gameState);
-    elements.gamePrompt.textContent = getHumorousPrompt(gameState);
+    renderPlayerReferenceText(
+      elements.gamePrompt,
+      getHumorousPrompt(gameState),
+      gameState.assignment && gameState.assignment.targetNickname
+    );
 
     const previous = gameState.assignment.previousContribution;
     const hasPrevious = Boolean(previous);
@@ -3479,6 +3759,17 @@
     }
 
     if (selectedType === "text") {
+      if (isSpellKitStep()) {
+        const spells = elements.spellInputs.map((input) => input.value.trim());
+        if (spells.some((spell) => !spell)) {
+          throw new Error("Remplis les 3 sorts et l'ulti avant de valider.");
+        }
+        return {
+          type: "text",
+          content: JSON.stringify({ spells })
+        };
+      }
+
       const content = elements.textContribution.value.trim();
       if (!content) {
         throw new Error("Écrivez un texte avant de valider.");
@@ -3500,6 +3791,13 @@
       throw new Error(
         "L'enregistrement de 5 secondes doit se terminer avant de valider."
       );
+    }
+
+    if (isQuotePackStep()) {
+      if (!hasAllQuoteAudios()) {
+        throw new Error("Enregistrez les 4 répliques avant de valider.");
+      }
+      return { type: "audio", content: buildQuotePackContent() };
     }
 
     if (!audioDataUrl) {
@@ -3571,16 +3869,24 @@
       empty.textContent = "Aucune contribution.";
       content.append(empty);
     } else if (contribution.type === "text") {
-      const text = document.createElement("p");
-      text.className = "result-text";
-      text.textContent = contribution.content;
-      content.append(text);
+      if (contribution.stepKey === "spell-kit") {
+        content.append(createSpellKitView(contribution.content));
+      } else {
+        const text = document.createElement("p");
+        text.className = "result-text";
+        text.textContent = contribution.content;
+        content.append(text);
+      }
     } else if (contribution.type === "drawing") {
       const image = document.createElement("img");
       image.className = "result-image";
       image.src = contribution.content;
       image.alt = `Dessin de ${contribution.nickname}`;
       content.append(image);
+    } else if (contribution.stepKey === "quote-pack") {
+      const quotePack = createQuotePackView(contribution.content, true);
+      audioPlayer = quotePack.audioPlayers[0] || null;
+      content.append(quotePack.element);
     } else {
       audioPlayer = createAudioPlayer(contribution.content, true);
       content.append(audioPlayer.element);
@@ -3640,35 +3946,128 @@
     });
   }
 
-  function renderCurrentResultChain() {
-    if (!currentGame || currentGame.phase !== "results") {
-      return;
+  function getResultStepCountForChain(chain) {
+    if (currentGame && currentGame.gameId === "leagueOfNaabs") {
+      return 11;
     }
 
-    const chains = currentGame.chains;
-    const chain = chains[resultChainIndex];
-    elements.resultsTitle.textContent =
-      currentGame.resultTitle || "Voici comment tout a dérapé";
-    elements.resultOwnerLabel.textContent =
-      currentGame.resultOwnerLabel || "Catastrophe initiée par";
-    elements.resultChainCount.textContent =
-      `Étape ${currentGame.resultStepNumber} / ${currentGame.resultStepCount}`;
-    elements.resultOwner.textContent = chain.ownerNickname;
-    const visibleContributions = chain.contributions.slice(
-      0,
-      resultContributionIndex + 1
-    );
-    const renderedContributions = visibleContributions.map(
-      (contribution, index) =>
-        renderResultContribution(
-          contribution,
-          index,
-          index === resultContributionIndex
-        )
-    );
-    elements.resultContributions.replaceChildren(
-      ...renderedContributions.map((rendered) => rendered.element)
-    );
+    return chain ? chain.contributions.length : 0;
+  }
+
+  function findContributionByStep(chain, stepKey) {
+    return chain.contributions.find(
+      (contribution) => contribution.stepKey === stepKey
+    ) || null;
+  }
+
+  function appendRevealParagraph(parent, text, playerName, className = "") {
+    const paragraph = document.createElement("p");
+    paragraph.className = className || "league-reveal-text";
+    renderPlayerReferenceText(paragraph, text, playerName);
+    parent.append(paragraph);
+    return paragraph;
+  }
+
+  function appendEmptyReveal(parent, text = "Rien. Même le serveur juge.") {
+    const empty = document.createElement("p");
+    empty.className = "empty-contribution";
+    empty.textContent = text;
+    parent.append(empty);
+  }
+
+  function createLeagueOfNaabsResultStep(chain, stepIndex) {
+    const item = document.createElement("li");
+    const content = document.createElement("div");
+    const title = document.createElement("h3");
+    const ownerName = chain.ownerNickname;
+    const sketch = findContributionByStep(chain, "champion-sketch");
+    const championName = findContributionByStep(chain, "champion-name");
+    const spellKit = findContributionByStep(chain, "spell-kit");
+    const quotePack = findContributionByStep(chain, "quote-pack");
+    const lore = findContributionByStep(chain, "champion-lore");
+    const spells = parseSpellKit(spellKit && spellKit.content);
+    const quotes = parseQuotePack(quotePack && quotePack.content);
+    let audioPlayer = null;
+
+    item.className = "result-item league-result-item current-reveal";
+    content.className = "league-reveal-content";
+    title.className = "league-reveal-title";
+
+    if (stepIndex === 0) {
+      item.classList.add("result-type-drawing", "league-result-drawing");
+      renderPlayerReferenceText(
+        title,
+        `Et pour le champion de ${ownerName}, voici ce que vous avez concocté :`,
+        ownerName
+      );
+      content.append(title);
+      if (sketch && !sketch.empty && sketch.content) {
+        const image = document.createElement("img");
+        image.className = "result-image league-result-image";
+        image.src = sketch.content;
+        image.alt = `Croquis du champion de ${ownerName}`;
+        content.append(image);
+      } else {
+        appendEmptyReveal(content, "Le croquis a fui la Faille.");
+      }
+    } else if (stepIndex === 1) {
+      title.textContent = "Le champion s'appelle...";
+      content.append(title);
+      appendRevealParagraph(content, "Suspense. Roulement de clavier.", ownerName);
+      const name = document.createElement("p");
+      name.className = "league-champion-name";
+      name.textContent =
+        championName && !championName.empty && championName.content
+          ? championName.content
+          : "Nom manquant, probablement nerfé.";
+      content.append(name);
+    } else if (stepIndex === 2) {
+      title.textContent = "Le lore";
+      content.append(title);
+      appendRevealParagraph(
+        content,
+        lore && !lore.empty && lore.content
+          ? lore.content
+          : "Aucun lore. Même Riot n'a pas osé.",
+        ownerName,
+        "result-text league-lore-text"
+      );
+    } else if (stepIndex >= 3 && stepIndex <= 6) {
+      const spellIndex = stepIndex - 3;
+      title.textContent =
+        spellIndex === 3
+          ? "Et maintenant son ulti :"
+          : `Voici son sort ${spellIndex + 1} :`;
+      content.append(title);
+      const spell = document.createElement("article");
+      const badge = document.createElement("span");
+      const text = document.createElement("p");
+      spell.className = "spell-kit-view-item league-single-spell";
+      if (spellIndex === 3) {
+        spell.classList.add("ultimate");
+      }
+      badge.className = "spell-kit-view-badge";
+      badge.textContent = String(spellIndex + 1).padStart(2, "0");
+      text.textContent = spells[spellIndex] || "Sort perdu dans un patch note.";
+      spell.append(badge, text);
+      content.append(spell);
+    } else {
+      const quoteIndex = stepIndex - 7;
+      title.textContent = `Sa réplique ${quoteIndex + 1} :`;
+      content.append(title);
+      if (quotes[quoteIndex]) {
+        audioPlayer = createAudioPlayer(quotes[quoteIndex], true);
+        content.append(audioPlayer.element);
+      } else {
+        appendEmptyReveal(content, "Silence gênant, mais réglementaire.");
+      }
+    }
+
+    item.append(content);
+    return { element: item, audioPlayer };
+  }
+
+  function updateResultsControls() {
     elements.previousChainButton.disabled =
       !currentGame.canControlResults || !currentGame.canGoPrevious;
     elements.nextChainButton.disabled =
@@ -3693,6 +4092,77 @@
     elements.restartGameButton.title = currentGame.canRestartGame
       ? "Relancer immédiatement avec les mêmes joueurs et réglages"
       : "Il faut au moins 2 joueurs connectés pour relancer";
+  }
+
+  function renderLeagueOfNaabsResultChain(chain) {
+    elements.resultsTitle.textContent =
+      currentGame.resultTitle || "Le vestiaire des champions douteux";
+    elements.resultOwnerLabel.textContent =
+      currentGame.resultOwnerLabel || "Champion créé pour";
+    elements.resultChainCount.textContent =
+      `Étape ${currentGame.resultStepNumber} / ${currentGame.resultStepCount}`;
+    renderPlayerReferenceText(
+      elements.resultOwner,
+      chain.ownerNickname,
+      chain.ownerNickname
+    );
+
+    const rendered = createLeagueOfNaabsResultStep(
+      chain,
+      resultContributionIndex
+    );
+    elements.resultContributions.replaceChildren(rendered.element);
+    updateResultsControls();
+
+    const revealKey =
+      `${currentGame.gameId}:${chain.id}:${resultContributionIndex}`;
+    if (lastResultRevealKey !== revealKey) {
+      lastResultRevealKey = revealKey;
+      playSoundEffect("reveal");
+      scrollToCurrentResult(rendered.element);
+      if (rendered.audioPlayer) {
+        window.requestAnimationFrame(() => {
+          autoplayRevealedAudio(rendered.audioPlayer);
+        });
+      }
+    }
+  }
+
+  function renderCurrentResultChain() {
+    if (!currentGame || currentGame.phase !== "results") {
+      return;
+    }
+
+    const chains = currentGame.chains;
+    const chain = chains[resultChainIndex];
+    if (currentGame.gameId === "leagueOfNaabs") {
+      renderLeagueOfNaabsResultChain(chain);
+      return;
+    }
+
+    elements.resultsTitle.textContent =
+      currentGame.resultTitle || "Voici comment tout a dérapé";
+    elements.resultOwnerLabel.textContent =
+      currentGame.resultOwnerLabel || "Catastrophe initiée par";
+    elements.resultChainCount.textContent =
+      `Étape ${currentGame.resultStepNumber} / ${currentGame.resultStepCount}`;
+    elements.resultOwner.textContent = chain.ownerNickname;
+    const visibleContributions = chain.contributions.slice(
+      0,
+      resultContributionIndex + 1
+    );
+    const renderedContributions = visibleContributions.map(
+      (contribution, index) =>
+        renderResultContribution(
+          contribution,
+          index,
+          index === resultContributionIndex
+        )
+    );
+    elements.resultContributions.replaceChildren(
+      ...renderedContributions.map((rendered) => rendered.element)
+    );
+    updateResultsControls();
 
     const revealKey = `${chain.id}:${resultContributionIndex}`;
     if (lastResultRevealKey !== revealKey) {
@@ -3726,7 +4196,7 @@
     resultContributionIndex = Math.max(
       0,
       Math.min(
-        chain.contributions.length - 1,
+        getResultStepCountForChain(chain) - 1,
         resultsState.currentContributionIndex || 0
       )
     );
@@ -3985,6 +4455,9 @@
         `${Array.from(elements.textContribution.value).length} / 500`;
       scheduleDraftSave();
     });
+    elements.spellInputs.forEach((input) => {
+      input.addEventListener("input", scheduleDraftSave);
+    });
 
     elements.settingsButton.addEventListener("click", () => {
       setSettingsOpen(true);
@@ -4074,10 +4547,20 @@
       toggleRecordedAudioPlayback
     );
     elements.resetAudioButton.addEventListener("click", () => {
-      resetAudio();
+      const quotePack = isQuotePackStep();
+      resetAudio(!quotePack);
       if (currentGame) {
-        sendDraft("audio", "", currentGame.roundIndex);
+        sendDraft(
+          "audio",
+          quotePack && hasAnyQuoteAudio() ? buildQuotePackContent() : "",
+          currentGame.roundIndex
+        );
       }
+    });
+    elements.quoteAudioSlotButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        selectAudioQuoteSlot(button.dataset.quoteIndex);
+      });
     });
     elements.validateAudioButton.addEventListener(
       "click",
