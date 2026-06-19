@@ -23,15 +23,22 @@ const MAX_ROOM_NAME_LENGTH = 30;
 const MIN_ROOM_NAME_LENGTH = 2;
 const ROOM_CODE_LENGTH = 6;
 const DEFAULT_INPUT_TYPE_COUNT = 3;
+const DEFAULT_PARTY_GAME_COUNT = 3;
+const MAX_PARTY_GAME_COUNT = 10;
 const DEFAULT_AVATAR_ID = "comet";
-const DEFAULT_ROOM_GAME_ID = "random";
+const PARTY_GAME_ID = "party";
+const DEFAULT_ROOM_GAME_ID = PARTY_GAME_ID;
 const KAMOULOX_GAME_ID = "kamoulox3000";
 const LEAGUE_OF_NAABS_GAME_ID = "leagueOfNaabs";
+const PLAYABLE_GAME_IDS = Object.freeze([
+  KAMOULOX_GAME_ID,
+  LEAGUE_OF_NAABS_GAME_ID
+]);
 const ROOM_GAMES = Object.freeze([
   {
-    id: "random",
-    name: "Aléatoire",
-    resolvedId: KAMOULOX_GAME_ID,
+    id: PARTY_GAME_ID,
+    name: "Party",
+    resolvedId: null,
     available: true
   },
   {
@@ -108,10 +115,14 @@ const LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT =
   LEAGUE_OF_NAABS_STEPS.length + 1;
 const LEAGUE_OF_NAABS_REVEAL_STEPS_PER_CHAMPION = 11;
 
-function createDefaultGameSettings() {
+function createDefaultGameSettings(gameId = DEFAULT_ROOM_GAME_ID) {
   return {
     roundCount: null,
-    inputTypeCount: DEFAULT_INPUT_TYPE_COUNT
+    inputTypes: [...CONTRIBUTION_TYPE_VALUES],
+    inputTypeCount: DEFAULT_INPUT_TYPE_COUNT,
+    partyGameCount: DEFAULT_PARTY_GAME_COUNT,
+    enabledGameIds:
+      gameId === PARTY_GAME_ID ? [...PLAYABLE_GAME_IDS] : []
   };
 }
 
@@ -466,12 +477,21 @@ function createGameServer(options = {}) {
   function getResolvedRoomGame(room) {
     const selectedGame =
       findRoomGame(room.selectedGameId) || findRoomGame(DEFAULT_ROOM_GAME_ID);
+    if (selectedGame.id === PARTY_GAME_ID) {
+      const currentPartyGameId =
+        room.partySession &&
+        room.partySession.gameIds[room.partySession.currentIndex];
+      return findRoomGame(currentPartyGameId) || findRoomGame(KAMOULOX_GAME_ID);
+    }
     return findRoomGame(selectedGame.resolvedId) || selectedGame;
   }
 
   function getResolvedRoomGameForId(gameId) {
     const selectedGame =
       findRoomGame(gameId) || findRoomGame(DEFAULT_ROOM_GAME_ID);
+    if (selectedGame.id === PARTY_GAME_ID) {
+      return selectedGame;
+    }
     return findRoomGame(selectedGame.resolvedId) || selectedGame;
   }
 
@@ -493,7 +513,10 @@ function createGameServer(options = {}) {
       room.gameSettings = new Map();
     }
     if (!room.gameSettings.has(normalizedGameId)) {
-      room.gameSettings.set(normalizedGameId, createDefaultGameSettings());
+      room.gameSettings.set(
+        normalizedGameId,
+        createDefaultGameSettings(normalizedGameId)
+      );
     }
 
     return room.gameSettings.get(normalizedGameId);
@@ -502,9 +525,8 @@ function createGameServer(options = {}) {
   function serializeSettings(room, gameId = room.selectedGameId) {
     const selectedGame =
       findRoomGame(gameId) || findRoomGame(DEFAULT_ROOM_GAME_ID);
-    const resolvedGame = getResolvedRoomGameForId(selectedGame.id);
     const settings = getRoomGameSettings(room, selectedGame.id);
-    const maxRounds = getMaxRoundsForGame(resolvedGame.id, room.players.size);
+    const maxRounds = getMaxRoundsForGame(selectedGame.id, room.players.size);
     const effectiveRoundCount =
       settings.roundCount === null
         ? maxRounds
@@ -514,7 +536,10 @@ function createGameServer(options = {}) {
       gameId: selectedGame.id,
       roundCount: settings.roundCount,
       effectiveRoundCount,
-      inputTypeCount: settings.inputTypeCount
+      inputTypes: [...settings.inputTypes],
+      inputTypeCount: settings.inputTypes.length,
+      partyGameCount: settings.partyGameCount,
+      enabledGameIds: [...settings.enabledGameIds]
     };
   }
 
@@ -534,14 +559,15 @@ function createGameServer(options = {}) {
   function serializeGameSelection(room) {
     const selectedGame =
       findRoomGame(room.selectedGameId) || findRoomGame(DEFAULT_ROOM_GAME_ID);
-    const resolvedGame =
-      findRoomGame(selectedGame.resolvedId) || selectedGame;
+    const resolvedGame = selectedGame.resolvedId
+      ? findRoomGame(selectedGame.resolvedId) || selectedGame
+      : null;
 
     return {
       selectedGameId: selectedGame.id,
       selectedGameName: selectedGame.name,
-      resolvedGameId: resolvedGame.id,
-      resolvedGameName: resolvedGame.name
+      resolvedGameId: resolvedGame ? resolvedGame.id : null,
+      resolvedGameName: resolvedGame ? resolvedGame.name : null
     };
   }
 
@@ -818,6 +844,10 @@ function createGameServer(options = {}) {
         ) +
       game.resultContributionIndex +
       1;
+    const hasNextPartyGame = Boolean(
+      room.partySession &&
+        room.partySession.currentIndex < room.partySession.gameIds.length - 1
+    );
 
     return {
       phase: "results",
@@ -828,7 +858,7 @@ function createGameServer(options = {}) {
       resultStepNumber,
       resultStepCount,
       canGoPrevious: resultStepNumber > 1,
-      canGoNext: resultStepNumber < resultStepCount,
+      canGoNext: resultStepNumber < resultStepCount || hasNextPartyGame,
       canControlResults: Boolean(player && player.id === room.hostId),
       canRestartGame: Boolean(
         player &&
@@ -837,6 +867,13 @@ function createGameServer(options = {}) {
       ),
       gameId: game.gameId,
       gameName: game.gameName,
+      party: room.partySession
+        ? {
+            gameNumber: room.partySession.currentIndex + 1,
+            gameCount: room.partySession.gameIds.length,
+            hasNextGame: hasNextPartyGame
+          }
+        : null,
       resultTitle:
         game.gameId === LEAGUE_OF_NAABS_GAME_ID
           ? "Le vestiaire des champions douteux"
@@ -894,6 +931,14 @@ function createGameServer(options = {}) {
       participantCount: game.participants.length,
       gameId: game.gameId,
       gameName: game.gameName,
+      party:
+        game.partyCount !== null
+          ? {
+              gameNumber: game.partyIndex + 1,
+              gameCount: game.partyCount,
+              hasNextGame: game.partyIndex < game.partyCount - 1
+            }
+          : null,
       optimalPlayerCount:
         game.gameId === LEAGUE_OF_NAABS_GAME_ID
           ? LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT
@@ -1085,13 +1130,52 @@ function createGameServer(options = {}) {
     beginRound(room);
   }
 
-  function createGame(room) {
+  function createPartySequence(settings) {
+    const enabledGameIds = settings.enabledGameIds.filter((gameId) =>
+      PLAYABLE_GAME_IDS.includes(gameId)
+    );
+    const gameIds = [];
+
+    for (let index = 0; index < settings.partyGameCount; index += 1) {
+      const previousGameId = gameIds[index - 1] || null;
+      const candidates =
+        enabledGameIds.length > 1
+          ? enabledGameIds.filter((gameId) => gameId !== previousGameId)
+          : enabledGameIds;
+      gameIds.push(candidates[randomInt(candidates.length)]);
+    }
+
+    return { gameIds, currentIndex: 0 };
+  }
+
+  function prepareRoomGame(room) {
+    const settings = getRoomGameSettings(room, room.selectedGameId);
+    if (room.selectedGameId === PARTY_GAME_ID) {
+      room.partySession = createPartySequence(settings);
+      return createGame(
+        room,
+        room.partySession.gameIds[0],
+        settings
+      );
+    }
+
+    room.partySession = null;
+    return createGame(room, room.selectedGameId, settings);
+  }
+
+  function createGame(
+    room,
+    requestedGameId = room.selectedGameId,
+    requestedSettings = null
+  ) {
     const orderedPlayers = Array.from(room.players.values()).sort(
       (first, second) => first.joinOrder - second.joinOrder
     );
-    const resolvedGame = getResolvedRoomGame(room);
+    const resolvedGame =
+      findRoomGame(requestedGameId) || getResolvedRoomGame(room);
     const gameId = resolvedGame.id;
-    const settings = getRoomGameSettings(room, room.selectedGameId);
+    const settings =
+      requestedSettings || getRoomGameSettings(room, requestedGameId);
     const participants = orderedPlayers.map((player) => ({
       id: player.participantId,
       nickname: player.nickname,
@@ -1121,10 +1205,7 @@ function createGameServer(options = {}) {
     const activeTypes =
       gameId === LEAGUE_OF_NAABS_GAME_ID
         ? [...new Set(roundSpecs.map((step) => step.type))]
-        : selectActiveContributionTypes(
-            settings.inputTypeCount,
-            randomInt
-          );
+        : [...settings.inputTypes];
     const generatedPlans =
       gameId === LEAGUE_OF_NAABS_GAME_ID
         ? chains.map(() => roundSpecs.map((step) => step.type))
@@ -1159,7 +1240,9 @@ function createGameServer(options = {}) {
       countdownEndsAt: null,
       finalizing: false,
       resultChainIndex: 0,
-      resultContributionIndex: 0
+      resultContributionIndex: 0,
+      partyIndex: room.partySession ? room.partySession.currentIndex : null,
+      partyCount: room.partySession ? room.partySession.gameIds.length : null
     };
   }
 
@@ -1187,18 +1270,57 @@ function createGameServer(options = {}) {
       }
     }
 
-    const inputTypeCount = Number(payload.inputTypeCount);
-    if (
-      !Number.isInteger(inputTypeCount) ||
-      inputTypeCount < 1 ||
-      inputTypeCount > CONTRIBUTION_TYPE_VALUES.length
-    ) {
+    const requestedInputTypes = Array.isArray(payload.inputTypes)
+      ? payload.inputTypes
+      : selectActiveContributionTypes(
+          Number(payload.inputTypeCount) || DEFAULT_INPUT_TYPE_COUNT,
+          randomInt
+        );
+    const inputTypes = [
+      ...new Set(
+        requestedInputTypes.filter((type) =>
+          CONTRIBUTION_TYPE_VALUES.includes(type)
+        )
+      )
+    ];
+    if (inputTypes.length < 1) {
       return {
-        error: "Le nombre de types disponibles doit être compris entre 1 et 3."
+        error: "Au moins un type de contribution doit rester activé."
       };
     }
 
-    return { roundCount, inputTypeCount };
+    const partyGameCount = Number(
+      payload.partyGameCount || DEFAULT_PARTY_GAME_COUNT
+    );
+    if (
+      !Number.isInteger(partyGameCount) ||
+      partyGameCount < 1 ||
+      partyGameCount > MAX_PARTY_GAME_COUNT
+    ) {
+      return {
+        error: `Le nombre de jeux de la Party doit être compris entre 1 et ${MAX_PARTY_GAME_COUNT}.`
+      };
+    }
+
+    const requestedEnabledGameIds = Array.isArray(payload.enabledGameIds)
+      ? payload.enabledGameIds
+      : PLAYABLE_GAME_IDS;
+    const enabledGameIds = [
+      ...new Set(
+        requestedEnabledGameIds.filter((id) => PLAYABLE_GAME_IDS.includes(id))
+      )
+    ];
+    if (gameId === PARTY_GAME_ID && enabledGameIds.length < 1) {
+      return { error: "La Party doit contenir au moins un jeu." };
+    }
+
+    return {
+      roundCount,
+      inputTypes,
+      inputTypeCount: inputTypes.length,
+      partyGameCount,
+      enabledGameIds: gameId === PARTY_GAME_ID ? enabledGameIds : []
+    };
   }
 
   function parseJsonObject(value) {
@@ -1528,10 +1650,14 @@ function createGameServer(options = {}) {
         selectedGameId: DEFAULT_ROOM_GAME_ID,
         gameVotes: new Map(),
         players: new Map([[socket.id, player]]),
-        settings: createDefaultGameSettings(),
+        settings: createDefaultGameSettings(DEFAULT_ROOM_GAME_ID),
         gameSettings: new Map([
-          [DEFAULT_ROOM_GAME_ID, createDefaultGameSettings()]
+          [
+            DEFAULT_ROOM_GAME_ID,
+            createDefaultGameSettings(DEFAULT_ROOM_GAME_ID)
+          ]
         ]),
+        partySession: null,
         game: null,
         chatMessages: []
       };
@@ -1786,7 +1912,7 @@ function createGameServer(options = {}) {
       const normalized = normalizeGameSettings(
         payload,
         room.players.size,
-        getResolvedRoomGameForId(targetGameId).id
+        targetGameId
       );
       if (normalized.error) {
         answer(socket, acknowledgment, {
@@ -1840,7 +1966,7 @@ function createGameServer(options = {}) {
       }
 
       room.gameVotes.clear();
-      room.game = createGame(room);
+      room.game = prepareRoomGame(room);
       answer(socket, acknowledgment, { ok: true });
       beginGameCountdown(room);
     });
@@ -2077,6 +2203,25 @@ function createGameServer(options = {}) {
         } else if (game.resultChainIndex < game.chains.length - 1) {
           game.resultChainIndex += 1;
           game.resultContributionIndex = 0;
+        } else if (
+          room.partySession &&
+          room.partySession.currentIndex <
+            room.partySession.gameIds.length - 1
+        ) {
+          clearGameTimers(game);
+          room.partySession.currentIndex += 1;
+          const partySettings = getRoomGameSettings(room, PARTY_GAME_ID);
+          room.game = createGame(
+            room,
+            room.partySession.gameIds[room.partySession.currentIndex],
+            partySettings
+          );
+          answer(socket, acknowledgment, {
+            ok: true,
+            advancedParty: true
+          });
+          beginGameCountdown(room);
+          return;
         }
       } else if (game.resultContributionIndex > 0) {
         game.resultContributionIndex -= 1;
@@ -2116,6 +2261,7 @@ function createGameServer(options = {}) {
 
       clearGameTimers(room.game);
       room.game = null;
+      room.partySession = null;
       answer(socket, acknowledgment, { ok: true });
       emitRoomState(room);
     });
@@ -2147,7 +2293,7 @@ function createGameServer(options = {}) {
       }
 
       clearGameTimers(room.game);
-      room.game = createGame(room);
+      room.game = prepareRoomGame(room);
       answer(socket, acknowledgment, { ok: true });
       beginGameCountdown(room);
     });
@@ -2232,6 +2378,8 @@ module.exports = {
   LEAGUE_OF_NAABS_REVEAL_STEPS_PER_CHAMPION,
   LEAGUE_OF_NAABS_STEPS,
   MAX_PLAYERS,
+  PARTY_GAME_ID,
+  PLAYABLE_GAME_IDS,
   ROUND_DURATION_MS,
   ROUND_PREVIEW_MS,
   ROOM_GAMES,

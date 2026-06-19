@@ -10,6 +10,7 @@ const {
   LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT,
   LEAGUE_OF_NAABS_REVEAL_STEPS_PER_CHAMPION,
   LEAGUE_OF_NAABS_STEPS,
+  PARTY_GAME_ID,
   ROUND_DURATION_MS,
   ROUND_PREVIEW_MS,
   createGameServer,
@@ -108,7 +109,11 @@ function waitForEvent(
   });
 }
 
-async function createRoomWithPlayers(url, nicknames) {
+async function createRoomWithPlayers(
+  url,
+  nicknames,
+  selectedGameId = KAMOULOX_GAME_ID
+) {
   const clients = [];
   const host = await connectClient(url);
   clients.push(host);
@@ -124,6 +129,13 @@ async function createRoomWithPlayers(url, nicknames) {
       nickname
     });
     assert.equal(joined.ok, true);
+  }
+
+  if (selectedGameId) {
+    const selected = await emitAck(host, "selectRoomGame", {
+      gameId: selectedGameId
+    });
+    assert.equal(selected.ok, true);
   }
 
   return {
@@ -379,6 +391,95 @@ test("les réglages de partie restent propres à chaque jeu", async () => {
       1
     );
     assert.equal(room.game.activeTypes.length, 2);
+  } finally {
+    await cleanup(game, clients);
+  }
+});
+
+test("Party enchaîne les jeux activés sans répétition immédiate", async () => {
+  const { game, url } = await startTestServer({ randomInt: () => 0 });
+  let clients = [];
+
+  try {
+    const setup = await createRoomWithPlayers(
+      url,
+      ["Alice", "Bob"],
+      null
+    );
+    clients = setup.clients;
+    const [alice, bob] = clients;
+
+    const emptyParty = await emitAck(alice, "updateGameSettings", {
+      gameId: PARTY_GAME_ID,
+      roundCount: 1,
+      inputTypes: ["text"],
+      partyGameCount: 2,
+      enabledGameIds: []
+    });
+    assert.equal(emptyParty.ok, false);
+    assert.match(emptyParty.error, /au moins un jeu/i);
+
+    const emptyInputTypes = await emitAck(alice, "updateGameSettings", {
+      gameId: PARTY_GAME_ID,
+      roundCount: 1,
+      inputTypes: [],
+      partyGameCount: 2,
+      enabledGameIds: [KAMOULOX_GAME_ID]
+    });
+    assert.equal(emptyInputTypes.ok, false);
+    assert.match(emptyInputTypes.error, /au moins un type/i);
+
+    const configured = await emitAck(alice, "updateGameSettings", {
+      gameId: PARTY_GAME_ID,
+      roundCount: 1,
+      inputTypes: ["text"],
+      partyGameCount: 2,
+      enabledGameIds: [KAMOULOX_GAME_ID, LEAGUE_OF_NAABS_GAME_ID]
+    });
+    assert.equal(configured.ok, true);
+    assert.equal(configured.settings.partyGameCount, 2);
+
+    const firstRoundPromises = clients.map((client) =>
+      waitForEvent(
+        client,
+        "gameState",
+        (state) => state.phase === "playing" && state.party?.gameNumber === 1
+      )
+    );
+    await emitAck(alice, "startGame");
+    const firstRound = await Promise.all(firstRoundPromises);
+    assert.equal(firstRound[0].gameId, KAMOULOX_GAME_ID);
+    assert.deepEqual(
+      game.rooms.get(setup.code).partySession.gameIds,
+      [KAMOULOX_GAME_ID, LEAGUE_OF_NAABS_GAME_ID]
+    );
+
+    const firstResultsPromise = Promise.all(
+      clients.map((client) =>
+        waitForEvent(client, "gameState", (state) => state.phase === "results")
+      )
+    );
+    await submitExpected(alice, firstRound[0], "Party Alice");
+    await submitExpected(bob, firstRound[1], "Party Bob");
+    const firstResults = await firstResultsPromise;
+    assert.equal(firstResults[0].party.hasNextGame, true);
+
+    await emitAck(alice, "navigateResults", { direction: 1 });
+    const secondRoundPromises = clients.map((client) =>
+      waitForEvent(
+        client,
+        "gameState",
+        (state) => state.phase === "playing" && state.party?.gameNumber === 2
+      )
+    );
+    const advanced = await emitAck(alice, "navigateResults", {
+      direction: 1
+    });
+    assert.equal(advanced.ok, true);
+    assert.equal(advanced.advancedParty, true);
+    const secondRound = await Promise.all(secondRoundPromises);
+    assert.equal(secondRound[0].gameId, LEAGUE_OF_NAABS_GAME_ID);
+    assert.equal(secondRound[0].party.hasNextGame, false);
   } finally {
     await cleanup(game, clients);
   }

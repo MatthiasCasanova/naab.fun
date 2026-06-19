@@ -192,20 +192,53 @@
           </button>
         </div>
 
-        <label for="round-count-select">Nombre de manches</label>
-        <select id="round-count-select">
-          <option value="auto">Automatique</option>
-        </select>
+        <div class="game-settings-fields">
+          <div class="settings-field">
+            <label for="round-count-input">Nombre de manches</label>
+            <input id="round-count-input" type="number" inputmode="numeric" min="1" max="10" step="1">
+            <small id="round-count-help" class="settings-help"></small>
+          </div>
 
-        <label for="input-type-count-select">Types possibles</label>
-        <select id="input-type-count-select">
-          <option value="1">1 type aléatoire</option>
-          <option value="2">2 types aléatoires</option>
-          <option value="3">Les 3 types</option>
-        </select>
-        <p class="settings-help">
-          Avec plusieurs types actifs, le serveur évite les répétitions immédiates.
-        </p>
+          <div id="input-types-settings" class="settings-field">
+            <span class="field-label">Types d'entrée autorisés</span>
+            <div class="settings-choice-grid input-type-choice-grid">
+              <label class="settings-choice">
+                <input type="checkbox" value="text" data-input-type checked>
+                <span class="settings-choice-mark">📝</span>
+                <strong>Texte</strong>
+              </label>
+              <label class="settings-choice">
+                <input type="checkbox" value="drawing" data-input-type checked>
+                <span class="settings-choice-mark">🎨</span>
+                <strong>Dessin</strong>
+              </label>
+              <label class="settings-choice">
+                <input type="checkbox" value="audio" data-input-type checked>
+                <span class="settings-choice-mark">🎙️</span>
+                <strong>Audio</strong>
+              </label>
+            </div>
+            <small class="settings-help">Décoche les outils que tes amis ne méritent pas.</small>
+          </div>
+
+          <div id="party-settings" class="settings-field hidden">
+            <label for="party-game-count-input">Jeux à enchaîner</label>
+            <input id="party-game-count-input" type="number" inputmode="numeric" min="1" max="10" step="1">
+            <span class="field-label party-games-label">Jeux dans le tirage</span>
+            <div class="settings-choice-grid party-game-choice-grid">
+              <label class="settings-choice">
+                <input type="checkbox" value="kamoulox3000" data-party-game checked>
+                <span class="settings-choice-mark">K3</span>
+                <strong>Kamoulox 3000</strong>
+              </label>
+              <label class="settings-choice">
+                <input type="checkbox" value="leagueOfNaabs" data-party-game checked>
+                <span class="settings-choice-mark">LN</span>
+                <strong>League Of Naabs</strong>
+              </label>
+            </div>
+          </div>
+        </div>
       </section>
     </div>
 
@@ -410,16 +443,15 @@
                 <div class="game-selection-heading">
                   <p class="eyebrow">Choix du jeu</p>
                   <h3 id="game-selection-title">Sélectionne le chaos de la room</h3>
-                  <p id="game-selection-help">Aléatoire est prêt à faire semblant d'hésiter.</p>
                 </div>
                 <div id="game-selection-grid" class="game-selection-grid" aria-label="Sélection de jeu">
-                  <article class="game-tile game-tile-random" role="button" tabindex="0" data-game-id="random" aria-pressed="true">
-                    <button class="game-tile-settings hidden" type="button" data-game-settings-id="random" aria-label="Paramètres du jeu aléatoire">
+                  <article class="game-tile game-tile-party" role="button" tabindex="0" data-game-id="party" aria-pressed="true">
+                    <button class="game-tile-settings hidden" type="button" data-game-settings-id="party" aria-label="Paramètres de Party">
                       <svg class="icon"><use href="#icon-settings"></use></svg>
                     </button>
-                    <span class="game-tile-mark">?</span>
-                    <strong>Aléatoire</strong>
-                    <small>Le destin clique à ta place.</small>
+                    <span class="game-tile-mark">P</span>
+                    <strong>Party</strong>
+                    <small>Plusieurs jeux, aucun temps mort.</small>
                   </article>
                   <article class="game-tile" role="button" tabindex="0" data-game-id="kamoulox3000" aria-pressed="false">
                     <button class="game-tile-settings hidden" type="button" data-game-settings-id="kamoulox3000" aria-label="Paramètres de Kamoulox 3000">
@@ -456,10 +488,8 @@
               </section>
               <div class="selected-game-strip">
                 <span>Jeu sélectionné</span>
-                <strong id="selected-game-name">Aléatoire</strong>
+                <strong id="selected-game-name">Party</strong>
               </div>
-              <p id="game-settings-summary" class="game-settings-summary"></p>
-              <p id="start-help" class="help-text"></p>
             </div>
 
             <div class="room-actions">

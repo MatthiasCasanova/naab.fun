@@ -282,8 +282,9 @@ test("le lobby masque le code et expose les réglages de l'hôte", () => {
   assert.match(html, /data-game-settings-id="kamoulox3000"/);
   assert.match(html, /id="game-settings-modal"/);
   assert.match(html, /id="game-settings-panel"/);
-  assert.match(html, /id="round-count-select"/);
-  assert.match(html, /id="input-type-count-select"/);
+  assert.match(html, /id="round-count-input"/);
+  assert.match(html, /id="input-types-settings"/);
+  assert.match(html, /id="party-settings"/);
 });
 
 test("l'accueil propose les avatars et la room conserve une liste laterale", () => {
@@ -331,11 +332,17 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(html, /id="chat-toggle-button"/);
   assert.match(html, /id="players-sidebar-title">naab\.fun room</);
   assert.match(html, /id="game-selection-grid"/);
-  assert.match(html, /data-game-id="random"/);
+  assert.match(html, /data-game-id="party"/);
   assert.match(html, /data-game-id="kamoulox3000"/);
   assert.match(html, /data-game-id="leagueOfNaabs"/);
   assert.match(html, /Kamoulox 3000/);
   assert.match(html, /League Of Naabs/);
+  assert.match(html, /id="round-count-input"[^>]*type="number"/);
+  assert.match(html, /id="party-game-count-input"/);
+  assert.equal((html.match(/data-input-type/g) || []).length, 3);
+  assert.equal((html.match(/data-party-game/g) || []).length, 2);
+  assert.doesNotMatch(html, /id="game-settings-summary"/);
+  assert.doesNotMatch(html, /id="start-help"/);
   assert.match(html, /id="spell-kit-editor"/);
   assert.match(html, /id="spell-input-1"/);
   assert.match(html, /id="quote-audio-slots"/);
@@ -357,6 +364,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(app, /function renderGameVotes/);
   assert.match(app, /function handleRoomGameClick/);
   assert.match(app, /function renderRoomLobbyState/);
+  assert.match(app, /badge\.textContent = "👑"/);
   assert.match(app, /self-voted-only/);
   assert.match(app, /CONTRIBUTION_STEP_LABELS/);
   assert.match(app, /function createSpellKitView/);

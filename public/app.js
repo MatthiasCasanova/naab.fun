@@ -31,11 +31,11 @@
     frog: "🐸"
   });
   const ROOM_GAMES = Object.freeze({
-    random: {
-      id: "random",
-      name: "Aléatoire",
-      resolvedId: "kamoulox3000",
-      resolvedName: "Kamoulox 3000"
+    party: {
+      id: "party",
+      name: "Party",
+      resolvedId: null,
+      resolvedName: null
     },
     kamoulox3000: {
       id: "kamoulox3000",
@@ -50,7 +50,7 @@
       resolvedName: "League Of Naabs"
     }
   });
-  const DEFAULT_ROOM_GAME_ID = "random";
+  const DEFAULT_ROOM_GAME_ID = "party";
   const PLAYER_STATUS_LABELS = Object.freeze({
     ready: "Prêt",
     playing: "En création",
@@ -124,19 +124,25 @@
     ),
     gameSettingsPanel: document.querySelector("#game-settings-panel"),
     gameSettingsTitle: document.querySelector("#game-settings-title"),
-    roundCountSelect: document.querySelector("#round-count-select"),
-    inputTypeCountSelect: document.querySelector(
-      "#input-type-count-select"
+    roundCountInput: document.querySelector("#round-count-input"),
+    roundCountHelp: document.querySelector("#round-count-help"),
+    inputTypesSettings: document.querySelector("#input-types-settings"),
+    inputTypeCheckboxes: Array.from(
+      document.querySelectorAll("[data-input-type]")
     ),
-    gameSettingsSummary: document.querySelector("#game-settings-summary"),
+    partySettings: document.querySelector("#party-settings"),
+    partyGameCountInput: document.querySelector(
+      "#party-game-count-input"
+    ),
+    partyGameCheckboxes: Array.from(
+      document.querySelectorAll("[data-party-game]")
+    ),
     sidebarGameSummary: document.querySelector("#sidebar-game-summary"),
     selectedGameName: document.querySelector("#selected-game-name"),
-    gameSelectionHelp: document.querySelector("#game-selection-help"),
     gameSelectionButtons: Array.from(
       document.querySelectorAll("[data-game-id]")
     ),
     startGameButton: document.querySelector("#start-game-button"),
-    startHelp: document.querySelector("#start-help"),
     leaveButton: document.querySelector("#leave-button"),
     roomMessage: document.querySelector("#room-message"),
     roundIntro: document.querySelector("#round-intro"),
@@ -1062,7 +1068,7 @@
       if (player.isHost) {
         const badge = document.createElement("span");
         badge.className = "host-badge";
-        badge.textContent = "★";
+        badge.textContent = "👑";
         badge.title = "Hôte";
         item.append(badge);
       }
@@ -1189,37 +1195,18 @@
     return Math.max(1, room.playerCount);
   }
 
-  function populateRoundCountOptions(room) {
+  function populateRoundCountInput(room) {
     const roundLimit = getRoomGameRoundLimit(room);
-    const selectedValue =
-      room.settings.roundCount === null
-        ? "auto"
-        : String(Math.min(room.settings.roundCount, roundLimit));
-    const options = [
-      {
-        value: "auto",
-        label: `Automatique (${roundLimit} manche${
-          roundLimit > 1 ? "s" : ""
-        })`
-      }
-    ];
-
-    for (let roundCount = 1; roundCount <= roundLimit; roundCount += 1) {
-      options.push({
-        value: String(roundCount),
-        label: `${roundCount} manche${roundCount > 1 ? "s" : ""}`
-      });
-    }
-
-    elements.roundCountSelect.replaceChildren(
-      ...options.map((option) => {
-        const element = document.createElement("option");
-        element.value = option.value;
-        element.textContent = option.label;
-        return element;
-      })
+    const effectiveRoundCount = Math.min(
+      room.settings.effectiveRoundCount || roundLimit,
+      roundLimit
     );
-    elements.roundCountSelect.value = selectedValue;
+    elements.roundCountInput.max = String(roundLimit);
+    elements.roundCountInput.value = String(effectiveRoundCount);
+    elements.roundCountHelp.textContent =
+      room.settings.roundCount === null
+        ? `Automatique : ${effectiveRoundCount} manche${effectiveRoundCount > 1 ? "s" : ""}.`
+        : `Maximum actuel : ${roundLimit}.`;
   }
 
   function getSelectedRoomGameId(room) {
@@ -1250,14 +1237,15 @@
 
   function createRoomGameSelection(gameId) {
     const selectedGame = ROOM_GAMES[gameId] || ROOM_GAMES[DEFAULT_ROOM_GAME_ID];
-    const resolvedGame =
-      ROOM_GAMES[selectedGame.resolvedId] || selectedGame;
+    const resolvedGame = selectedGame.resolvedId
+      ? ROOM_GAMES[selectedGame.resolvedId] || selectedGame
+      : null;
 
     return {
       selectedGameId: selectedGame.id,
       selectedGameName: selectedGame.name,
-      resolvedGameId: resolvedGame.id,
-      resolvedGameName: resolvedGame.name
+      resolvedGameId: resolvedGame ? resolvedGame.id : null,
+      resolvedGameName: resolvedGame ? resolvedGame.name : null
     };
   }
 
@@ -1370,18 +1358,8 @@
   function renderGameSelection(room) {
     const selectedGameId = getSelectedRoomGameId(room);
     const selectedLabel = getRoomGameLabel(room);
-    const resolvedLabel = getResolvedRoomGameLabel(room);
 
     elements.selectedGameName.textContent = selectedLabel;
-    if (selectedGameId === "leagueOfNaabs") {
-      elements.gameSelectionHelp.textContent =
-        "Optimal à 6 joueurs : 5 étapes de champion, aucune dignité requise.";
-    } else {
-      elements.gameSelectionHelp.textContent =
-        selectedGameId === DEFAULT_ROOM_GAME_ID
-          ? `Aléatoire choisira ${resolvedLabel}. Suspense administratif.`
-          : `${resolvedLabel} est prêt. Les mauvaises idées aussi.`;
-    }
     elements.sidebarGameSummary.textContent =
       `${selectedLabel} sélectionné. L'hôte appuie quand le cirque est complet.`;
 
@@ -1421,39 +1399,39 @@
     elements.startGameButton.classList.toggle("hidden", !isHost);
     elements.startGameButton.disabled =
       !isHost || room.playerCount < room.minPlayersToStart;
-    elements.startHelp.textContent = isHost
-      ? room.playerCount < room.minPlayersToStart
-        ? "Il faut au moins 2 joueurs pour lancer la partie."
-        : `${room.settings.effectiveRoundCount} manche${
-            room.settings.effectiveRoundCount > 1 ? "s" : ""
-          } ${
-            room.settings.effectiveRoundCount > 1
-              ? "seront jouées"
-              : "sera jouée"
-          }.`
-      : "En attente du lancement par l'hôte.";
   }
 
   function renderGameSettings(room, isHost) {
-    populateRoundCountOptions(room);
-    elements.inputTypeCountSelect.value = String(
-      room.settings.inputTypeCount
+    const selectedGameId = getSelectedRoomGameId(room);
+    const selectedInputTypes = Array.isArray(room.settings.inputTypes)
+      ? room.settings.inputTypes
+      : CONTRIBUTION_TYPES.slice(0, room.settings.inputTypeCount || 3);
+    populateRoundCountInput(room);
+    elements.inputTypeCheckboxes.forEach((checkbox) => {
+      checkbox.checked = selectedInputTypes.includes(checkbox.value);
+    });
+    elements.partyGameCountInput.value = String(
+      room.settings.partyGameCount || 3
+    );
+    const enabledGameIds = Array.isArray(room.settings.enabledGameIds)
+      ? room.settings.enabledGameIds
+      : ["kamoulox3000", "leagueOfNaabs"];
+    elements.partyGameCheckboxes.forEach((checkbox) => {
+      checkbox.checked = enabledGameIds.includes(checkbox.value);
+    });
+    elements.inputTypesSettings.classList.toggle(
+      "hidden",
+      selectedGameId === "leagueOfNaabs"
+    );
+    elements.partySettings.classList.toggle(
+      "hidden",
+      selectedGameId !== "party"
     );
     if (!isHost) {
       setGameSettingsOpen(false);
     }
     elements.gameSettingsTitle.textContent =
       `Réglages de ${getRoomGameLabel(room)}`;
-
-    const rounds = room.settings.effectiveRoundCount;
-    const typeCount = room.settings.inputTypeCount;
-    elements.gameSettingsSummary.textContent =
-      `${getRoomGameLabel(room)} · ` +
-      `${room.settings.roundCount === null ? "Auto : " : ""}` +
-      `${rounds} manche${rounds > 1 ? "s" : ""}, ` +
-      `${typeCount} type${typeCount > 1 ? "s" : ""} possible${
-        typeCount > 1 ? "s" : ""
-      }.`;
   }
 
   function showRoom(room) {
@@ -2198,15 +2176,29 @@
       return;
     }
 
-    const roundValue = elements.roundCountSelect.value;
+    const inputTypes = elements.inputTypeCheckboxes
+      .filter((checkbox) => checkbox.checked)
+      .map((checkbox) => checkbox.value);
+    const enabledGameIds = elements.partyGameCheckboxes
+      .filter((checkbox) => checkbox.checked)
+      .map((checkbox) => checkbox.value);
     const payload = {
       gameId: getSelectedRoomGameId(currentRoom),
-      roundCount: roundValue === "auto" ? null : Number(roundValue),
-      inputTypeCount: Number(elements.inputTypeCountSelect.value)
+      roundCount: Number(elements.roundCountInput.value),
+      inputTypes,
+      partyGameCount: Number(elements.partyGameCountInput.value),
+      enabledGameIds
     };
 
-    elements.roundCountSelect.disabled = true;
-    elements.inputTypeCountSelect.disabled = true;
+    const settingControls = [
+      elements.roundCountInput,
+      elements.partyGameCountInput,
+      ...elements.inputTypeCheckboxes,
+      ...elements.partyGameCheckboxes
+    ];
+    settingControls.forEach((control) => {
+      control.disabled = true;
+    });
     setMessage(elements.roomMessage, "Réglages envoyés au laboratoire...");
 
     try {
@@ -2230,8 +2222,9 @@
         renderGameSettings(currentRoom, true);
       }
     } finally {
-      elements.roundCountSelect.disabled = false;
-      elements.inputTypeCountSelect.disabled = false;
+      settingControls.forEach((control) => {
+        control.disabled = false;
+      });
     }
   }
 
@@ -4164,6 +4157,19 @@
     elements.restartGameButton.title = currentGame.canRestartGame
       ? "Relancer immédiatement avec les mêmes joueurs et réglages"
       : "Il faut au moins 2 joueurs connectés pour relancer";
+    elements.nextChainButton.title =
+      currentGame.party && currentGame.party.hasNextGame &&
+      currentGame.resultStepNumber === currentGame.resultStepCount
+        ? "Lancer le jeu suivant de la Party"
+        : "Étape suivante";
+  }
+
+  function getResultProgressLabel() {
+    const stepLabel =
+      `Étape ${currentGame.resultStepNumber} / ${currentGame.resultStepCount}`;
+    return currentGame.party
+      ? `Jeu ${currentGame.party.gameNumber} / ${currentGame.party.gameCount} · ${stepLabel}`
+      : stepLabel;
   }
 
   function renderLeagueOfNaabsResultChain(chain) {
@@ -4171,8 +4177,7 @@
       currentGame.resultTitle || "Le vestiaire des champions douteux";
     elements.resultOwnerLabel.textContent =
       currentGame.resultOwnerLabel || "Champion créé pour";
-    elements.resultChainCount.textContent =
-      `Étape ${currentGame.resultStepNumber} / ${currentGame.resultStepCount}`;
+    elements.resultChainCount.textContent = getResultProgressLabel();
     renderPlayerReferenceText(
       elements.resultOwner,
       chain.ownerNickname,
@@ -4216,8 +4221,7 @@
       currentGame.resultTitle || "Voici comment tout a dérapé";
     elements.resultOwnerLabel.textContent =
       currentGame.resultOwnerLabel || "Catastrophe initiée par";
-    elements.resultChainCount.textContent =
-      `Étape ${currentGame.resultStepNumber} / ${currentGame.resultStepCount}`;
+    elements.resultChainCount.textContent = getResultProgressLabel();
     elements.resultOwner.textContent = chain.ownerNickname;
     const visibleContributions = chain.contributions.slice(
       0,
@@ -4524,14 +4528,17 @@
         setGameSettingsOpen(false);
       }
     });
-    elements.roundCountSelect.addEventListener(
+    elements.roundCountInput.addEventListener("change", updateRoomSettings);
+    elements.partyGameCountInput.addEventListener(
       "change",
       updateRoomSettings
     );
-    elements.inputTypeCountSelect.addEventListener(
-      "change",
-      updateRoomSettings
-    );
+    elements.inputTypeCheckboxes.forEach((checkbox) => {
+      checkbox.addEventListener("change", updateRoomSettings);
+    });
+    elements.partyGameCheckboxes.forEach((checkbox) => {
+      checkbox.addEventListener("change", updateRoomSettings);
+    });
 
     elements.typeButtons.forEach((button) => {
       button.addEventListener("click", () => {

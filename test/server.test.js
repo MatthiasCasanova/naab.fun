@@ -234,8 +234,8 @@ test("la création valide les pseudonymes et génère un code non ambigu", async
     assert.equal(created.room.players[0].avatarId, "robot");
     assert.equal(created.room.players[0].status, "ready");
     assert.equal(created.room.name, "Le Laboratoire");
-    assert.equal(created.room.gameSelection.selectedGameId, "random");
-    assert.equal(created.room.gameSelection.resolvedGameId, "kamoulox3000");
+    assert.equal(created.room.gameSelection.selectedGameId, "party");
+    assert.equal(created.room.gameSelection.resolvedGameId, null);
     assert.deepEqual(created.room.gameVotes, {});
     assert.deepEqual(created.room.chatMessages, []);
     assert.deepEqual(AVATAR_IDS, [
@@ -460,7 +460,7 @@ test("le chat et la sélection de jeu sont synchronisés dans toute la room", as
     await gameSelectionUpdate;
 
     const deniedSelection = await emitAck(guest, "selectRoomGame", {
-      gameId: "random"
+      gameId: "party"
     });
     assert.equal(deniedSelection.ok, false);
     assert.match(deniedSelection.error, /hôte|hote/i);
@@ -484,7 +484,7 @@ test("le chat et la sélection de jeu sont synchronisés dans toute la room", as
     await voteUpdate;
 
     const deniedHostVote = await emitAck(host, "voteRoomGame", {
-      gameId: "random"
+      gameId: "party"
     });
     assert.equal(deniedHostVote.ok, false);
     assert.match(deniedHostVote.error, /hôte|hote/i);

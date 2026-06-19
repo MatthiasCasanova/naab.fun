@@ -24,8 +24,12 @@ contribution audio. Le microphone fonctionne sur `localhost` et en HTTPS.
 ## Règles du jeu
 
 - L'hôte peut lancer la partie dès que 2 joueurs sont connectés.
-- L'hôte choisit le nombre de manches, sans dépasser le nombre de joueurs.
-- L'hôte choisit si la partie utilise 1, 2 ou 3 types de contribution.
+- Chaque jeu permet de saisir son nombre de manches, dans la limite adaptée aux
+  joueurs présents.
+- Kamoulox 3000 permet d'activer ou désactiver séparément le texte, le dessin et
+  l'audio, avec au moins un type conservé.
+- Le mode **Party** enchaîne de 1 à 10 jeux tirés parmi ceux activés par l'hôte,
+  sans répétition immédiate lorsqu'au moins deux jeux sont disponibles.
 - Chaque manche dure 60 secondes et se termine plus tôt si tout le monde valide.
 - Le premier type de chaque chaîne est imposé aléatoirement par le serveur.
 - Le type suivant est choisi aléatoirement parmi les types actifs autres que le
