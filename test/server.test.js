@@ -17,10 +17,11 @@ const REQUIRED_ORIGINS = [
   "http://localhost:3000"
 ];
 
-async function startTestServer() {
+async function startTestServer(options = {}) {
   const game = createGameServer({
     nodeEnv: "production",
-    allowedOrigins: REQUIRED_ORIGINS.join(",")
+    allowedOrigins: REQUIRED_ORIGINS.join(","),
+    ...options
   });
   const address = await game.start(0, "127.0.0.1");
 
@@ -164,6 +165,25 @@ test("GET /health répond sans cache et applique toute la liste CORS", async () 
       connectClient(url, "https://malicious.example"),
       /websocket error|xhr poll error|server error/i
     );
+  } finally {
+    await cleanup(game, []);
+  }
+});
+
+test("GET /version expose la version et la révision déployée sans cache", async () => {
+  const { game, url } = await startTestServer({
+    revision: "ABCDEF1234567890"
+  });
+
+  try {
+    const response = await fetch(`${url}/version`);
+    assert.equal(response.status, 200);
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.deepEqual(await response.json(), {
+      version: "1.0.0",
+      revision: "abcdef1",
+      display: "v1.0.0+abcdef1"
+    });
   } finally {
     await cleanup(game, []);
   }

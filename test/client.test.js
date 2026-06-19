@@ -103,6 +103,8 @@ test("app.js désactive le cache et journalise l'URL health", () => {
 
 test("l'interface contient le lobby, le canvas, l'audio et les résultats", () => {
   const html = readPublicFile("index.html");
+  const app = readPublicFile("app.js");
+  const css = readPublicFile("styles.css");
 
   assert.match(html, /id="start-game-button"/);
   assert.match(html, /id="drawing-canvas"/);
@@ -110,6 +112,10 @@ test("l'interface contient le lobby, le canvas, l'audio et les résultats", () =
   assert.match(html, /id="play-audio-button"/);
   assert.match(html, /id="results-view"/);
   assert.match(html, /id="return-lobby-button"/);
+  assert.match(html, /id="app-version"/);
+  assert.match(app, /buildEndpointUrl\(serverUrl, "\/version"\)/);
+  assert.match(app, /function loadAppVersion/);
+  assert.match(css, /\.app-version\s*\{[\s\S]*right:\s*10px[\s\S]*bottom:\s*8px/);
 });
 
 test("normalizeVolume restaure la valeur par défaut et borne le volume", () => {

@@ -109,3 +109,7 @@ l'origine courante.
 - `ALLOWED_ORIGINS` : liste d'origines frontend séparées par des virgules.
 
 Le service expose `GET /health`, qui renvoie `{"status":"ok"}`.
+
+Le badge en bas à droite affiche `v1.0.0+<commit>`. Le suffixe vient de
+`RENDER_GIT_COMMIT`, fourni automatiquement par Render : il change donc à
+chaque push déployé. `GET /version` expose la même information en JSON.

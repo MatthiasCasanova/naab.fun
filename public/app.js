@@ -69,6 +69,7 @@
   const DRAFT_SAVE_DEBOUNCE_MS = 450;
   const DRAWING_DRAFT_SAVE_DEBOUNCE_MS = 650;
   const AUDIO_DRAFT_SAVE_INTERVAL_MS = 800;
+  const VERSION_REQUEST_TIMEOUT_MS = 5000;
 
   const elements = {
     playLayout: document.querySelector("#play-layout"),
@@ -86,6 +87,7 @@
     roomView: document.querySelector("#room-view"),
     gameView: document.querySelector("#game-view"),
     resultsView: document.querySelector("#results-view"),
+    appVersion: document.querySelector("#app-version"),
     settingsButton: document.querySelector("#settings-button"),
     settingsModal: document.querySelector("#settings-modal"),
     closeSettingsButton: document.querySelector("#close-settings-button"),
@@ -229,6 +231,7 @@
 
   let serverUrl;
   let healthUrl;
+  let versionUrl;
   let socket = null;
   let pendingAction = null;
   let actionRunning = false;
@@ -1482,6 +1485,39 @@
     return new Promise((resolve) => window.setTimeout(resolve, milliseconds));
   }
 
+  async function loadAppVersion() {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(
+      () => controller.abort(),
+      VERSION_REQUEST_TIMEOUT_MS
+    );
+
+    try {
+      console.info(`[version] GET ${versionUrl}`);
+      const response = await fetch(versionUrl, {
+        method: "GET",
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+
+      const body = await response.json();
+      if (!body || typeof body.display !== "string") {
+        throw new Error("Réponse de version invalide.");
+      }
+
+      elements.appVersion.textContent = body.display;
+      elements.appVersion.title = `Version déployée : ${body.display}`;
+    } catch (error) {
+      console.info("[version] Version distante indisponible :", error);
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  }
+
   function createHealthRequest(requestTimeoutMs) {
     const controller = new AbortController();
     let timedOut = false;
@@ -1915,6 +1951,8 @@
       );
       return;
     }
+
+    loadAppVersion();
 
     try {
       setMessage(elements.homeMessage, "Serveur disponible. Connexion...");
@@ -4334,12 +4372,15 @@
       window.location.origin
     );
     healthUrl = window.GameClientUtils.buildEndpointUrl(serverUrl, "/health");
+    versionUrl = window.GameClientUtils.buildEndpointUrl(serverUrl, "/version");
     console.info(`[config] Serveur utilisé : ${serverUrl}`);
     console.info(`[config] Health check : ${healthUrl}`);
+    console.info(`[config] Version : ${versionUrl}`);
 
     initializeDrawing();
     loadAudioSettings();
     loadTheme();
+    loadAppVersion();
 
     elements.createButton.addEventListener("click", () =>
       prepareAction("create")

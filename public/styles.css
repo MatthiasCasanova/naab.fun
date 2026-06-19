@@ -152,6 +152,26 @@ button:disabled {
   white-space: nowrap !important;
 }
 
+.app-version {
+  position: fixed;
+  z-index: 90;
+  right: 10px;
+  bottom: 8px;
+  border: 1px solid color-mix(in srgb, var(--border) 76%, transparent);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: var(--muted);
+  background: color-mix(in srgb, var(--card) 78%, transparent);
+  box-shadow: 0 6px 18px rgba(5, 8, 22, 0.14);
+  font-size: 0.62rem;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+  letter-spacing: 0.035em;
+  opacity: 0.74;
+  pointer-events: none;
+  backdrop-filter: blur(8px);
+}
+
 button.active,
 button[aria-checked="true"],
 button[aria-pressed="true"] {

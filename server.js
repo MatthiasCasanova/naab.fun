@@ -8,6 +8,7 @@ const path = require("node:path");
 const cors = require("cors");
 const express = require("express");
 const { Server } = require("socket.io");
+const { version: APP_VERSION } = require("./package.json");
 
 const MAX_PLAYERS = 10;
 const MIN_PLAYERS_TO_START = 2;
@@ -112,6 +113,13 @@ function createDefaultGameSettings() {
     roundCount: null,
     inputTypeCount: DEFAULT_INPUT_TYPE_COUNT
   };
+}
+
+function normalizeRevision(value) {
+  const revision = String(value || "").trim();
+  return /^[a-f0-9]{7,40}$/i.test(revision)
+    ? revision.slice(0, 7).toLowerCase()
+    : "local";
 }
 
 function normalizeConfiguredOrigin(value) {
@@ -272,6 +280,12 @@ function createTypePlan(
 
 function createGameServer(options = {}) {
   const nodeEnv = options.nodeEnv || process.env.NODE_ENV || "development";
+  const appRevision = normalizeRevision(
+    options.revision !== undefined
+      ? options.revision
+      : process.env.RENDER_GIT_COMMIT || process.env.GIT_COMMIT
+  );
+  const displayVersion = `v${APP_VERSION}+${appRevision}`;
   const isDevelopment = nodeEnv !== "production";
   const roundDurationMs =
     Number.isFinite(options.roundDurationMs) && options.roundDurationMs > 0
@@ -352,6 +366,17 @@ function createGameServer(options = {}) {
       .status(200)
       .set("Cache-Control", "no-store")
       .json({ status: "ok" });
+  });
+
+  app.get("/version", (req, res) => {
+    res
+      .status(200)
+      .set("Cache-Control", "no-store")
+      .json({
+        version: APP_VERSION,
+        revision: appRevision,
+        display: displayVersion
+      });
   });
 
   app.use(express.static(path.join(__dirname, "public")));
