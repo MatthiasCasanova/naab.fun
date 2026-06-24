@@ -1361,10 +1361,10 @@ label,
   min-width: 0;
   align-content: end;
   gap: 4px;
-  overflow: hidden;
+  overflow: visible;
   border: 2px solid var(--frame);
   border-radius: var(--panel-radius);
-  padding: 14px 14px 48px;
+  padding: 14px;
   color: var(--text);
   background:
     linear-gradient(90deg, transparent 0 50%, rgba(248, 248, 242, 0.08) 50%),
@@ -1465,11 +1465,11 @@ label,
 
 .game-vote-stack {
   position: absolute;
-  z-index: 4;
-  bottom: 10px;
-  right: 10px;
+  z-index: 7;
+  right: 12px;
+  bottom: -13px;
   display: flex;
-  max-width: calc(100% - 20px);
+  max-width: calc(100% - 24px);
   align-items: center;
   justify-content: flex-end;
   pointer-events: none;
@@ -1496,7 +1496,6 @@ label,
 }
 
 .game-tile-empty {
-  padding-bottom: 14px;
   opacity: 0.46;
   filter: saturate(0.45);
 }
@@ -3095,12 +3094,12 @@ label,
     grid-auto-rows: minmax(94px, 1fr);
     align-content: stretch;
     gap: 8px;
-    overflow: hidden;
+    overflow: visible;
   }
 
   .game-tile {
     min-height: 0;
-    padding: 9px 9px 38px;
+    padding: 9px;
   }
 
   .game-tile-mark {
@@ -3412,7 +3411,7 @@ label,
   }
 
   .game-tile {
-    padding: 7px 7px 34px;
+    padding: 7px;
   }
 
   .game-tile-empty,
@@ -3448,7 +3447,7 @@ label,
   }
 
   .game-vote-stack {
-    bottom: 7px;
+    bottom: -9px;
     right: 7px;
   }
 

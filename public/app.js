@@ -1408,8 +1408,13 @@
     });
   }
 
-  function renderRoomLobbyState(room) {
-    renderGameSelection(room);
+  function renderRoomLobbyState(room, options = {}) {
+    const preserveSelectionBackdrop = Boolean(
+      options.preserveSelectionBackdrop
+    );
+    if (!preserveSelectionBackdrop) {
+      renderGameSelection(room);
+    }
     const isHost = Boolean(socket && room.hostId === socket.id);
     renderGameSettings(room, isHost);
     elements.startGameButton.classList.toggle("hidden", !isHost);
@@ -1476,7 +1481,9 @@
       `${room.playerCount} / ${room.maxPlayers}`;
     renderPlayerList(room);
     renderChatMessages(room.chatMessages);
-    renderRoomLobbyState(room);
+    renderRoomLobbyState(room, {
+      preserveSelectionBackdrop: shouldKeepGameSettingsOpen
+    });
 
     showOnly(elements.roomView);
     setConnectionState(Boolean(socket && socket.connected), "Connecté");
@@ -2219,10 +2226,14 @@
       ...elements.inputTypeCheckboxes,
       ...elements.partyGameCheckboxes
     ];
+    const settingsModalOpen =
+      !elements.gameSettingsModal.classList.contains("hidden");
     settingControls.forEach((control) => {
       control.disabled = true;
     });
-    setMessage(elements.roomMessage, "Réglages envoyés au laboratoire...");
+    if (!settingsModalOpen) {
+      setMessage(elements.roomMessage, "Réglages envoyés au laboratoire...");
+    }
 
     try {
       const response = await emitWithAcknowledgment(
@@ -2236,9 +2247,14 @@
       }
       if (currentRoom && response.settings) {
         currentRoom.settings = response.settings;
-        renderRoomLobbyState(currentRoom);
+        renderRoomLobbyState(currentRoom, {
+          preserveSelectionBackdrop:
+            !elements.gameSettingsModal.classList.contains("hidden")
+        });
       }
-      setMessage(elements.roomMessage, "");
+      if (!settingsModalOpen) {
+        setMessage(elements.roomMessage, "");
+      }
     } catch (error) {
       setMessage(elements.roomMessage, error.message, "error");
       if (currentRoom) {

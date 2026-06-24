@@ -384,10 +384,12 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.doesNotMatch(server, new RegExp("setPlayer" + "Emo" + "te"));
   assert.match(css, /grid-template-areas:\s*"players main chat"/);
   assert.match(css, /\.game-selection-grid/);
-  assert.match(css, /\.game-vote-stack\s*\{[\s\S]*right:\s*10px/);
+  assert.match(css, /\.game-vote-stack\s*\{[\s\S]*right:\s*12px/);
   assert.match(css, /\.game-vote-avatar/);
   assert.match(css, /\.game-tile\.self-voted-only/);
-  assert.match(css, /\.game-tile\s*\{[\s\S]*padding:\s*14px 14px 48px/);
+  assert.match(css, /\.game-tile\s*\{[\s\S]*overflow:\s*visible/);
+  assert.match(css, /\.game-tile\s*\{[\s\S]*padding:\s*14px/);
+  assert.match(css, /\.game-vote-stack\s*\{[\s\S]*bottom:\s*-13px/);
   assert.doesNotMatch(css, /\.game-tile\.has-votes\s*\{[\s\S]*padding-bottom/);
   assert.match(css, /\.game-tile-settings/);
   assert.match(css, /\.game-tile-settings\s*\{[\s\S]*right:\s*12px/);
@@ -409,6 +411,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.chat-sidebar\.mobile-open/);
   assert.match(css, /\.chat-messages\s*\{[\s\S]*overflow:\s*hidden/);
   assert.match(app, /shouldKeepGameSettingsOpen/);
+  assert.match(app, /preserveSelectionBackdrop/);
   assert.match(app, /doneGameSettingsButton\.addEventListener\("click"/);
   assert.match(app, /function trimChatToFit/);
   assert.match(app, /appendChatMessage\(message\)/);
