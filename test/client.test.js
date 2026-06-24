@@ -364,7 +364,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(app, /function renderGameVotes/);
   assert.match(app, /function handleRoomGameClick/);
   assert.match(app, /function renderRoomLobbyState/);
-  assert.match(app, /badge\.textContent = "👑"/);
+  assert.match(app, /badge\.textContent = "H"/);
   assert.match(app, /self-voted-only/);
   assert.match(app, /CONTRIBUTION_STEP_LABELS/);
   assert.match(app, /function createSpellKitView/);

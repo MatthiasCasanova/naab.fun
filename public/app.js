@@ -21,14 +21,14 @@
     "champion-lore": "Lore"
   };
   const AVATARS = Object.freeze({
-    comet: "☄️",
-    robot: "🤖",
-    wizard: "🧙",
-    alien: "👽",
-    ninja: "🥷",
-    ghost: "👻",
-    cat: "😺",
-    frog: "🐸"
+    comet: "C1",
+    robot: "R2",
+    wizard: "P3",
+    alien: "A4",
+    ninja: "N5",
+    ghost: "S6",
+    cat: "V7",
+    frog: "G8"
   });
   const ROOM_GAMES = Object.freeze({
     party: {
@@ -302,6 +302,21 @@
     } else if (message && type === "success") {
       playSoundEffect("confirm");
     }
+  }
+
+  function resolveAvatarId(avatarId) {
+    return AVATARS[avatarId] ? avatarId : "comet";
+  }
+
+  function renderAvatarVisual(element, avatarId) {
+    const resolvedAvatarId = resolveAvatarId(avatarId);
+    element.replaceChildren();
+    element.classList.add(`avatar-${resolvedAvatarId}`);
+
+    const image = document.createElement("span");
+    image.className = "avatar-image";
+    image.setAttribute("aria-hidden", "true");
+    element.append(image);
   }
 
   function applyVolumeToAudio(audioElement) {
@@ -1050,8 +1065,8 @@
         "is-self",
         Boolean(socket && player.id === socket.id)
       );
-      avatar.className = `player-avatar avatar-${player.avatarId || "comet"}`;
-      avatar.textContent = AVATARS[player.avatarId] || AVATARS.comet;
+      avatar.className = "player-avatar";
+      renderAvatarVisual(avatar, player.avatarId);
       avatar.setAttribute("aria-hidden", "true");
       copy.className = "player-copy";
       nameLine.className = "player-name-line";
@@ -1068,7 +1083,7 @@
       if (player.isHost) {
         const badge = document.createElement("span");
         badge.className = "host-badge";
-        badge.textContent = "👑";
+        badge.textContent = "H";
         badge.title = "Hôte";
         item.append(badge);
       }
@@ -1088,9 +1103,8 @@
     item.dataset.messageId = message.id;
     item.classList.toggle("is-self", message.nickname === currentNickname);
     author.className = "chat-author";
-    avatar.className =
-      `chat-author-avatar avatar-${message.avatarId || "comet"}`;
-    avatar.textContent = AVATARS[message.avatarId] || AVATARS.comet;
+    avatar.className = "chat-author-avatar";
+    renderAvatarVisual(avatar, message.avatarId);
     nickname.textContent = message.nickname;
     content.className = "chat-content";
     content.textContent = message.content;
@@ -1338,9 +1352,8 @@
 
     visibleVotes.forEach((vote) => {
       const avatar = document.createElement("span");
-      avatar.className =
-        `game-vote-avatar avatar-${vote.avatarId || "comet"}`;
-      avatar.textContent = AVATARS[vote.avatarId] || AVATARS.comet;
+      avatar.className = "game-vote-avatar";
+      renderAvatarVisual(avatar, vote.avatarId);
       avatar.title = vote.nickname;
       stack.append(avatar);
     });
