@@ -683,95 +683,32 @@ label,
   width: 100%;
   height: 100%;
   margin: 0 auto;
-  grid-template-rows: auto auto minmax(0, 1fr) auto;
-  gap: 12px;
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  gap: clamp(8px, 1.2vh, 14px);
 }
 
 .home-intro {
+  display: flex;
+  min-height: 0;
+  align-items: flex-end;
+  justify-content: center;
   text-align: center;
 }
 
 .home-intro h2 {
-  margin: 4px 0 3px;
-  font-size: 2.1rem;
-  line-height: 1;
-}
-
-.home-intro > p:last-child {
   margin: 0;
-  color: var(--muted);
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
-  font-weight: 800;
-}
-
-.home-features {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.home-features span {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
-  border: 2px solid var(--frame);
-  border-radius: var(--panel-radius);
-  padding: 6px 10px;
-  color: var(--text);
-  background: var(--surface);
-  box-shadow: 3px 3px 0 rgba(0, 0, 0, 0.2);
-  font-size: 0.72rem;
-  font-weight: 950;
-}
-
-.feature-glyph {
-  position: relative;
-  display: inline-grid;
-  width: 18px;
-  height: 18px;
-  flex: 0 0 auto;
-  place-items: center;
-  border: 2px solid var(--frame);
-  background: #f8f8f2;
-}
-
-.feature-clock::before {
-  width: 8px;
-  height: 8px;
-  border: 2px solid #090b12;
-  border-radius: 50%;
-  content: "";
-}
-
-.feature-tools::before {
-  width: 12px;
-  height: 4px;
-  background: var(--accent-red);
-  box-shadow: 0 6px 0 var(--accent-green);
-  content: "";
-}
-
-.feature-players::before,
-.feature-players::after {
-  width: 5px;
-  height: 10px;
-  background: #090b12;
-  content: "";
-}
-
-.feature-players::after {
-  margin-left: 2px;
+  font-size: clamp(1.8rem, 3vw, 3.2rem);
+  line-height: 1;
 }
 
 .home-grid {
   display: grid;
-  width: min(100%, 1200px);
+  width: 100%;
+  height: 100%;
   min-height: 0;
-  justify-self: center;
-  grid-template-columns: minmax(280px, 0.78fr) minmax(390px, 1.22fr);
-  gap: 12px;
+  justify-self: stretch;
+  grid-template-columns: minmax(300px, 0.82fr) minmax(420px, 1.18fr);
+  gap: clamp(8px, 1.2vw, 16px);
 }
 
 .profile-setup,
@@ -3136,51 +3073,32 @@ label,
 
 @media (max-width: 560px) {
   .card {
-    padding: 9px;
+    padding: 7px;
   }
 
   .home-card {
     height: 100%;
-    gap: 7px;
-  }
-
-  .home-intro > p:last-child {
-    display: none;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    gap: 6px;
   }
 
   .home-intro h2 {
-    font-size: 1.3rem;
+    font-size: clamp(1.05rem, 5vw, 1.35rem);
   }
 
   .home-grid {
+    height: 100%;
     grid-template-columns: 1fr;
     grid-template-rows: auto minmax(0, 1fr);
-    gap: 7px;
-  }
-
-  .home-features {
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 4px;
-  }
-
-  .home-features span {
-    justify-content: center;
-    padding: 4px 5px;
-    font-size: 0.58rem;
-    text-align: center;
-  }
-
-  .feature-glyph {
-    display: none;
+    gap: 6px;
   }
 
   .profile-setup {
     display: grid;
     align-items: center;
-    grid-template-columns: 0.7fr 1.3fr;
+    grid-template-columns: 0.58fr 1.42fr;
     gap: 5px 8px;
-    padding: 8px;
+    padding: 7px;
   }
 
   .profile-setup label,
@@ -3193,14 +3111,14 @@ label,
   }
 
   .profile-setup input {
-    height: 38px;
+    height: 36px;
     margin: 0;
   }
 
   .avatar-picker {
     grid-column: 1 / -1;
-    grid-template-columns: repeat(8, 1fr);
-    gap: 4px;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 3px;
   }
 
   .avatar-option {
@@ -3212,12 +3130,14 @@ label,
   }
 
   .home-actions {
-    gap: 6px;
+    min-height: 0;
+    gap: 5px;
   }
 
   .action-card {
     grid-template-columns: 34px minmax(0, 1fr);
-    padding: 7px;
+    gap: 5px 7px;
+    padding: 6px;
   }
 
   .action-icon {
@@ -3239,7 +3159,7 @@ label,
   .create-room-row button,
   .join-row input,
   .join-row button {
-    height: 36px;
+    height: 34px;
   }
 
   .join-confirm-button {
@@ -3364,15 +3284,21 @@ label,
   }
 
   .home-intro h2 {
-    font-size: 1.35rem;
-  }
-
-  .home-intro > p:last-child {
-    display: none;
+    font-size: 1.15rem;
   }
 
   .record-button {
     min-height: 88px;
+  }
+}
+
+@media (max-height: 600px), (max-width: 360px) {
+  .home-card {
+    grid-template-rows: minmax(0, 1fr) auto auto;
+  }
+
+  .home-intro {
+    display: none;
   }
 }
 

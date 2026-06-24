@@ -302,7 +302,8 @@ test("l'accueil propose les avatars et la room conserve une liste laterale", () 
   assert.match(html, /id="join-button"[\s\S]*href="#icon-check"/);
   assert.match(html, /id="room-name"/);
   assert.match(html, /maxlength="30"/);
-  assert.match(html, /class="home-features"/);
+  assert.doesNotMatch(html, /class="home-features"/);
+  assert.doesNotMatch(html, /60 secondes/);
   assert.match(html, /id="sidebar-game-summary"/);
   assert.match(html, /id="game-selection-grid"/);
 });
