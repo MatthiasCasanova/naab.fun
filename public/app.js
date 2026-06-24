@@ -103,6 +103,9 @@
     closeGameSettingsButton: document.querySelector(
       "#close-game-settings-button"
     ),
+    doneGameSettingsButton: document.querySelector(
+      "#done-game-settings-button"
+    ),
     nickname: document.querySelector("#nickname"),
     roomName: document.querySelector("#room-name"),
     avatarButtons: Array.from(document.querySelectorAll(".avatar-option")),
@@ -1449,6 +1452,11 @@
 
   function showRoom(room) {
     const roomChanged = !currentRoom || currentRoom.code !== room.code;
+    const shouldKeepGameSettingsOpen =
+      !elements.gameSettingsModal.classList.contains("hidden") &&
+      socket &&
+      room.hostId === socket.id &&
+      room.phase === "lobby";
     currentRoom = room;
     currentGame = null;
     renderedRoundKey = null;
@@ -1456,7 +1464,9 @@
     stopRoundIntro();
     cancelDraftSave();
     stopAudioRecording(true);
-    setGameSettingsOpen(false);
+    if (!shouldKeepGameSettingsOpen) {
+      setGameSettingsOpen(false);
+    }
 
     if (roomChanged) {
       codeVisible = false;
@@ -4534,6 +4544,9 @@
       renderRoomCode();
     });
     elements.closeGameSettingsButton.addEventListener("click", () => {
+      setGameSettingsOpen(false);
+    });
+    elements.doneGameSettingsButton.addEventListener("click", () => {
       setGameSettingsOpen(false);
     });
     elements.gameSettingsModal.addEventListener("click", (event) => {

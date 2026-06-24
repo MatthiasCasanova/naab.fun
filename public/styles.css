@@ -1364,7 +1364,7 @@ label,
   overflow: hidden;
   border: 2px solid var(--frame);
   border-radius: var(--panel-radius);
-  padding: 14px;
+  padding: 14px 14px 48px;
   color: var(--text);
   background:
     linear-gradient(90deg, transparent 0 50%, rgba(248, 248, 242, 0.08) 50%),
@@ -1386,10 +1386,6 @@ label,
 .game-tile[aria-disabled="true"] {
   cursor: default;
   opacity: 0.72;
-}
-
-.game-tile.has-votes {
-  padding-bottom: 48px;
 }
 
 .game-tile:not(.game-tile-empty):hover,
@@ -1500,6 +1496,7 @@ label,
 }
 
 .game-tile-empty {
+  padding-bottom: 14px;
   opacity: 0.46;
   filter: saturate(0.45);
 }
@@ -1527,6 +1524,18 @@ label,
 
 .selected-game-strip strong {
   color: var(--accent-yellow);
+}
+
+.settings-footer {
+  display: flex;
+  justify-content: flex-end;
+  border-top: 2px solid var(--frame);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+.settings-footer .button {
+  min-width: 140px;
 }
 
 .game-settings-summary,
@@ -2714,6 +2723,11 @@ label,
   animation: modal-in 160ms ease-out;
 }
 
+#game-settings-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+
 .game-settings-fields,
 .settings-field {
   display: grid;
@@ -2722,6 +2736,8 @@ label,
 
 .game-settings-fields {
   gap: 16px;
+  overflow-y: auto;
+  padding-right: 4px;
 }
 
 .settings-field + .settings-field {
@@ -3084,7 +3100,7 @@ label,
 
   .game-tile {
     min-height: 0;
-    padding: 9px;
+    padding: 9px 9px 38px;
   }
 
   .game-tile-mark {
@@ -3396,7 +3412,7 @@ label,
   }
 
   .game-tile {
-    padding: 7px;
+    padding: 7px 7px 34px;
   }
 
   .game-tile-empty,
@@ -3429,10 +3445,6 @@ label,
     font-size: 0.56rem;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 2;
-  }
-
-  .game-tile.has-votes {
-    padding-bottom: 34px;
   }
 
   .game-vote-stack {

@@ -282,6 +282,7 @@ test("le lobby masque le code et expose les réglages de l'hôte", () => {
   assert.match(html, /data-game-settings-id="kamoulox3000"/);
   assert.match(html, /id="game-settings-modal"/);
   assert.match(html, /id="game-settings-panel"/);
+  assert.match(html, /id="done-game-settings-button"/);
   assert.match(html, /id="round-count-input"/);
   assert.match(html, /id="input-types-settings"/);
   assert.match(html, /id="party-settings"/);
@@ -386,6 +387,8 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.game-vote-stack\s*\{[\s\S]*right:\s*10px/);
   assert.match(css, /\.game-vote-avatar/);
   assert.match(css, /\.game-tile\.self-voted-only/);
+  assert.match(css, /\.game-tile\s*\{[\s\S]*padding:\s*14px 14px 48px/);
+  assert.doesNotMatch(css, /\.game-tile\.has-votes\s*\{[\s\S]*padding-bottom/);
   assert.match(css, /\.game-tile-settings/);
   assert.match(css, /\.game-tile-settings\s*\{[\s\S]*right:\s*12px/);
   assert.match(css, /\.message:empty\s*\{[\s\S]*min-height:\s*0/);
@@ -405,6 +408,8 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.sidebar-lobby-signal/);
   assert.match(css, /\.chat-sidebar\.mobile-open/);
   assert.match(css, /\.chat-messages\s*\{[\s\S]*overflow:\s*hidden/);
+  assert.match(app, /shouldKeepGameSettingsOpen/);
+  assert.match(app, /doneGameSettingsButton\.addEventListener\("click"/);
   assert.match(app, /function trimChatToFit/);
   assert.match(app, /appendChatMessage\(message\)/);
 });
@@ -534,7 +539,10 @@ test("la mise en page reste dans le viewport et stabilise le canvas", () => {
   const scrollableAxes = [
     ...css.matchAll(/overflow-(?:x|y):\s*(?:auto|scroll)/g)
   ].map((match) => match[0]);
-  assert.deepEqual(scrollableAxes, ["overflow-y: auto"]);
+  assert.deepEqual(scrollableAxes, [
+    "overflow-y: auto",
+    "overflow-y: auto"
+  ]);
 });
 
 test("les commandes utilisent le sprite d'icones et des animations coherentes", () => {
