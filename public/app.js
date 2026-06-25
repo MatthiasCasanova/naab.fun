@@ -55,6 +55,7 @@
     ready: "Prêt",
     playing: "En création",
     done: "Validé",
+    summary: "Résumé",
     watching: "Spectateur"
   });
   const AUDIO_VOLUME_STORAGE_KEY = "kamoulox-audio-volume";
@@ -70,6 +71,7 @@
   const DRAWING_DRAFT_SAVE_DEBOUNCE_MS = 650;
   const AUDIO_DRAFT_SAVE_INTERVAL_MS = 800;
   const VERSION_REQUEST_TIMEOUT_MS = 5000;
+  const DEFAULT_ROOM_NAME = "Room naab.fun";
 
   const elements = {
     playLayout: document.querySelector("#play-layout"),
@@ -129,6 +131,9 @@
     gameSettingsTitle: document.querySelector("#game-settings-title"),
     roundCountInput: document.querySelector("#round-count-input"),
     roundCountHelp: document.querySelector("#round-count-help"),
+    numberStepperButtons: Array.from(
+      document.querySelectorAll("[data-stepper-target]")
+    ),
     inputTypesSettings: document.querySelector("#input-types-settings"),
     inputTypeCheckboxes: Array.from(
       document.querySelectorAll("[data-input-type]")
@@ -140,7 +145,6 @@
     partyGameCheckboxes: Array.from(
       document.querySelectorAll("[data-party-game]")
     ),
-    sidebarGameSummary: document.querySelector("#sidebar-game-summary"),
     selectedGameName: document.querySelector("#selected-game-name"),
     gameSelectionButtons: Array.from(
       document.querySelectorAll("[data-game-id]")
@@ -205,6 +209,9 @@
     audioStatus: document.querySelector("#audio-status"),
     recordAudioButton: document.querySelector("#record-audio-button"),
     recordButtonLabel: document.querySelector("#record-button-label"),
+    audioRecordingSpectrum: document.querySelector(
+      "#audio-recording-spectrum"
+    ),
     playAudioButton: document.querySelector("#play-audio-button"),
     resetAudioButton: document.querySelector("#reset-audio-button"),
     validateAudioButton: document.querySelector("#validate-audio-button"),
@@ -296,6 +303,66 @@
   let draftSaveGeneration = 0;
   let lastDraftSaveAt = 0;
   let chatOpen = false;
+
+  function normalizeRoomCodeInput(value) {
+    return String(value || "")
+      .trim()
+      .toUpperCase()
+      .replace(/[^ABCDEFGHJKMNPQRSTUVWXYZ23456789]/g, "")
+      .slice(0, 6);
+  }
+
+  function isValidRoomCode(value) {
+    return /^[ABCDEFGHJKMNPQRSTUVWXYZ23456789]{6}$/.test(value);
+  }
+
+  function createDefaultNickname() {
+    return `Joueur ${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+
+  function getRoomCodeFromUrl() {
+    const parameters = new URLSearchParams(window.location.search);
+    const roomCode = normalizeRoomCodeInput(
+      parameters.get("room") || parameters.get("code")
+    );
+    return isValidRoomCode(roomCode) ? roomCode : "";
+  }
+
+  function buildRoomInviteUrl(roomCode) {
+    const url = new URL(window.location.pathname || "/", window.location.origin);
+    url.searchParams.set("room", roomCode);
+    return url.toString();
+  }
+
+  function updateRoomCodeInUrl(roomCode) {
+    if (!window.history || typeof window.history.replaceState !== "function") {
+      return;
+    }
+
+    const url = new URL(window.location.href);
+    if (roomCode) {
+      url.searchParams.set("room", roomCode);
+      url.searchParams.delete("code");
+    } else {
+      url.searchParams.delete("room");
+      url.searchParams.delete("code");
+    }
+    window.history.replaceState(null, "", url);
+  }
+
+  function applyRoomCodeFromUrl() {
+    const roomCode = getRoomCodeFromUrl();
+    if (!roomCode) {
+      return;
+    }
+
+    elements.roomCodeInput.value = roomCode;
+    setMessage(
+      elements.homeMessage,
+      "Code de room détecté dans le lien. Choisissez un pseudo puis rejoignez."
+    );
+    elements.nickname.focus();
+  }
 
   function setMessage(element, message, type = "") {
     element.textContent = message;
@@ -537,6 +604,148 @@
     drawWaveform(canvas);
   }
 
+  function drawRecordingSpectrum(session) {
+    const spectrum = session && session.spectrum;
+    const canvas = elements.audioRecordingSpectrum;
+    if (!spectrum || !canvas || !canvas.isConnected) {
+      return;
+    }
+
+    const bounds = canvas.getBoundingClientRect();
+    if (bounds.width <= 0 || bounds.height <= 0) {
+      return;
+    }
+
+    const pixelRatio = Math.min(window.devicePixelRatio || 1, 2);
+    const width = Math.max(1, Math.round(bounds.width * pixelRatio));
+    const height = Math.max(1, Math.round(bounds.height * pixelRatio));
+    if (canvas.width !== width || canvas.height !== height) {
+      canvas.width = width;
+      canvas.height = height;
+    }
+
+    spectrum.analyser.getByteFrequencyData(spectrum.data);
+
+    const context = canvas.getContext("2d");
+    const styles = window.getComputedStyle(canvas);
+    const idleColor =
+      styles.getPropertyValue("--waveform-idle").trim() || "#77718f";
+    const activeColor =
+      styles.getPropertyValue("--waveform-active").trim() || "#f8f8f2";
+    const activeEndColor =
+      styles.getPropertyValue("--waveform-active-end").trim() || "#34ff6d";
+    const barCount = Math.min(48, spectrum.data.length);
+    const gap = Math.max(1, Math.round(2 * pixelRatio));
+    const barWidth = Math.max(
+      2 * pixelRatio,
+      (width - gap * (barCount - 1)) / barCount
+    );
+    const gradient = context.createLinearGradient(0, height, 0, 0);
+    gradient.addColorStop(0, idleColor);
+    gradient.addColorStop(0.55, activeColor);
+    gradient.addColorStop(1, activeEndColor);
+
+    context.clearRect(0, 0, width, height);
+    context.fillStyle = "rgba(248, 248, 242, 0.08)";
+    context.fillRect(0, Math.round(height * 0.5), width, 1 * pixelRatio);
+
+    for (let index = 0; index < barCount; index += 1) {
+      const binStart = Math.floor((index / barCount) * spectrum.data.length);
+      const binEnd = Math.max(
+        binStart + 1,
+        Math.floor(((index + 1) / barCount) * spectrum.data.length)
+      );
+      let level = 0;
+      for (let bin = binStart; bin < binEnd; bin += 1) {
+        level = Math.max(level, spectrum.data[bin]);
+      }
+      const normalizedLevel = Math.max(0.04, level / 255);
+      const barHeight = Math.max(
+        3 * pixelRatio,
+        normalizedLevel * height * 0.9
+      );
+      const x = index * (barWidth + gap);
+      const y = height - barHeight;
+      context.fillStyle = gradient;
+      if (typeof context.roundRect === "function") {
+        context.beginPath();
+        context.roundRect(
+          x,
+          y,
+          barWidth,
+          barHeight,
+          Math.min(barWidth / 2, 3 * pixelRatio)
+        );
+        context.fill();
+      } else {
+        context.fillRect(x, y, barWidth, barHeight);
+      }
+    }
+  }
+
+  function startRecordingSpectrum(session) {
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
+    if (!session || !session.stream || !AudioContextClass) {
+      return;
+    }
+
+    try {
+      const audioContext = new AudioContextClass();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 512;
+      analyser.smoothingTimeConstant = 0.72;
+      const source = audioContext.createMediaStreamSource(session.stream);
+      source.connect(analyser);
+      session.spectrum = {
+        audioContext,
+        analyser,
+        source,
+        data: new Uint8Array(analyser.frequencyBinCount),
+        frame: null
+      };
+      elements.audioRecordingSpectrum.classList.remove("hidden");
+
+      const animateSpectrum = () => {
+        if (recordingSession !== session || !session.spectrum) {
+          return;
+        }
+        drawRecordingSpectrum(session);
+        session.spectrum.frame =
+          window.requestAnimationFrame(animateSpectrum);
+      };
+      animateSpectrum();
+    } catch (error) {
+      console.info("[audio] Spectre live indisponible :", error);
+    }
+  }
+
+  function stopRecordingSpectrum(session) {
+    const spectrum = session && session.spectrum;
+    if (spectrum) {
+      if (spectrum.frame !== null) {
+        window.cancelAnimationFrame(spectrum.frame);
+      }
+      try {
+        spectrum.source.disconnect();
+      } catch {}
+      if (
+        spectrum.audioContext &&
+        typeof spectrum.audioContext.close === "function"
+      ) {
+        spectrum.audioContext.close().catch(() => {});
+      }
+      session.spectrum = null;
+    }
+
+    const canvas = elements.audioRecordingSpectrum;
+    if (canvas) {
+      const context = canvas.getContext("2d");
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      canvas.classList.add("hidden");
+    }
+  }
+
   function prepareWaveform(canvas, source) {
     if (!canvas) {
       return;
@@ -622,13 +831,13 @@
       );
       effectsVolume = window.GameClientUtils.normalizeVolume(
         window.localStorage.getItem(EFFECTS_VOLUME_STORAGE_KEY),
-        0.7
+        0.85
       );
       siteMuted = window.localStorage.getItem(MUTED_STORAGE_KEY) === "true";
     } catch (error) {
       console.warn("[paramètres] Lecture du volume impossible :", error);
       audioVolume = 1;
-      effectsVolume = 0.7;
+      effectsVolume = 0.85;
       siteMuted = false;
     }
 
@@ -696,6 +905,7 @@
     const endAt = startAt + duration;
     const oscillator = context.createOscillator();
     const envelope = context.createGain();
+    const outputGain = Math.max(0.0001, gain * effectsVolume);
     oscillator.type = type;
     oscillator.frequency.setValueAtTime(frequency, startAt);
     oscillator.frequency.exponentialRampToValueAtTime(
@@ -703,10 +913,11 @@
       endAt
     );
     envelope.gain.setValueAtTime(0.0001, startAt);
-    envelope.gain.exponentialRampToValueAtTime(
-      Math.max(0.0001, gain * effectsVolume),
-      startAt + Math.min(0.018, duration / 3)
+    envelope.gain.linearRampToValueAtTime(
+      outputGain,
+      startAt + Math.min(0.014, duration / 4)
     );
+    envelope.gain.setValueAtTime(outputGain, Math.max(startAt, endAt - 0.025));
     envelope.gain.exponentialRampToValueAtTime(0.0001, endAt);
     oscillator.connect(envelope);
     envelope.connect(context.destination);
@@ -721,31 +932,65 @@
         playSynthTone({
           frequency: 520,
           endFrequency: 660,
-          duration: 0.045,
-          gain: 0.045,
+          duration: 0.055,
+          gain: 0.07,
           type: "sine"
         }),
       soft: () =>
         playSynthTone({
           frequency: 360,
           endFrequency: 430,
-          duration: 0.07,
-          gain: 0.04,
+          duration: 0.08,
+          gain: 0.06,
           type: "triangle"
         }),
+      select: () => {
+        playSynthTone({
+          frequency: 460,
+          endFrequency: 620,
+          duration: 0.07,
+          gain: 0.07,
+          type: "triangle"
+        });
+        playSynthTone({
+          frequency: 920,
+          endFrequency: 760,
+          duration: 0.08,
+          gain: 0.045,
+          type: "sine",
+          delay: 0.045
+        });
+      },
+      open: () => {
+        playSynthTone({
+          frequency: 280,
+          endFrequency: 520,
+          duration: 0.09,
+          gain: 0.06,
+          type: "triangle"
+        });
+        playSynthTone({
+          frequency: 560,
+          endFrequency: 700,
+          duration: 0.08,
+          gain: 0.045,
+          type: "sine",
+          delay: 0.05
+        });
+      },
       confirm: () => {
         playSynthTone({
           frequency: 520,
           endFrequency: 680,
-          duration: 0.08,
-          gain: 0.055,
+          duration: 0.09,
+          gain: 0.08,
           type: "triangle"
         });
         playSynthTone({
           frequency: 720,
           endFrequency: 920,
-          duration: 0.11,
-          gain: 0.05,
+          duration: 0.12,
+          gain: 0.065,
           type: "sine",
           delay: 0.055
         });
@@ -754,16 +999,16 @@
         playSynthTone({
           frequency: 420,
           endFrequency: 760,
-          duration: 0.1,
-          gain: 0.055,
+          duration: 0.11,
+          gain: 0.075,
           type: "triangle"
         }),
       danger: () =>
         playSynthTone({
           frequency: 220,
           endFrequency: 120,
-          duration: 0.14,
-          gain: 0.065,
+          duration: 0.16,
+          gain: 0.09,
           type: "sawtooth"
         }),
       reveal: () => {
@@ -771,14 +1016,14 @@
           frequency: 330,
           endFrequency: 660,
           duration: 0.16,
-          gain: 0.05,
+          gain: 0.07,
           type: "triangle"
         });
         playSynthTone({
           frequency: 660,
           endFrequency: 990,
           duration: 0.18,
-          gain: 0.045,
+          gain: 0.06,
           type: "sine",
           delay: 0.09
         });
@@ -788,14 +1033,14 @@
           frequency: 260,
           endFrequency: 520,
           duration: 0.22,
-          gain: 0.055,
+          gain: 0.08,
           type: "triangle"
         });
         playSynthTone({
           frequency: 520,
           endFrequency: 780,
           duration: 0.2,
-          gain: 0.045,
+          gain: 0.06,
           type: "sine",
           delay: 0.12
         });
@@ -805,14 +1050,14 @@
           frequency: 245 - strength * 25,
           endFrequency: 175 - strength * 15,
           duration: 0.055,
-          gain: 0.009 + Math.pow(strength, 2) * 0.018,
+          gain: 0.014 + Math.pow(strength, 2) * 0.026,
           type: "triangle"
         });
         playSynthTone({
           frequency: 130 - strength * 10,
           endFrequency: 95,
           duration: 0.045,
-          gain: 0.004 + strength * 0.006,
+          gain: 0.006 + strength * 0.01,
           type: "sine",
           delay: 0.026
         });
@@ -822,35 +1067,54 @@
     (effects[name] || effects.click)();
   }
 
-  function getButtonSound(button) {
+  function getInteractionSound(element) {
+    if (!element) {
+      return "click";
+    }
+    if (element.classList.contains("game-tile")) {
+      return element.classList.contains("active") ? "soft" : "select";
+    }
+    if (element.classList.contains("settings-choice")) {
+      const input = element.querySelector("input");
+      return input && input.checked ? "confirm" : "select";
+    }
     if (
-      button.classList.contains("danger-control") ||
-      button.classList.contains("audio-delete-button") ||
-      button.classList.contains("paint-action-danger")
+      element instanceof HTMLInputElement &&
+      (element.type === "range" || element.type === "checkbox")
+    ) {
+      return "soft";
+    }
+    if (
+      element.classList.contains("danger-control") ||
+      element.classList.contains("audio-delete-button") ||
+      element.classList.contains("paint-action-danger")
     ) {
       return "danger";
     }
     if (
-      button.id === "previous-chain-button" ||
-      button.id === "next-chain-button" ||
-      button.id === "toggle-code-button"
+      element.id === "previous-chain-button" ||
+      element.id === "next-chain-button" ||
+      element.id === "toggle-code-button"
     ) {
       return "navigate";
     }
     if (
-      button.classList.contains("button-primary") ||
-      button.id === "join-button" ||
-      button.id === "copy-button"
+      element.classList.contains("button-primary") ||
+      element.id === "join-button" ||
+      element.id === "copy-button" ||
+      element.id === "chat-send-button"
     ) {
       return "confirm";
     }
     if (
-      button.id === "settings-button" ||
-      button.classList.contains("game-tile-settings") ||
-      button.id === "close-settings-button" ||
-      button.id === "close-game-settings-button"
+      element.id === "settings-button" ||
+      element.id === "chat-toggle-button" ||
+      element.classList.contains("game-tile-settings") ||
+      element.id === "close-settings-button" ||
+      element.id === "close-game-settings-button" ||
+      element.id === "chat-close-button"
     ) {
-      return "soft";
+      return "open";
     }
     return "click";
   }
@@ -1020,6 +1284,7 @@
     codeVisible = false;
     renderedPlayerListSignature = "";
     setGameSettingsOpen(false);
+    updateRoomCodeInUrl("");
     showOnly(elements.homeView);
     setConnectionState(Boolean(socket && socket.connected), "Connecté");
   }
@@ -1274,6 +1539,10 @@
     return room.players.find((player) => player.id === socket.id) || null;
   }
 
+  function isCurrentUserRoomHost() {
+    return Boolean(socket && currentRoom && currentRoom.hostId === socket.id);
+  }
+
   function getGameVotes(room, gameId) {
     const votes = room && room.gameVotes && room.gameVotes[gameId];
     return Array.isArray(votes) ? votes : [];
@@ -1376,8 +1645,6 @@
     const selectedLabel = getRoomGameLabel(room);
 
     elements.selectedGameName.textContent = selectedLabel;
-    elements.sidebarGameSummary.textContent =
-      `${selectedLabel} sélectionné. L'hôte appuie quand le cirque est complet.`;
 
     elements.gameSelectionButtons.forEach((button) => {
       const isSelected = button.dataset.gameId === selectedGameId;
@@ -1476,6 +1743,7 @@
     if (roomChanged) {
       codeVisible = false;
     }
+    updateRoomCodeInUrl(room.code);
     renderRoomCode();
     elements.playerCount.textContent =
       `${room.playerCount} / ${room.maxPlayers}`;
@@ -1843,13 +2111,15 @@
       currentRoom = displayedRoom;
       if (displayedRoom.phase === "lobby") {
         showRoom(displayedRoom);
-      } else if (!currentGame) {
+      } else {
         elements.playerCount.textContent =
           `${displayedRoom.playerCount} / ${displayedRoom.maxPlayers}`;
         renderPlayerList(displayedRoom);
         renderChatMessages(displayedRoom.chatMessages);
         setSidebarVisible(true);
-        setMessage(elements.roomMessage, "La partie démarre...");
+        if (!currentGame) {
+          setMessage(elements.roomMessage, "La partie démarre...");
+        }
       }
     });
 
@@ -2000,9 +2270,18 @@
   }
 
   function prepareAction(type) {
-    const nickname = elements.nickname.value.trim();
-    const roomName = elements.roomName.value.trim().replace(/\s+/g, " ");
-    const roomCode = elements.roomCodeInput.value.trim().toUpperCase();
+    const requestedNickname = elements.nickname.value.trim();
+    const nickname = requestedNickname || createDefaultNickname();
+    let roomName = elements.roomName.value.trim().replace(/\s+/g, " ");
+    const roomCode = normalizeRoomCodeInput(elements.roomCodeInput.value);
+
+    if (!requestedNickname) {
+      elements.nickname.value = nickname;
+    }
+    if (type === "create" && !roomName) {
+      roomName = DEFAULT_ROOM_NAME;
+      elements.roomName.value = roomName;
+    }
 
     if (!validateNickname(nickname)) {
       setMessage(
@@ -2201,6 +2480,33 @@
     voteRoomGame(gameId);
   }
 
+  function handleNumberStepperClick(button) {
+    const input = document.getElementById(button.dataset.stepperTarget);
+    if (!(input instanceof HTMLInputElement) || input.disabled) {
+      return;
+    }
+
+    const rawDelta = Number(button.dataset.stepperDelta);
+    const delta = Number.isFinite(rawDelta) ? rawDelta : 0;
+    const step = Number(input.step) || 1;
+    const min = input.min === "" ? -Infinity : Number(input.min);
+    const max = input.max === "" ? Infinity : Number(input.max);
+    const currentValue = Number(input.value);
+    const fallbackValue = Number.isFinite(min) ? min : 0;
+    const nextValue = Math.min(
+      max,
+      Math.max(
+        min,
+        (Number.isFinite(currentValue) ? currentValue : fallbackValue) +
+          delta * step
+      )
+    );
+
+    input.value = String(nextValue);
+    input.focus();
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  }
+
   async function updateRoomSettings() {
     if (!currentRoom || !socket || currentRoom.hostId !== socket.id) {
       return;
@@ -2223,6 +2529,7 @@
     const settingControls = [
       elements.roundCountInput,
       elements.partyGameCountInput,
+      ...elements.numberStepperButtons,
       ...elements.inputTypeCheckboxes,
       ...elements.partyGameCheckboxes
     ];
@@ -2879,6 +3186,7 @@
       window.clearTimeout(recordingSession.draftTimer);
       recordingSession.draftTimer = null;
     }
+    stopRecordingSpectrum(recordingSession);
     if (recordingSession.recorder.state !== "inactive") {
       recordingSession.recorder.stop();
     } else {
@@ -2943,6 +3251,7 @@
   function resetAudio(clearQuotePack = true) {
     audioStartRequestId += 1;
     stopAudioRecording(true);
+    stopRecordingSpectrum(recordingSession);
     stopRecordedAudioTimelineAnimation();
     if (isQuotePackStep()) {
       if (clearQuotePack) {
@@ -3160,7 +3469,8 @@
         timer: null,
         autoStopTimer: null,
         draftTimer: null,
-        draftEncoding: false
+        draftEncoding: false,
+        spectrum: null
       };
       recordingSession = session;
 
@@ -3176,6 +3486,7 @@
           window.clearTimeout(session.draftTimer);
           session.draftTimer = null;
         }
+        stopRecordingSpectrum(session);
         stopStream(session.stream);
         if (recordingSession === session) {
           recordingSession = null;
@@ -3231,6 +3542,7 @@
       }, AUDIO_RECORDING_DURATION_MS);
       updateRecordingDuration(session);
       elements.recordAudioButton.classList.add("recording");
+      startRecordingSpectrum(session);
       setMessage(elements.gameMessage, "");
     } catch (error) {
       stopStream(stream);
@@ -4172,28 +4484,33 @@
   }
 
   function updateResultsControls() {
+    const canControlResults =
+      Boolean(currentGame && currentGame.canControlResults) &&
+      isCurrentUserRoomHost();
     elements.previousChainButton.disabled =
-      !currentGame.canControlResults || !currentGame.canGoPrevious;
+      !canControlResults || !currentGame.canGoPrevious;
     elements.nextChainButton.disabled =
-      !currentGame.canControlResults || !currentGame.canGoNext;
+      !canControlResults || !currentGame.canGoNext;
     elements.resultNavigation.classList.toggle(
       "hidden",
-      !currentGame.canControlResults
+      !canControlResults
     );
     elements.resultsObserverMessage.classList.toggle(
       "hidden",
-      currentGame.canControlResults
+      canControlResults
     );
     elements.returnLobbyButton.classList.toggle(
       "hidden",
-      !currentGame.canControlResults
+      !canControlResults
     );
     elements.restartGameButton.classList.toggle(
       "hidden",
-      !currentGame.canControlResults
+      !canControlResults
     );
-    elements.restartGameButton.disabled = !currentGame.canRestartGame;
-    elements.restartGameButton.title = currentGame.canRestartGame
+    elements.restartGameButton.disabled =
+      !canControlResults || !currentGame.canRestartGame;
+    elements.restartGameButton.title =
+      canControlResults && currentGame.canRestartGame
       ? "Relancer immédiatement avec les mêmes joueurs et réglages"
       : "Il faut au moins 2 joueurs connectés pour relancer";
     elements.nextChainButton.title =
@@ -4321,7 +4638,11 @@
   }
 
   async function navigateResults(direction) {
-    if (!currentGame || !currentGame.canControlResults) {
+    if (
+      !currentGame ||
+      !currentGame.canControlResults ||
+      !isCurrentUserRoomHost()
+    ) {
       return;
     }
 
@@ -4424,6 +4745,7 @@
     loadAudioSettings();
     loadTheme();
     loadAppVersion();
+    applyRoomCodeFromUrl();
 
     elements.createButton.addEventListener("click", () =>
       prepareAction("create")
@@ -4513,10 +4835,9 @@
     });
 
     elements.roomCodeInput.addEventListener("input", () => {
-      elements.roomCodeInput.value = elements.roomCodeInput.value
-        .toUpperCase()
-        .replace(/[^ABCDEFGHJKMNPQRSTUVWXYZ23456789]/g, "")
-        .slice(0, 6);
+      elements.roomCodeInput.value = normalizeRoomCodeInput(
+        elements.roomCodeInput.value
+      );
     });
 
     elements.roomCodeInput.addEventListener("keydown", (event) => {
@@ -4544,13 +4865,14 @@
         return;
       }
 
+      const inviteUrl = buildRoomInviteUrl(currentRoom.code);
       try {
-        await navigator.clipboard.writeText(currentRoom.code);
-        setMessage(elements.roomMessage, "Code copié.", "success");
+        await navigator.clipboard.writeText(inviteUrl);
+        setMessage(elements.roomMessage, "Lien d'invitation copié.", "success");
       } catch {
         setMessage(
           elements.roomMessage,
-          `Copiez ce code : ${currentRoom.code}`,
+          `Copiez ce lien : ${inviteUrl}`,
           "error"
         );
       }
@@ -4575,6 +4897,11 @@
       "change",
       updateRoomSettings
     );
+    elements.numberStepperButtons.forEach((button) => {
+      button.addEventListener("click", () => {
+        handleNumberStepperClick(button);
+      });
+    });
     elements.inputTypeCheckboxes.forEach((checkbox) => {
       checkbox.addEventListener("change", updateRoomSettings);
     });
@@ -4671,14 +4998,24 @@
       { once: true }
     );
     document.addEventListener("click", (event) => {
-      const button =
+      const target =
         event.target instanceof Element
-          ? event.target.closest("button")
+          ? event.target.closest(
+              "button, [role='button'], .settings-choice, input[type='checkbox'], input[type='range']"
+            )
           : null;
-      if (!button || button.disabled) {
+      if (
+        !target ||
+        (
+          target.classList.contains("game-tile") &&
+          event.target.closest(".game-tile-settings")
+        ) ||
+        target.disabled ||
+        target.getAttribute("aria-disabled") === "true"
+      ) {
         return;
       }
-      playSoundEffect(getButtonSound(button));
+      playSoundEffect(getInteractionSound(target));
     });
 
     elements.recordAudioButton.addEventListener(

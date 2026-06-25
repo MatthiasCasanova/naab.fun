@@ -153,6 +153,7 @@ test("l'interface audio est compacte et ne contient plus l'ancien bouton stop", 
   assert.match(html, /id="validate-audio-button"/);
   assert.match(html, /id="audio-progress"/);
   assert.match(html, /id="audio-waveform"/);
+  assert.match(html, /id="audio-recording-spectrum"/);
   assert.match(html, /id="audio-playhead"/);
   assert.match(html, /id="audio-duration"/);
   assert.doesNotMatch(html, /id="stop-audio-button"/);
@@ -167,9 +168,13 @@ test("les lecteurs audio utilisent une forme d'onde et aucun controle natif", ()
   assert.match(app, /decodeAudioData/);
   assert.match(app, /createAudioPlayer/);
   assert.match(app, /canvas\.waveformPeaks/);
+  assert.match(app, /function startRecordingSpectrum/);
+  assert.match(app, /createAnalyser\(\)/);
+  assert.match(app, /getByteFrequencyData/);
   assert.doesNotMatch(app, /\.controls\s*=\s*true/);
   assert.doesNotMatch(html, /<audio[^>]*\scontrols(?:\s|>)/);
   assert.match(css, /\.audio-waveform-shell/);
+  assert.match(css, /\.audio-recording-spectrum/);
   assert.match(css, /\.audio-playhead/);
   assert.match(css, /\.audio-player-card\.is-playing/);
   assert.match(css, /--waveform-active-end/);
@@ -277,6 +282,10 @@ test("le lobby masque le code et expose les réglages de l'hôte", () => {
 
   assert.match(html, /id="room-title" class="room-code">\*{6}</);
   assert.match(html, /id="toggle-code-button"/);
+  assert.ok(
+    html.indexOf('id="room-message"') < html.indexOf('class="room-actions"')
+  );
+  assert.match(html, /aria-label="Copier le lien d'invitation"/);
   assert.doesNotMatch(html, /id="game-settings-button"/);
   assert.match(html, /class="game-tile-settings hidden"/);
   assert.match(html, /data-game-settings-id="kamoulox3000"/);
@@ -284,8 +293,26 @@ test("le lobby masque le code et expose les réglages de l'hôte", () => {
   assert.match(html, /id="game-settings-panel"/);
   assert.match(html, /id="done-game-settings-button"/);
   assert.match(html, /id="round-count-input"/);
+  assert.match(html, /id="icon-minus"/);
+  assert.match(html, /class="number-stepper"/);
+  assert.match(html, /data-stepper-target="round-count-input"/);
+  assert.match(html, /data-stepper-target="party-game-count-input"/);
   assert.match(html, /id="input-types-settings"/);
   assert.match(html, /id="party-settings"/);
+});
+
+test("les invitations utilisent le code de room dans l'URL", () => {
+  const app = readPublicFile("app.js");
+
+  assert.match(app, /function getRoomCodeFromUrl/);
+  assert.match(app, /parameters\.get\("room"\) \|\| parameters\.get\("code"\)/);
+  assert.match(app, /function buildRoomInviteUrl/);
+  assert.match(app, /url\.searchParams\.set\("room", roomCode\)/);
+  assert.match(app, /function updateRoomCodeInUrl/);
+  assert.match(app, /updateRoomCodeInUrl\(room\.code\)/);
+  assert.match(app, /applyRoomCodeFromUrl\(\)/);
+  assert.match(app, /navigator\.clipboard\.writeText\(inviteUrl\)/);
+  assert.match(app, /Lien d'invitation copi/);
 });
 
 test("l'accueil propose les avatars et la room conserve une liste laterale", () => {
@@ -305,7 +332,7 @@ test("l'accueil propose les avatars et la room conserve une liste laterale", () 
   assert.match(html, /maxlength="30"/);
   assert.doesNotMatch(html, /class="home-features"/);
   assert.doesNotMatch(html, /60 secondes/);
-  assert.match(html, /id="sidebar-game-summary"/);
+  assert.doesNotMatch(html, /id="sidebar-game-summary"/);
   assert.match(html, /id="game-selection-grid"/);
 });
 
@@ -313,6 +340,13 @@ test("la création transmet un nom de room et le serveur le valide", () => {
   const app = readPublicFile("app.js");
   const server = readProjectFile("server.js");
 
+  assert.match(app, /const DEFAULT_ROOM_NAME = "Room naab\.fun"/);
+  assert.match(app, /function createDefaultNickname/);
+  assert.match(
+    app,
+    /const nickname = requestedNickname \|\| createDefaultNickname\(\)/
+  );
+  assert.match(app, /roomName = DEFAULT_ROOM_NAME/);
   assert.match(app, /function validateRoomName/);
   assert.match(app, /\{ nickname, roomName, avatarId: currentAvatarId \}/);
   assert.match(server, /function normalizeRoomName/);
@@ -350,7 +384,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(html, /id="quote-audio-slots"/);
   assert.match(html, /data-quote-index="3"/);
   assert.match(html, /class="game-tile game-tile-empty"/);
-  assert.match(html, /id="sidebar-game-summary"/);
+  assert.doesNotMatch(html, /id="sidebar-game-summary"/);
   assert.doesNotMatch(html, new RegExp("emo" + "te-option"));
   assert.doesNotMatch(html, new RegExp("emo" + "te-picker"));
   assert.doesNotMatch(html, />La bande</);
@@ -366,6 +400,10 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(app, /function renderGameVotes/);
   assert.match(app, /function handleRoomGameClick/);
   assert.match(app, /function renderRoomLobbyState/);
+  assert.match(app, /summary: "Résumé"/);
+  assert.match(app, /function isCurrentUserRoomHost/);
+  assert.match(app, /currentRoom\.hostId === socket\.id/);
+  assert.match(app, /const canControlResults =/);
   assert.match(app, /badge\.textContent = "H"/);
   assert.match(app, /self-voted-only/);
   assert.match(app, /CONTRIBUTION_STEP_LABELS/);
@@ -405,9 +443,10 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.spell-kit-editor/);
   assert.match(css, /\.quote-audio-slots/);
   assert.match(css, /\.player-reference/);
+  assert.match(css, /\.player-state\.status-summary::before/);
   assert.match(css, /\.league-result-item/);
   assert.doesNotMatch(css, /\.game-tile\.has-self-vote/);
-  assert.match(css, /\.sidebar-lobby-signal/);
+  assert.doesNotMatch(css, /\.sidebar-lobby-signal/);
   assert.match(css, /\.chat-sidebar\.mobile-open/);
   assert.match(css, /\.chat-messages\s*\{[\s\S]*overflow:\s*hidden/);
   assert.match(app, /shouldKeepGameSettingsOpen/);
@@ -491,6 +530,16 @@ test("les effets sonores et le chrono respectent leur volume separe", () => {
 
   assert.match(app, /function playSoundEffect/);
   assert.match(app, /effectsVolume/);
+  assert.match(app, /window\.localStorage\.getItem\(EFFECTS_VOLUME_STORAGE_KEY\),\s*0\.85/);
+  assert.match(app, /function getInteractionSound/);
+  assert.match(app, /numberStepperButtons/);
+  assert.match(app, /function handleNumberStepperClick/);
+  assert.match(app, /input\.dispatchEvent\(new Event\("change"/);
+  assert.match(app, /\.game-tile/);
+  assert.match(app, /\.settings-choice/);
+  assert.match(app, /input\[type='checkbox'\]/);
+  assert.match(app, /input\[type='range'\]/);
+  assert.match(app, /playSoundEffect\(getInteractionSound\(target\)\)/);
   assert.match(app, /playSoundEffect\("tick"/);
   assert.match(app, /remaining <= 2500 \? 250/);
   assert.match(app, /Math\.pow\(1 - remaining \/ 10000, 2\)/);
@@ -538,14 +587,35 @@ test("la mise en page reste dans le viewport et stabilise le canvas", () => {
     css,
     /\.audio-empty-state,\s*\.audio-ready-state\s*\{[\s\S]*width:\s*100%/
   );
+  assert.match(
+    css,
+    /@media \(max-width: 820px\)\s*\{[\s\S]*\.chat-form input\s*\{[\s\S]*font-size:\s*16px/
+  );
+  assert.match(
+    css,
+    /\.chat-sidebar\s*\{[\s\S]*transition:\s*opacity 120ms ease/
+  );
   assert.doesNotMatch(css, /width:\s*min\(100%,\s*560px\)/);
+  assert.match(
+    css,
+    /#game-settings-panel\s*\{[\s\S]*width:\s*min\(100%,\s*860px\)/
+  );
+  assert.match(
+    css,
+    /\.game-settings-fields\s*\{[\s\S]*overflow:\s*visible/
+  );
+  assert.match(css, /\.number-stepper\s*\{[\s\S]*grid-template-columns/);
+  assert.match(css, /\.number-stepper-button\s*\{[\s\S]*box-shadow/);
+  assert.match(
+    css,
+    /\.settings-field input\[type="number"\]::-webkit-inner-spin-button/
+  );
+  assert.match(css, /-moz-appearance:\s*textfield/);
+  assert.doesNotMatch(css, /\.game-settings-fields\s*\{[^}]*overflow-y/);
   const scrollableAxes = [
     ...css.matchAll(/overflow-(?:x|y):\s*(?:auto|scroll)/g)
   ].map((match) => match[0]);
-  assert.deepEqual(scrollableAxes, [
-    "overflow-y: auto",
-    "overflow-y: auto"
-  ]);
+  assert.deepEqual(scrollableAxes, ["overflow-y: auto"]);
 });
 
 test("les commandes utilisent le sprite d'icones et des animations coherentes", () => {
@@ -565,6 +635,7 @@ test("les commandes utilisent le sprite d'icones et des animations coherentes", 
   assert.match(css, /@keyframes selected-glint/);
   assert.match(css, /button\[aria-checked="true"\]::after/);
   assert.match(css, /button\[aria-pressed="true"\]::after/);
+  assert.match(css, /\.game-tile\.active::after/);
+  assert.match(css, /\.settings-choice:has\(input:checked\)::after/);
   assert.doesNotMatch(css, /button-glint/);
-  assert.doesNotMatch(css, /\.game-tile\.active::after/);
 });

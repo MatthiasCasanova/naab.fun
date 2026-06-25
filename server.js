@@ -644,7 +644,7 @@ function createGameServer(options = {}) {
     }
 
     if (room.game.status === "results") {
-      return "watching";
+      return "summary";
     }
 
     return room.game.roundSubmissions.has(player.participantId)

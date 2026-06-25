@@ -57,6 +57,9 @@
       <symbol id="icon-plus" viewBox="0 0 24 24">
         <path d="M12 5v14M5 12h14"/>
       </symbol>
+      <symbol id="icon-minus" viewBox="0 0 24 24">
+        <path d="M5 12h14"/>
+      </symbol>
       <symbol id="icon-enter" viewBox="0 0 24 24">
         <path d="M14 5h5v14h-5M10 8l4 4-4 4M14 12H3"/>
       </symbol>
@@ -221,7 +224,15 @@
         <div class="game-settings-fields">
           <div class="settings-field">
             <label for="round-count-input">Nombre de manches</label>
-            <input id="round-count-input" type="number" inputmode="numeric" min="1" max="10" step="1">
+            <div class="number-stepper">
+              <button class="number-stepper-button" type="button" data-stepper-target="round-count-input" data-stepper-delta="-1" aria-label="Réduire le nombre de manches">
+                <svg class="icon"><use href="#icon-minus"></use></svg>
+              </button>
+              <input id="round-count-input" type="number" inputmode="numeric" min="1" max="10" step="1">
+              <button class="number-stepper-button" type="button" data-stepper-target="round-count-input" data-stepper-delta="1" aria-label="Augmenter le nombre de manches">
+                <svg class="icon"><use href="#icon-plus"></use></svg>
+              </button>
+            </div>
             <small id="round-count-help" class="settings-help"></small>
           </div>
 
@@ -255,7 +266,15 @@
 
           <div id="party-settings" class="settings-field hidden">
             <label for="party-game-count-input">Jeux à enchaîner</label>
-            <input id="party-game-count-input" type="number" inputmode="numeric" min="1" max="10" step="1">
+            <div class="number-stepper">
+              <button class="number-stepper-button" type="button" data-stepper-target="party-game-count-input" data-stepper-delta="-1" aria-label="Réduire le nombre de jeux à enchaîner">
+                <svg class="icon"><use href="#icon-minus"></use></svg>
+              </button>
+              <input id="party-game-count-input" type="number" inputmode="numeric" min="1" max="10" step="1">
+              <button class="number-stepper-button" type="button" data-stepper-target="party-game-count-input" data-stepper-delta="1" aria-label="Augmenter le nombre de jeux à enchaîner">
+                <svg class="icon"><use href="#icon-plus"></use></svg>
+              </button>
+            </div>
             <span class="field-label party-games-label">Jeux dans le tirage</span>
             <div class="settings-choice-grid party-game-choice-grid">
               <label class="settings-choice">
@@ -338,13 +357,6 @@
             </div>
           </div>
           <ul id="player-list" class="player-list"></ul>
-          <div class="sidebar-lobby-signal" aria-live="polite">
-            <div class="mini-lobby-orbit" aria-hidden="true">
-              <span>T</span><span>S</span><span>D</span>
-            </div>
-            <strong>En attente du signal de l'hôte</strong>
-            <span id="sidebar-game-summary">Choix du terrain d'accident...</span>
-          </div>
           <div id="connection-status" class="sidebar-connection">
             <span class="status-dot" aria-hidden="true"></span>
             <span id="connection-label">Connexion...</span>
@@ -464,7 +476,7 @@
                 <button id="toggle-code-button" class="round-control" type="button" aria-label="Afficher le code" aria-pressed="false">
                   <svg class="icon"><use id="code-icon-use" href="#icon-eye"></use></svg>
                 </button>
-                <button id="copy-button" class="round-control" type="button" aria-label="Copier le code">
+                <button id="copy-button" class="round-control" type="button" aria-label="Copier le lien d'invitation">
                   <svg class="icon"><use href="#icon-copy"></use></svg>
                 </button>
               </div>
@@ -524,6 +536,7 @@
               </div>
             </div>
 
+            <div id="room-message" class="message" role="status" aria-live="polite"></div>
             <div class="room-actions">
               <button id="start-game-button" class="button button-primary hidden" type="button">
                 <svg class="icon"><use href="#icon-play"></use></svg>
@@ -533,7 +546,6 @@
                 <svg class="icon"><use href="#icon-exit"></use></svg>
               </button>
             </div>
-            <div id="room-message" class="message" role="status" aria-live="polite"></div>
           </section>
 
           <section id="game-view" class="card game-card hidden" aria-labelledby="game-title">
@@ -694,6 +706,11 @@
                         <svg class="icon"><use href="#icon-mic"></use></svg>
                         <span id="record-button-label">5 secondes de bruit</span>
                       </button>
+                      <canvas
+                        id="audio-recording-spectrum"
+                        class="audio-recording-spectrum hidden"
+                        aria-hidden="true"
+                      ></canvas>
                       <p id="audio-status" class="audio-status" aria-live="polite"></p>
                     </div>
 

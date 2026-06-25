@@ -1326,6 +1326,36 @@ test("la liste laterale recoit les etats de validation en direct", async () => {
       roomState.players.find((player) => player.nickname === "Bob").status,
       "playing"
     );
+
+    const secondStatesPromise = Promise.all(
+      clients.map((client) =>
+        waitForEvent(
+          client,
+          "gameState",
+          (state) => state.phase === "playing" && state.roundIndex === 1
+        )
+      )
+    );
+    await submitExpected(bob, firstStates[1], "Bob a termine");
+    const secondStates = await secondStatesPromise;
+    const summaryStatusPromise = waitForEvent(
+      bob,
+      "roomState",
+      (room) =>
+        room.phase === "results" &&
+        room.players.every((player) => player.status === "summary")
+    );
+
+    await Promise.all([
+      submitExpected(alice, secondStates[0], "Résumé Alice"),
+      submitExpected(bob, secondStates[1], "Résumé Bob")
+    ]);
+    const summaryRoomState = await summaryStatusPromise;
+
+    assert.deepEqual(
+      summaryRoomState.players.map((player) => player.status),
+      ["summary", "summary"]
+    );
   } finally {
     await cleanup(game, clients);
   }
