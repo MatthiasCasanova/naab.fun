@@ -2529,7 +2529,6 @@
     const settingControls = [
       elements.roundCountInput,
       elements.partyGameCountInput,
-      ...elements.numberStepperButtons,
       ...elements.inputTypeCheckboxes,
       ...elements.partyGameCheckboxes
     ];

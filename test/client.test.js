@@ -535,6 +535,10 @@ test("les effets sonores et le chrono respectent leur volume separe", () => {
   assert.match(app, /numberStepperButtons/);
   assert.match(app, /function handleNumberStepperClick/);
   assert.match(app, /input\.dispatchEvent\(new Event\("change"/);
+  assert.doesNotMatch(
+    app,
+    /const settingControls = \[[\s\S]*\.\.\.elements\.numberStepperButtons[\s\S]*\]/
+  );
   assert.match(app, /\.game-tile/);
   assert.match(app, /\.settings-choice/);
   assert.match(app, /input\[type='checkbox'\]/);
@@ -604,6 +608,11 @@ test("la mise en page reste dans le viewport et stabilise le canvas", () => {
     css,
     /\.game-settings-fields\s*\{[\s\S]*overflow:\s*visible/
   );
+  assert.match(
+    css,
+    /\.game-settings-fields\s*\{[\s\S]*repeat\(auto-fit,\s*minmax\(240px,\s*1fr\)\)/
+  );
+  assert.doesNotMatch(css, /#party-settings \.party-game-choice-grid/);
   assert.match(css, /\.number-stepper\s*\{[\s\S]*grid-template-columns/);
   assert.match(css, /\.number-stepper-button\s*\{[\s\S]*box-shadow/);
   assert.match(

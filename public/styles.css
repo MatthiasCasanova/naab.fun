@@ -2675,34 +2675,20 @@ label,
 }
 
 .game-settings-fields {
-  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.3fr);
-  align-items: stretch;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  align-items: start;
   gap: 16px;
   overflow: visible;
 }
 
 .settings-field + .settings-field {
-  border-left: 2px solid var(--frame);
-  padding-left: 16px;
-}
-
-#party-settings {
-  grid-column: 1 / -1;
-  grid-template-columns: minmax(180px, 0.7fr) minmax(0, 1.3fr);
-  align-items: end;
-  border-top: 2px solid var(--frame);
   border-left: 0;
-  padding-top: 14px;
   padding-left: 0;
 }
 
-#party-settings .field-label,
-#party-settings .party-game-choice-grid {
-  grid-column: 2;
-}
-
-#party-settings .party-game-choice-grid {
-  margin-top: 0;
+#party-settings {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: stretch;
 }
 
 .settings-field input[type="number"] {
@@ -2772,7 +2758,7 @@ label,
 }
 
 .party-games-label {
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 .settings-choice {
@@ -2913,11 +2899,6 @@ label,
     border-left: 0;
     padding-top: 12px;
     padding-left: 0;
-  }
-
-  #party-settings .field-label,
-  #party-settings .party-game-choice-grid {
-    grid-column: auto;
   }
 
   .settings-choice {
