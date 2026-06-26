@@ -5123,27 +5123,21 @@ canvas,
   overflow: hidden;
   border-left: 1px solid rgba(243, 245, 251, 0.62);
   border-right: 1px solid rgba(243, 245, 251, 0.62);
+  background: #05060b url("./assets/eye-swirl-tile.png") center / cover no-repeat;
   padding: 0;
 }
 
 .home-intro::before {
-  inset: 14px 14px auto;
-  height: 42%;
-  border-color: rgba(243, 245, 251, 0.68);
+  display: none;
 }
 
 .home-intro::after {
-  right: 16px;
-  bottom: 16px;
-  left: 16px;
-  height: 15%;
+  display: none;
 }
 
 .home-intro h2 {
-  right: 16px;
-  bottom: calc(15% + 30px);
-  left: 16px;
-  font-size: clamp(2.8rem, 5.8vw, 7rem);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .home-deco-tile {
