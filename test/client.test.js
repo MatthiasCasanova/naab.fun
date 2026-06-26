@@ -98,6 +98,9 @@ test("app.js désactive le cache et journalise l'URL health", () => {
 
   assert.match(app, /cache:\s*"no-store"/);
   assert.match(app, /console\.info\(`\[health\] GET \$\{healthUrl\}`\)/);
+  assert.match(app, /function isHealthNetworkError/);
+  assert.match(app, /healthProbeBlocked:\s*true/);
+  assert.match(app, /Connexion directe à la room/);
   assert.match(app, /transports:\s*\["polling", "websocket"\]/);
 });
 

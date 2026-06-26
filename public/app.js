@@ -1865,6 +1865,10 @@
     };
   }
 
+  function isHealthNetworkError(error) {
+    return Boolean(error && error.name === "HealthNetworkError");
+  }
+
   async function wakeServer() {
     const deadline = Date.now() + WAKE_TIMEOUT_MS;
     const activeRequests = new Set();
@@ -1932,6 +1936,15 @@
             }
 
             lastError = result.error;
+            if (isHealthNetworkError(lastError)) {
+              finish({
+                ok: false,
+                error: lastError,
+                healthProbeBlocked: true
+              });
+              return;
+            }
+
             setMessage(
               elements.homeMessage,
               `Démarrage du serveur... Tentative ${attemptNumber}. ` +
@@ -2215,7 +2228,8 @@
     setMessage(elements.homeMessage, "");
 
     const healthResult = await wakeServer();
-    if (!healthResult.ok) {
+    const healthProbeBlocked = Boolean(healthResult.healthProbeBlocked);
+    if (!healthResult.ok && !healthProbeBlocked) {
       actionRunning = false;
       setHomeBusy(false);
       elements.retryButton.classList.remove("hidden");
@@ -2233,7 +2247,18 @@
     loadAppVersion();
 
     try {
-      setMessage(elements.homeMessage, "Serveur disponible. Connexion...");
+      if (healthProbeBlocked) {
+        console.warn(
+          "[health] Health check bloqué, tentative Socket.IO directe.",
+          healthResult.error
+        );
+        setMessage(
+          elements.homeMessage,
+          "Le health check semble bloqué. Connexion directe à la room..."
+        );
+      } else {
+        setMessage(elements.homeMessage, "Serveur disponible. Connexion...");
+      }
       await waitForSocketConnection();
       const action = pendingAction;
       const eventName = action.type === "create" ? "createRoom" : "joinRoom";
@@ -2262,7 +2287,11 @@
       }
     } catch (error) {
       console.error("[jeu] Action impossible :", error);
-      setMessage(elements.homeMessage, error.message, "error");
+      const detail =
+        healthProbeBlocked && healthResult.error
+          ? `${error.message} Le navigateur ou une extension bloque aussi peut-être ${serverUrl}.`
+          : error.message;
+      setMessage(elements.homeMessage, detail, "error");
     } finally {
       actionRunning = false;
       setHomeBusy(false);
