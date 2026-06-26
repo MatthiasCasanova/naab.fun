@@ -534,7 +534,7 @@ test("les effets sonores et le chrono respectent leur volume separe", () => {
 
   assert.match(app, /function playSoundEffect/);
   assert.match(app, /effectsVolume/);
-  assert.match(app, /window\.localStorage\.getItem\(EFFECTS_VOLUME_STORAGE_KEY\),\s*0\.85/);
+  assert.match(app, /window\.localStorage\.getItem\(EFFECTS_VOLUME_STORAGE_KEY\),\s*0\.425/);
   assert.match(app, /function getInteractionSound/);
   assert.match(app, /numberStepperButtons/);
   assert.match(app, /function handleNumberStepperClick/);

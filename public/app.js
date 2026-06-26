@@ -290,7 +290,7 @@
   let resultContributionIndex = 0;
   let lastResultRevealKey = null;
   let audioVolume = 1;
-  let effectsVolume = 0.7;
+  let effectsVolume = 0.425;
   let siteMuted = false;
   let codeVisible = false;
   let siteTheme = "dark";
@@ -831,13 +831,13 @@
       );
       effectsVolume = window.GameClientUtils.normalizeVolume(
         window.localStorage.getItem(EFFECTS_VOLUME_STORAGE_KEY),
-        0.85
+        0.425
       );
       siteMuted = window.localStorage.getItem(MUTED_STORAGE_KEY) === "true";
     } catch (error) {
       console.warn("[paramètres] Lecture du volume impossible :", error);
       audioVolume = 1;
-      effectsVolume = 0.85;
+      effectsVolume = 0.425;
       siteMuted = false;
     }
 
