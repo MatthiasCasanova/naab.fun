@@ -39,15 +39,15 @@
     },
     kamoulox3000: {
       id: "kamoulox3000",
-      name: "Kamoulox 3000",
+      name: "Garticphone+",
       resolvedId: "kamoulox3000",
-      resolvedName: "Kamoulox 3000"
+      resolvedName: "Garticphone+"
     },
     leagueOfNaabs: {
       id: "leagueOfNaabs",
-      name: "League Of Naabs",
+      name: "Champions",
       resolvedId: "leagueOfNaabs",
-      resolvedName: "League Of Naabs"
+      resolvedName: "Champions"
     }
   });
   const DEFAULT_ROOM_GAME_ID = "party";

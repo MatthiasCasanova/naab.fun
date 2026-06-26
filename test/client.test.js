@@ -375,8 +375,8 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(html, /data-game-id="party"/);
   assert.match(html, /data-game-id="kamoulox3000"/);
   assert.match(html, /data-game-id="leagueOfNaabs"/);
-  assert.match(html, /Kamoulox 3000/);
-  assert.match(html, /League Of Naabs/);
+  assert.match(html, /Garticphone\+/);
+  assert.match(html, /Champions/);
   assert.match(html, /id="round-count-input"[^>]*type="number"/);
   assert.match(html, /id="party-game-count-input"/);
   assert.equal((html.match(/data-input-type/g) || []).length, 3);

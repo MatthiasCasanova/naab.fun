@@ -241,7 +241,7 @@ test("les types sont imposés aléatoirement sans répétition immédiate", () =
   ]);
 });
 
-test("League Of Naabs est optimal à 6 joueurs sans auto-attribution", () => {
+test("Champions est optimal à 6 joueurs sans auto-attribution", () => {
   assert.equal(LEAGUE_OF_NAABS_STEPS.length, 5);
   assert.equal(LEAGUE_OF_NAABS_OPTIMAL_PLAYER_COUNT, 6);
   assert.deepEqual(
@@ -722,7 +722,7 @@ test("une partie complète respecte rotations et types aléatoires imposés", as
   }
 });
 
-test("League Of Naabs construit un champion complet pour chaque joueur", async () => {
+test("Champions construit un champion complet pour chaque joueur", async () => {
   const { game, url } = await startTestServer({
     gameCountdownMs: 0,
     roundPreviewMs: 0,

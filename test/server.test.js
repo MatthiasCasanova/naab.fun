@@ -455,7 +455,7 @@ test("le chat et la sélection de jeu sont synchronisés dans toute la room", as
     assert.equal(gameSelection.ok, true);
     assert.equal(
       gameSelection.gameSelection.selectedGameName,
-      "Kamoulox 3000"
+      "Garticphone+"
     );
     await gameSelectionUpdate;
 

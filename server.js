@@ -43,13 +43,13 @@ const ROOM_GAMES = Object.freeze([
   },
   {
     id: KAMOULOX_GAME_ID,
-    name: "Kamoulox 3000",
+    name: "Garticphone+",
     resolvedId: KAMOULOX_GAME_ID,
     available: true
   },
   {
     id: LEAGUE_OF_NAABS_GAME_ID,
-    name: "League Of Naabs",
+    name: "Champions",
     resolvedId: LEAGUE_OF_NAABS_GAME_ID,
     available: true
   }

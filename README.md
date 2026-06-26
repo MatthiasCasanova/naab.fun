@@ -1,7 +1,7 @@
 # naab.fun
 
 Mini-site de jeux multijoueurs absurdes. Le premier jeu disponible,
-**Kamoulox 3000**, reprend des chaînes créatives inspirées du téléphone arabe dessiné. Le
+**Garticphone+**, reprend des chaînes créatives inspirées du téléphone arabe dessiné. Le
 serveur impose à chaque joueur un texte, un audio ou un dessin selon les
 paramètres choisis par l'hôte. Les rooms, contributions et enregistrements
 restent uniquement en mémoire dans le processus Node.js.
@@ -26,7 +26,7 @@ contribution audio. Le microphone fonctionne sur `localhost` et en HTTPS.
 - L'hôte peut lancer la partie dès que 2 joueurs sont connectés.
 - Chaque jeu permet de saisir son nombre de manches, dans la limite adaptée aux
   joueurs présents.
-- Kamoulox 3000 permet d'activer ou désactiver séparément le texte, le dessin et
+- Garticphone+ permet d'activer ou désactiver séparément le texte, le dessin et
   l'audio, avec au moins un type conservé.
 - Le mode **Party** enchaîne de 1 à 10 jeux tirés parmi ceux activés par l'hôte,
   sans répétition immédiate lorsqu'au moins deux jeux sont disponibles.
