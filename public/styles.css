@@ -4224,29 +4224,94 @@ canvas,
 .avatar-picker {
   position: relative;
   z-index: 1;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 6px;
+  border: 1px solid rgba(243, 245, 251, 0.42);
+  padding: 6px;
+  background:
+    linear-gradient(90deg, rgba(243, 245, 251, 0.08) 0 1px, transparent 1px 100%) 0 0 / 25% 100%,
+    linear-gradient(0deg, rgba(243, 245, 251, 0.05) 0 1px, transparent 1px 100%) 0 0 / 100% 50%,
+    rgba(7, 9, 16, 0.46);
 }
 
 .avatar-option {
-  min-height: 78px;
-  aspect-ratio: auto;
-  grid-template-columns: minmax(0, 1fr) 2.2rem;
+  isolation: isolate;
+  min-height: 0;
+  aspect-ratio: 1;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
-  padding: 7px;
+  overflow: hidden;
+  padding: 0;
+  background:
+    linear-gradient(135deg, rgba(243, 245, 251, 0.12), transparent 38%),
+    rgba(5, 7, 12, 0.92);
+}
+
+.avatar-option::before {
+  position: absolute;
+  z-index: 0;
+  inset: 0;
+  opacity: 0.72;
+  content: "";
+}
+
+.avatar-option:nth-child(1)::before,
+.avatar-option:nth-child(6)::before {
+  background:
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 0.46rem, rgba(243, 245, 251, 0.46) 0.5rem 0.54rem);
+}
+
+.avatar-option:nth-child(2)::before,
+.avatar-option:nth-child(7)::before {
+  background:
+    repeating-linear-gradient(90deg, transparent 0 0.42rem, rgba(243, 245, 251, 0.38) 0.42rem 0.5rem);
+}
+
+.avatar-option:nth-child(3)::before,
+.avatar-option:nth-child(8)::before {
+  background:
+    conic-gradient(from 45deg, rgba(243, 245, 251, 0.42) 0 25%, transparent 0 50%, rgba(243, 245, 251, 0.42) 0 75%, transparent 0) 0 0 / 1.1rem 1.1rem;
+}
+
+.avatar-option:nth-child(4)::before,
+.avatar-option:nth-child(5)::before {
+  background:
+    repeating-linear-gradient(135deg, transparent 0 0.56rem, rgba(243, 245, 251, 0.42) 0.56rem 0.64rem);
 }
 
 .avatar-image {
-  width: 62%;
-  height: 62%;
+  position: relative;
+  z-index: 1;
+  width: 48%;
+  height: 48%;
+  place-self: center;
   filter: grayscale(1) contrast(1.18);
 }
 
 .avatar-code {
+  position: absolute;
+  z-index: 2;
+  top: 4px;
+  right: 4px;
   display: grid;
-  align-self: stretch;
+  min-width: 1.35rem;
+  height: 1.1rem;
   place-items: center;
-  border-left: 1px solid rgba(243, 245, 251, 0.38);
+  border: 1px solid rgba(243, 245, 251, 0.55);
+  color: #070910;
+  background: rgba(243, 245, 251, 0.88);
+  font-size: 0.48rem;
+  line-height: 1;
+}
+
+.avatar-option.active {
+  background:
+    linear-gradient(180deg, rgba(243, 245, 251, 0.2), transparent 54%),
+    #070910;
+}
+
+.avatar-option.active .avatar-image {
+  filter: grayscale(1) contrast(1.35) drop-shadow(0 0 10px rgba(243, 245, 251, 0.36));
 }
 
 .home-actions {
