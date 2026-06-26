@@ -5123,73 +5123,8 @@ canvas,
   overflow: hidden;
   border-left: 1px solid rgba(243, 245, 251, 0.62);
   border-right: 1px solid rgba(243, 245, 251, 0.62);
-  background: #020307;
-  isolation: isolate;
+  background: #05060b url("./assets/eye-swirl-tile.png") center / cover no-repeat;
   padding: 0;
-}
-
-.home-eye-art {
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  background:
-    radial-gradient(circle at 18% 24%, rgba(255, 255, 255, 0.08), transparent 22%),
-    radial-gradient(circle at 74% 70%, rgba(255, 255, 255, 0.06), transparent 26%),
-    #020307;
-}
-
-.home-eye-art svg {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.eye-art-strata path {
-  fill: none;
-  stroke: #f5f6fa;
-  stroke-linecap: round;
-  stroke-width: 7;
-}
-
-.eye-art-strata path:nth-child(2n) {
-  stroke: #7f858f;
-  stroke-width: 3;
-}
-
-.eye-art-strata path:nth-child(3n) {
-  stroke: #11151d;
-  stroke-width: 17;
-}
-
-.eye-art-ribbons path {
-  fill: none;
-  stroke: #f4f5f8;
-  stroke-linecap: round;
-  stroke-width: 28;
-}
-
-.eye-art-ribbons path:nth-child(2n) {
-  stroke: #080a10;
-  stroke-width: 40;
-}
-
-.eye-art-voids path {
-  fill: #030409;
-  stroke: #cdd1da;
-  stroke-width: 2;
-}
-
-.eye-art-eyes use {
-  filter: drop-shadow(0 0 8px rgba(255, 255, 255, 0.22));
-}
-
-.eye-art-gloss path {
-  fill: none;
-  stroke: #fff;
-  stroke-linecap: round;
-  stroke-width: 2.4;
-  opacity: 0.86;
 }
 
 .home-intro::before {
