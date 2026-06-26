@@ -22,6 +22,12 @@
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
+    <div class="art-stage" aria-hidden="true">
+      <span class="art-stage-ring"></span>
+      <span class="art-stage-orbit"></span>
+      <span class="art-stage-wave"></span>
+      <span class="art-stage-noise"></span>
+    </div>
     <svg class="icon-sprite" aria-hidden="true">
       <symbol id="icon-settings" viewBox="0 0 24 24">
         <path d="M12 8.5A3.5 3.5 0 1 0 12 15.5 3.5 3.5 0 0 0 12 8.5Z"/>
@@ -365,6 +371,11 @@
 
         <div class="view-stack">
           <section id="home-view" class="card home-card" aria-labelledby="home-title">
+            <div class="view-art view-art-home" aria-hidden="true">
+              <span>01</span>
+              <span>NAAB</span>
+              <span>FUN</span>
+            </div>
             <div class="home-intro">
               <h2 id="home-title">Choisis ta tête et entre dans l'histoire</h2>
             </div>
@@ -467,6 +478,10 @@
           </section>
 
           <section id="room-view" class="card room-card hidden" aria-labelledby="room-title">
+            <div class="view-art view-art-room" aria-hidden="true">
+              <span>ROOM</span>
+              <span>SYNC</span>
+            </div>
             <div class="room-hero">
               <div>
                 <p class="eyebrow">Code ultra-secret</p>
@@ -549,6 +564,10 @@
           </section>
 
           <section id="game-view" class="card game-card hidden" aria-labelledby="game-title">
+            <div class="view-art view-art-game" aria-hidden="true">
+              <span>PLAY</span>
+              <span>LIVE</span>
+            </div>
             <div id="round-intro" class="round-intro hidden" aria-live="assertive">
               <div id="game-start-countdown" class="game-start-countdown hidden">
                 <span id="game-start-countdown-value">3</span>
@@ -634,20 +653,20 @@
                     <div class="paint-panel">
                       <div class="paint-row colors-row">
                         <div id="color-palette" class="color-palette" aria-label="Palette de couleurs">
-                          <button class="color-swatch active" data-color="#08090f" style="--swatch:#08090f" type="button" aria-label="Noir panneau"></button>
-                          <button class="color-swatch" data-color="#ffffff" style="--swatch:#ffffff" type="button" aria-label="Blanc"></button>
-                          <button class="color-swatch" data-color="#ff3b30" style="--swatch:#ff3b30" type="button" aria-label="Rouge portail"></button>
-                          <button class="color-swatch" data-color="#ff8c1a" style="--swatch:#ff8c1a" type="button" aria-label="Orange"></button>
-                          <button class="color-swatch" data-color="#ffe64a" style="--swatch:#ffe64a" type="button" aria-label="Jaune"></button>
-                          <button class="color-swatch" data-color="#34ff6d" style="--swatch:#34ff6d" type="button" aria-label="Vert néon"></button>
-                          <button class="color-swatch" data-color="#18e8ff" style="--swatch:#18e8ff" type="button" aria-label="Cyan"></button>
-                          <button class="color-swatch" data-color="#4e7cff" style="--swatch:#4e7cff" type="button" aria-label="Bleu"></button>
-                          <button class="color-swatch" data-color="#ff4fd8" style="--swatch:#ff4fd8" type="button" aria-label="Magenta"></button>
-                          <button class="color-swatch" data-color="#9ca3af" style="--swatch:#9ca3af" type="button" aria-label="Gris acier"></button>
+                          <button class="color-swatch active" data-color="#080a12" style="--swatch:#080a12" type="button" aria-label="Noir panneau"></button>
+                          <button class="color-swatch" data-color="#f3f5fb" style="--swatch:#f3f5fb" type="button" aria-label="Blanc signal"></button>
+                          <button class="color-swatch" data-color="#c9ced8" style="--swatch:#c9ced8" type="button" aria-label="Gris clair"></button>
+                          <button class="color-swatch" data-color="#8f97a6" style="--swatch:#8f97a6" type="button" aria-label="Gris acier"></button>
+                          <button class="color-swatch" data-color="#4d5666" style="--swatch:#4d5666" type="button" aria-label="Ardoise"></button>
+                          <button class="color-swatch" data-color="#17202c" style="--swatch:#17202c" type="button" aria-label="Bleu nuit"></button>
+                          <button class="color-swatch" data-color="#241829" style="--swatch:#241829" type="button" aria-label="Violet nuit"></button>
+                          <button class="color-swatch" data-color="#b6bcc8" style="--swatch:#b6bcc8" type="button" aria-label="Argent"></button>
+                          <button class="color-swatch" data-color="#ffffff" style="--swatch:#ffffff" type="button" aria-label="Blanc pur"></button>
+                          <button class="color-swatch" data-color="#2a2d36" style="--swatch:#2a2d36" type="button" aria-label="Graphite"></button>
                         </div>
                         <label class="custom-color-label" title="Couleur personnalisée">
                           <span aria-hidden="true">+</span>
-                          <input id="drawing-color" type="color" value="#08090f" aria-label="Couleur personnalisée">
+                          <input id="drawing-color" type="color" value="#080a12" aria-label="Couleur personnalisée">
                         </label>
                       </div>
 
@@ -772,6 +791,10 @@
           </section>
 
           <section id="results-view" class="card results-card hidden" aria-labelledby="results-title">
+            <div class="view-art view-art-results" aria-hidden="true">
+              <span>ARCHIVE</span>
+              <span>END</span>
+            </div>
             <div class="results-heading">
               <div>
                 <p class="eyebrow">Résumé synchronisé</p>
