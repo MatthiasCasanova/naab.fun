@@ -5380,7 +5380,19 @@ canvas,
 }
 
 .topbar::before {
-  display: none;
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  display: block;
+  width: clamp(5.2rem, 12vw, 9rem);
+  pointer-events: none;
+  background:
+    repeating-linear-gradient(90deg, #f3f5fb 0 0.5rem, transparent 0.5rem 0.82rem),
+    #070910;
+  content: "";
+  opacity: 0.92;
 }
 
 .brand,
