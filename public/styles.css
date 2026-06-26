@@ -4225,58 +4225,89 @@ canvas,
   position: relative;
   z-index: 1;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 6px;
-  border: 1px solid rgba(243, 245, 251, 0.42);
-  padding: 6px;
+  gap: 10px;
+  border: 0;
+  padding: 10px;
   background:
-    linear-gradient(90deg, rgba(243, 245, 251, 0.08) 0 1px, transparent 1px 100%) 0 0 / 25% 100%,
-    linear-gradient(0deg, rgba(243, 245, 251, 0.05) 0 1px, transparent 1px 100%) 0 0 / 100% 50%,
-    rgba(7, 9, 16, 0.46);
+    radial-gradient(circle at 18% 20%, rgba(243, 245, 251, 0.22) 0 1px, transparent 2px),
+    radial-gradient(circle at 82% 74%, rgba(243, 245, 251, 0.16) 0 1px, transparent 2px),
+    linear-gradient(90deg, transparent 0 49.6%, rgba(243, 245, 251, 0.24) 49.6% 50.4%, transparent 50.4%),
+    linear-gradient(0deg, transparent 0 49.6%, rgba(243, 245, 251, 0.18) 49.6% 50.4%, transparent 50.4%),
+    rgba(7, 9, 16, 0.18);
 }
 
 .avatar-option {
   isolation: isolate;
   min-height: 0;
   aspect-ratio: 1;
+  border: 0;
   grid-template-columns: minmax(0, 1fr);
   grid-template-rows: minmax(0, 1fr);
   overflow: hidden;
   padding: 0;
+  clip-path: polygon(16% 0, 100% 0, 100% 78%, 78% 100%, 0 100%, 0 16%);
   background:
-    linear-gradient(135deg, rgba(243, 245, 251, 0.12), transparent 38%),
-    rgba(5, 7, 12, 0.92);
+    radial-gradient(circle at 50% 50%, rgba(243, 245, 251, 0.14) 0 22%, transparent 23%),
+    rgba(5, 7, 12, 0.9);
+  box-shadow:
+    inset 0 0 0 1px rgba(243, 245, 251, 0.62),
+    inset 0 0 0 9px rgba(243, 245, 251, 0.035);
 }
 
 .avatar-option::before {
   position: absolute;
   z-index: 0;
-  inset: 0;
-  opacity: 0.72;
+  inset: 10%;
+  opacity: 0.58;
+  border: 1px solid rgba(243, 245, 251, 0.5);
+  content: "";
+}
+
+.avatar-option::after {
+  position: absolute;
+  z-index: 0;
+  inset: 25%;
+  opacity: 0.5;
+  background: rgba(243, 245, 251, 0.82);
   content: "";
 }
 
 .avatar-option:nth-child(1)::before,
 .avatar-option:nth-child(6)::before {
-  background:
-    repeating-radial-gradient(circle at 50% 50%, transparent 0 0.46rem, rgba(243, 245, 251, 0.46) 0.5rem 0.54rem);
+  border-radius: 50%;
+  background: repeating-radial-gradient(circle, transparent 0 0.42rem, rgba(243, 245, 251, 0.42) 0.46rem 0.5rem);
 }
 
 .avatar-option:nth-child(2)::before,
 .avatar-option:nth-child(7)::before {
-  background:
-    repeating-linear-gradient(90deg, transparent 0 0.42rem, rgba(243, 245, 251, 0.38) 0.42rem 0.5rem);
+  background: repeating-linear-gradient(90deg, transparent 0 0.38rem, rgba(243, 245, 251, 0.48) 0.38rem 0.46rem);
 }
 
 .avatar-option:nth-child(3)::before,
 .avatar-option:nth-child(8)::before {
-  background:
-    conic-gradient(from 45deg, rgba(243, 245, 251, 0.42) 0 25%, transparent 0 50%, rgba(243, 245, 251, 0.42) 0 75%, transparent 0) 0 0 / 1.1rem 1.1rem;
+  clip-path: polygon(50% 0, 100% 50%, 50% 100%, 0 50%);
+  background: conic-gradient(from 45deg, rgba(243, 245, 251, 0.52) 0 25%, transparent 0 50%, rgba(243, 245, 251, 0.52) 0 75%, transparent 0);
 }
 
 .avatar-option:nth-child(4)::before,
 .avatar-option:nth-child(5)::before {
-  background:
-    repeating-linear-gradient(135deg, transparent 0 0.56rem, rgba(243, 245, 251, 0.42) 0.56rem 0.64rem);
+  clip-path: polygon(0 0, 100% 0, 68% 100%, 0 100%);
+  background: repeating-linear-gradient(135deg, transparent 0 0.5rem, rgba(243, 245, 251, 0.48) 0.5rem 0.58rem);
+}
+
+.avatar-option:nth-child(2),
+.avatar-option:nth-child(5) {
+  clip-path: polygon(0 0, 84% 0, 100% 16%, 100% 100%, 16% 100%, 0 84%);
+}
+
+.avatar-option:nth-child(3),
+.avatar-option:nth-child(7) {
+  clip-path: polygon(50% 0, 100% 26%, 100% 74%, 50% 100%, 0 74%, 0 26%);
+}
+
+.avatar-option:nth-child(4),
+.avatar-option:nth-child(8) {
+  clip-path: circle(48% at 50% 50%);
 }
 
 .avatar-image {
@@ -4289,25 +4320,23 @@ canvas,
 }
 
 .avatar-code {
-  position: absolute;
-  z-index: 2;
-  top: 4px;
-  right: 4px;
-  display: grid;
-  min-width: 1.35rem;
-  height: 1.1rem;
-  place-items: center;
-  border: 1px solid rgba(243, 245, 251, 0.55);
-  color: #070910;
-  background: rgba(243, 245, 251, 0.88);
-  font-size: 0.48rem;
-  line-height: 1;
+  display: none;
 }
 
 .avatar-option.active {
+  clip-path: polygon(10% 0, 90% 0, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0 90%, 0 10%);
   background:
-    linear-gradient(180deg, rgba(243, 245, 251, 0.2), transparent 54%),
+    radial-gradient(circle at 50% 50%, rgba(243, 245, 251, 0.26) 0 28%, transparent 29%),
     #070910;
+  box-shadow:
+    inset 0 0 0 2px #f3f5fb,
+    inset 0 0 0 10px rgba(243, 245, 251, 0.08),
+    0 0 22px rgba(243, 245, 251, 0.18);
+}
+
+.avatar-option.active::after {
+  inset: 34%;
+  border-radius: 50%;
 }
 
 .avatar-option.active .avatar-image {
