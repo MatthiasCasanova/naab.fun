@@ -5380,17 +5380,7 @@ canvas,
 }
 
 .topbar::before {
-  position: absolute;
-  z-index: 0;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: clamp(7rem, 18vw, 15rem);
-  background:
-    repeating-linear-gradient(90deg, #f3f5fb 0 0.5rem, transparent 0.5rem 0.82rem),
-    #070910;
-  content: "";
-  opacity: 0.92;
+  display: none;
 }
 
 .brand,
@@ -5409,8 +5399,8 @@ canvas,
 
 .topbar-actions {
   margin-left: auto;
-  padding-inline: 8px;
-  background: rgba(6, 8, 15, 0.72);
+  padding-inline: 0;
+  background: transparent;
 }
 
 @media (prefers-reduced-motion: reduce) {
