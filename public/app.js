@@ -365,13 +365,13 @@
   }
 
   function setMessage(element, message, type = "") {
-    element.textContent = message;
-    element.className = `message${type ? ` ${type}` : ""}`;
     if (message && type === "error") {
       playSoundEffect("danger");
     } else if (message && type === "success") {
       playSoundEffect("confirm");
     }
+    element.textContent = "";
+    element.className = "message hidden";
   }
 
   function resolveAvatarId(avatarId) {
