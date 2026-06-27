@@ -71,7 +71,7 @@
   const DRAWING_DRAFT_SAVE_DEBOUNCE_MS = 650;
   const AUDIO_DRAFT_SAVE_INTERVAL_MS = 800;
   const VERSION_REQUEST_TIMEOUT_MS = 5000;
-  const DEFAULT_ROOM_NAME = "Room naab.fun";
+  const DEFAULT_ROOM_NAME_PREFIX = "Room";
 
   const elements = {
     playLayout: document.querySelector("#play-layout"),
@@ -317,7 +317,11 @@
   }
 
   function createDefaultNickname() {
-    return `Joueur ${Math.floor(1000 + Math.random() * 9000)}`;
+    return `Naab${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+
+  function createDefaultRoomName() {
+    return `${DEFAULT_ROOM_NAME_PREFIX}${Math.floor(1000 + Math.random() * 9000)}`;
   }
 
   function getRoomCodeFromUrl() {
@@ -2306,7 +2310,7 @@
       elements.nickname.value = nickname;
     }
     if (type === "create" && !roomName) {
-      roomName = DEFAULT_ROOM_NAME;
+      roomName = createDefaultRoomName();
       elements.roomName.value = roomName;
     }
 
@@ -4771,6 +4775,8 @@
     loadAudioSettings();
     loadTheme();
     loadAppVersion();
+    elements.nickname.value = elements.nickname.value || createDefaultNickname();
+    elements.roomName.value = elements.roomName.value || createDefaultRoomName();
     applyRoomCodeFromUrl();
 
     elements.createButton.addEventListener("click", () =>

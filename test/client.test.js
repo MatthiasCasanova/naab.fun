@@ -120,6 +120,7 @@ test("l'interface contient le lobby, le canvas, l'audio et les résultats", () =
   assert.match(app, /buildEndpointUrl\(serverUrl, "\/version"\)/);
   assert.match(app, /function loadAppVersion/);
   assert.match(css, /\.app-version\s*\{[\s\S]*right:\s*10px[\s\S]*bottom:\s*8px/);
+  assert.match(css, /\.home-version-tile strong\s*\{[\s\S]*font-size:\s*clamp\(1\.35rem,\s*2\.4vw,\s*2\.7rem\)/);
 });
 
 test("normalizeVolume restaure la valeur par défaut et borne le volume", () => {
@@ -324,6 +325,7 @@ test("les invitations utilisent le code de room dans l'URL", () => {
 
 test("l'accueil propose les avatars et la room conserve une liste laterale", () => {
   const html = readPublicFile("index.html");
+  const css = readPublicFile("styles.css");
   const avatars = html.match(/class="avatar-option[^"]*"/g) || [];
 
   assert.equal(avatars.length, 8);
@@ -331,6 +333,9 @@ test("l'accueil propose les avatars et la room conserve une liste laterale", () 
   assert.match(html, /data-avatar="comet"/);
   assert.match(html, /data-avatar="robot"/);
   assert.match(html, /data-avatar="frog"/);
+  assert.match(html, /aria-label="Profil 01"/);
+  assert.match(css, /\.avatar-option \.avatar-image::before/);
+  assert.match(css, /\.avatar-option:nth-child\(8\) \.avatar-image::before/);
   assert.match(html, /id="players-sidebar"/);
   assert.match(html, /id="player-list"/);
   assert.match(html, /id="player-count"/);
@@ -341,19 +346,27 @@ test("l'accueil propose les avatars et la room conserve une liste laterale", () 
   assert.doesNotMatch(html, /60 secondes/);
   assert.doesNotMatch(html, /id="sidebar-game-summary"/);
   assert.match(html, /id="game-selection-grid"/);
+  assert.match(html, /class="action-step">02</);
+  assert.match(html, /class="action-step">03</);
+  assert.match(css, /\.action-card h3\s*\{[\s\S]*overflow-wrap:\s*anywhere/);
 });
 
 test("la création transmet un nom de room et le serveur le valide", () => {
   const app = readPublicFile("app.js");
   const server = readProjectFile("server.js");
 
-  assert.match(app, /const DEFAULT_ROOM_NAME = "Room naab\.fun"/);
+  assert.match(app, /const DEFAULT_ROOM_NAME_PREFIX = "Room"/);
   assert.match(app, /function createDefaultNickname/);
+  assert.match(app, /return `Naab\$\{Math\.floor\(1000 \+ Math\.random\(\) \* 9000\)\}`/);
+  assert.match(app, /function createDefaultRoomName/);
+  assert.match(app, /return `\$\{DEFAULT_ROOM_NAME_PREFIX\}\$\{Math\.floor\(1000 \+ Math\.random\(\) \* 9000\)\}`/);
   assert.match(
     app,
     /const nickname = requestedNickname \|\| createDefaultNickname\(\)/
   );
-  assert.match(app, /roomName = DEFAULT_ROOM_NAME/);
+  assert.match(app, /elements\.nickname\.value = elements\.nickname\.value \|\| createDefaultNickname\(\)/);
+  assert.match(app, /elements\.roomName\.value = elements\.roomName\.value \|\| createDefaultRoomName\(\)/);
+  assert.match(app, /roomName = createDefaultRoomName\(\)/);
   assert.match(app, /function validateRoomName/);
   assert.match(app, /\{ nickname, roomName, avatarId: currentAvatarId \}/);
   assert.match(server, /function normalizeRoomName/);
