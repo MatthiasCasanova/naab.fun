@@ -4550,9 +4550,9 @@ canvas,
 .game-selection-heading::after {
   display: block;
   order: 2;
-  flex: 0 0 32%;
+  flex: 0 0 42%;
   width: 100%;
-  margin-top: 10.4rem;
+  margin-top: 8.8rem;
   background:
     conic-gradient(from 45deg, #f3f5fb 0 25%, transparent 0 50%, #f3f5fb 0 75%, transparent 0) 0 0 / 24px 24px;
   content: "";
@@ -4567,7 +4567,7 @@ canvas,
   max-width: calc(100% - 1.6rem);
   margin: 0;
   color: rgba(243, 245, 251, 0.14);
-  font-size: clamp(1.32rem, 1.58vw, 1.68rem);
+  font-size: clamp(1.38rem, 1.7vw, 1.78rem);
   line-height: 0.9;
   text-transform: uppercase;
   pointer-events: none;
