@@ -1499,11 +1499,12 @@ label,
 
 .game-selection-deco-tile span {
   position: absolute;
-  z-index: 1;
-  color: rgba(243, 245, 251, 0.86);
-  font-size: 0.68rem;
+  z-index: 0;
+  color: rgba(243, 245, 251, 0.16);
+  font-size: clamp(2rem, 5vw, 4rem);
   font-weight: 950;
   letter-spacing: 0.12em;
+  line-height: 0.82;
 }
 
 .game-selection-deco-tile span:first-child {
@@ -4489,10 +4490,19 @@ canvas,
   display: flex;
   flex-direction: column;
   justify-content: space-between;
+  position: relative;
+  overflow: hidden;
   border: 1px solid rgba(243, 245, 251, 0.58);
   border-right: 0;
   padding: 14px;
   text-align: left;
+}
+
+.game-selection-heading .eyebrow,
+.game-selection-heading::after,
+.game-selection-deco-tile {
+  position: relative;
+  z-index: 1;
 }
 
 .game-selection-heading::after {
@@ -4505,10 +4515,17 @@ canvas,
 }
 
 .game-selection-heading h3 {
+  position: absolute;
+  z-index: 0;
+  top: 4.2rem;
+  left: 14px;
   max-width: 7ch;
+  margin: 0;
+  color: rgba(243, 245, 251, 0.18);
   font-size: 3.1rem;
   line-height: 0.82;
   text-transform: uppercase;
+  pointer-events: none;
 }
 
 .game-selection-grid {
@@ -4603,12 +4620,13 @@ canvas,
 .room-card > .message,
 .room-actions {
   grid-column: 2;
-  margin: 0 16px;
+  margin: 0;
 }
 
 .room-actions {
   justify-content: flex-end;
-  margin-bottom: 14px;
+  align-self: end;
+  padding: 0;
 }
 
 .game-card {
@@ -4954,7 +4972,11 @@ canvas,
   }
 
   .game-selection-heading h3 {
+    position: relative;
+    top: auto;
+    left: auto;
     max-width: none;
+    color: var(--text);
     font-size: 1.8rem;
   }
 
