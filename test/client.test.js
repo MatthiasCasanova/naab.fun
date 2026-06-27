@@ -443,7 +443,11 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.room-code\s*\{[\s\S]*white-space:\s*nowrap/);
   assert.match(css, /\.room-code-actions\s*\{[\s\S]*position:\s*static/);
   assert.match(css, /\.room-actions\s*\{[\s\S]*align-self:\s*end/);
+  assert.match(css, /\.room-actions\s*\{[\s\S]*grid-template-columns:\s*minmax\(9\.5rem,\s*10rem\)\s*minmax\(3\.5rem,\s*1fr\)/);
+  assert.match(css, /\.room-actions\s*\{[\s\S]*justify-self:\s*end/);
   assert.match(css, /\.room-actions\s*\{[\s\S]*padding:\s*0/);
+  assert.match(css, /#leave-button\s*\{[\s\S]*width:\s*100%/);
+  assert.match(css, /#leave-button\s*\{[\s\S]*min-height:\s*44px/);
   assert.match(css, /\.room-card > \.view-art-room\s*\{[\s\S]*z-index:\s*0/);
   assert.match(css, /\.room-card > \.view-art-room span:nth-child\(1\)\s*\{[\s\S]*writing-mode:\s*vertical-rl/);
   assert.match(css, /\.room-card > \.view-art-room span:nth-child\(1\)\s*\{[\s\S]*top:\s*10\.8rem/);
