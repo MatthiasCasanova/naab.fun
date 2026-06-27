@@ -452,7 +452,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.room-card > \.view-art-room span:nth-child\(1\)\s*\{[\s\S]*writing-mode:\s*vertical-rl/);
   assert.match(css, /\.room-card > \.view-art-room span:nth-child\(1\)\s*\{[\s\S]*top:\s*10\.8rem/);
   assert.match(css, /\.room-card > \.view-art-room span:nth-child\(1\)\s*\{[\s\S]*clamp\(2\.85rem,\s*5\.2vw,\s*3\.8rem\)/);
-  assert.match(html, /<span>Sélectionne<\/span>[\s\S]*<span>le chaos<\/span>[\s\S]*<span>de la<\/span>[\s\S]*<span>room<\/span>/);
+  assert.match(html, /<span>Choisis<\/span>[\s\S]*<span>ton mode<\/span>[\s\S]*<span>de jeu<\/span>/);
   assert.match(css, /\.game-selection-heading h3\s*\{[\s\S]*position:\s*absolute/);
   assert.match(css, /\.game-selection-heading h3\s*\{[\s\S]*z-index:\s*0/);
   assert.match(css, /\.game-selection-heading h3\s*\{[\s\S]*max-width:\s*calc\(100% - 1\.6rem\)/);
