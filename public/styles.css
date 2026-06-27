@@ -1499,12 +1499,11 @@ label,
 
 .game-selection-deco-tile span {
   position: absolute;
-  z-index: 0;
-  color: rgba(243, 245, 251, 0.16);
-  font-size: clamp(2rem, 5vw, 4rem);
+  z-index: 1;
+  color: rgba(243, 245, 251, 0.86);
+  font-size: 0.68rem;
   font-weight: 950;
   letter-spacing: 0.12em;
-  line-height: 0.82;
 }
 
 .game-selection-deco-tile span:first-child {
@@ -4144,6 +4143,22 @@ canvas,
   font-size: 8rem;
 }
 
+.room-card > .view-art-room {
+  z-index: 0;
+  color: rgba(243, 245, 251, 0.12);
+}
+
+.room-card > .view-art-room span:nth-child(1) {
+  top: 3rem;
+  left: 0.9rem;
+  font-size: clamp(5.2rem, 16vw, 9rem);
+  writing-mode: vertical-rl;
+}
+
+.room-card > .view-art-room span:nth-child(2) {
+  display: none;
+}
+
 .home-card {
   grid-template-columns:
     minmax(15rem, 0.86fr)
@@ -4441,6 +4456,8 @@ canvas,
 }
 
 .room-hero {
+  position: relative;
+  z-index: 1;
   grid-column: 1;
   grid-row: 1 / 4;
   flex-direction: column;
@@ -4473,6 +4490,8 @@ canvas,
 }
 
 .lobby-center {
+  position: relative;
+  z-index: 1;
   grid-column: 2;
   grid-row: 1;
   align-content: stretch;
@@ -4517,12 +4536,12 @@ canvas,
 .game-selection-heading h3 {
   position: absolute;
   z-index: 0;
-  top: 4.2rem;
-  left: 14px;
+  top: 2.55rem;
+  left: 0.8rem;
   max-width: 7ch;
   margin: 0;
-  color: rgba(243, 245, 251, 0.18);
-  font-size: 3.1rem;
+  color: rgba(243, 245, 251, 0.14);
+  font-size: clamp(3rem, 5.8vw, 4.7rem);
   line-height: 0.82;
   text-transform: uppercase;
   pointer-events: none;
@@ -4619,6 +4638,8 @@ canvas,
 
 .room-card > .message,
 .room-actions {
+  position: relative;
+  z-index: 1;
   grid-column: 2;
   margin: 0;
 }
