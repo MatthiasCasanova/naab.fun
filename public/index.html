@@ -504,15 +504,20 @@
             <div class="room-hero">
               <div>
                 <p class="eyebrow">Code ultra-secret</p>
-                <h2 id="room-title" class="room-code">******</h2>
-              </div>
-              <div class="room-code-actions">
-                <button id="toggle-code-button" class="round-control" type="button" aria-label="Afficher le code" aria-pressed="false">
-                  <svg class="icon"><use id="code-icon-use" href="#icon-eye"></use></svg>
-                </button>
-                <button id="copy-button" class="round-control" type="button" aria-label="Copier le lien d'invitation">
-                  <svg class="icon"><use href="#icon-copy"></use></svg>
-                </button>
+                <div class="room-code-line">
+                  <h2 id="room-title" class="room-code">******</h2>
+                  <div class="room-code-actions">
+                    <button id="toggle-code-button" class="round-control" type="button" aria-label="Afficher le code" title="Voir le code" aria-pressed="false">
+                      <svg class="icon"><use id="code-icon-use" href="#icon-eye"></use></svg>
+                    </button>
+                    <button id="copy-button" class="round-control" type="button" aria-label="Copier le code" title="Copier le code">
+                      <svg class="icon"><use href="#icon-copy"></use></svg>
+                    </button>
+                    <button id="invite-button" class="round-control" type="button" aria-label="Copier le lien d'invitation" title="Inviter">
+                      <svg class="icon"><use href="#icon-plus"></use></svg>
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 

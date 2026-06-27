@@ -286,10 +286,11 @@ test("le lobby masque le code et expose les réglages de l'hôte", () => {
 
   assert.match(html, /id="room-title" class="room-code">\*{6}</);
   assert.match(html, /id="toggle-code-button"/);
+  assert.match(html, /id="copy-button"[\s\S]*aria-label="Copier le code"/);
+  assert.match(html, /id="invite-button"[\s\S]*aria-label="Copier le lien d'invitation"/);
   assert.ok(
     html.indexOf('id="room-message"') < html.indexOf('class="room-actions"')
   );
-  assert.match(html, /aria-label="Copier le lien d'invitation"/);
   assert.doesNotMatch(html, /id="game-settings-button"/);
   assert.match(html, /class="game-tile-settings hidden"/);
   assert.match(html, /data-game-settings-id="kamoulox3000"/);
@@ -315,7 +316,9 @@ test("les invitations utilisent le code de room dans l'URL", () => {
   assert.match(app, /function updateRoomCodeInUrl/);
   assert.match(app, /updateRoomCodeInUrl\(room\.code\)/);
   assert.match(app, /applyRoomCodeFromUrl\(\)/);
+  assert.match(app, /navigator\.clipboard\.writeText\(currentRoom\.code\)/);
   assert.match(app, /navigator\.clipboard\.writeText\(inviteUrl\)/);
+  assert.match(app, /Code copi/);
   assert.match(app, /Lien d'invitation copi/);
 });
 
@@ -435,8 +438,9 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.lobby-center\s*\{[\s\S]*padding:\s*0/);
   assert.match(css, /\.room-hero\s*\{[\s\S]*justify-content:\s*flex-start/);
   assert.match(css, /\.room-hero::after\s*\{[\s\S]*margin-top:\s*auto/);
-  assert.match(css, /\.room-code-actions\s*\{[\s\S]*position:\s*absolute/);
-  assert.match(css, /\.room-code-actions\s*\{[\s\S]*top:\s*6\.5rem/);
+  assert.match(css, /\.room-code-line\s*\{[\s\S]*justify-content:\s*space-between/);
+  assert.match(css, /\.room-code\s*\{[\s\S]*white-space:\s*nowrap/);
+  assert.match(css, /\.room-code-actions\s*\{[\s\S]*position:\s*static/);
   assert.match(css, /\.room-actions\s*\{[\s\S]*align-self:\s*end/);
   assert.match(css, /\.room-actions\s*\{[\s\S]*padding:\s*0/);
   assert.match(css, /\.room-card > \.view-art-room\s*\{[\s\S]*z-index:\s*0/);

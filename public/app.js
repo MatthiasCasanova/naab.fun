@@ -122,6 +122,7 @@
     connectionStatus: document.querySelector("#connection-status"),
     connectionLabel: document.querySelector("#connection-label"),
     copyButton: document.querySelector("#copy-button"),
+    inviteButton: document.querySelector("#invite-button"),
     toggleCodeButton: document.querySelector("#toggle-code-button"),
     codeIconUse: document.querySelector("#code-icon-use"),
     gameSettingsButtons: Array.from(
@@ -1101,6 +1102,7 @@
       element.classList.contains("button-primary") ||
       element.id === "join-button" ||
       element.id === "copy-button" ||
+      element.id === "invite-button" ||
       element.id === "chat-send-button"
     ) {
       return "confirm";
@@ -4885,6 +4887,22 @@
     });
 
     elements.copyButton.addEventListener("click", async () => {
+      if (!currentRoom) {
+        return;
+      }
+
+      try {
+        await navigator.clipboard.writeText(currentRoom.code);
+        setMessage(elements.roomMessage, "Code copié.", "success");
+      } catch {
+        setMessage(
+          elements.roomMessage,
+          `Copiez ce code : ${currentRoom.code}`,
+          "error"
+        );
+      }
+    });
+    elements.inviteButton.addEventListener("click", async () => {
       if (!currentRoom) {
         return;
       }
