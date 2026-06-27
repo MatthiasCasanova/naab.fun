@@ -437,8 +437,10 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.room-actions\s*\{[\s\S]*padding:\s*0/);
   assert.match(css, /\.room-card > \.view-art-room\s*\{[\s\S]*z-index:\s*0/);
   assert.match(css, /\.room-card > \.view-art-room span:nth-child\(1\)\s*\{[\s\S]*writing-mode:\s*vertical-rl/);
+  assert.match(css, /\.room-card > \.view-art-room span:nth-child\(1\)\s*\{[\s\S]*clamp\(4\.2rem,\s*8vw,\s*6\.1rem\)/);
   assert.match(css, /\.game-selection-heading h3\s*\{[\s\S]*position:\s*absolute/);
   assert.match(css, /\.game-selection-heading h3\s*\{[\s\S]*z-index:\s*0/);
+  assert.match(css, /\.game-selection-heading h3\s*\{[\s\S]*overflow-wrap:\s*anywhere/);
   assert.match(css, /\.game-vote-stack\s*\{[\s\S]*right:\s*12px/);
   assert.match(css, /\.game-vote-avatar/);
   assert.match(css, /\.game-tile\.self-voted-only/);

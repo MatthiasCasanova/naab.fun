@@ -4149,9 +4149,10 @@ canvas,
 }
 
 .room-card > .view-art-room span:nth-child(1) {
-  top: 3rem;
-  left: 0.9rem;
-  font-size: clamp(5.2rem, 16vw, 9rem);
+  top: 4.6rem;
+  left: 1.2rem;
+  font-size: clamp(4.2rem, 8vw, 6.1rem);
+  line-height: 0.86;
   writing-mode: vertical-rl;
 }
 
@@ -4536,13 +4537,15 @@ canvas,
 .game-selection-heading h3 {
   position: absolute;
   z-index: 0;
-  top: 2.55rem;
+  top: 2.35rem;
+  right: 0.8rem;
   left: 0.8rem;
-  max-width: 7ch;
+  max-width: none;
   margin: 0;
   color: rgba(243, 245, 251, 0.14);
-  font-size: clamp(3rem, 5.8vw, 4.7rem);
-  line-height: 0.82;
+  font-size: clamp(2.25rem, 3.25vw, 3.35rem);
+  line-height: 0.86;
+  overflow-wrap: anywhere;
   text-transform: uppercase;
   pointer-events: none;
 }
