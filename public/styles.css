@@ -4550,7 +4550,7 @@ canvas,
 .game-selection-heading::after {
   display: block;
   order: 2;
-  flex: 0 0 42%;
+  flex: 0 0 54%;
   width: 100%;
   margin-top: 8.8rem;
   background:

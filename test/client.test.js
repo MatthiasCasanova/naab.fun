@@ -454,7 +454,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.game-selection-heading h3\s*\{[\s\S]*max-width:\s*calc\(100% - 1\.6rem\)/);
   assert.match(css, /\.game-selection-heading h3\s*\{[\s\S]*clamp\(1\.38rem,\s*1\.7vw,\s*1\.78rem\)/);
   assert.match(css, /\.game-selection-heading h3 span\s*\{[\s\S]*display:\s*block/);
-  assert.match(css, /\.game-selection-heading::after\s*\{[\s\S]*flex:\s*0 0 42%/);
+  assert.match(css, /\.game-selection-heading::after\s*\{[\s\S]*flex:\s*0 0 54%/);
   assert.match(css, /\.game-selection-heading::after\s*\{[\s\S]*margin-top:\s*8\.8rem/);
   assert.match(css, /\.game-selection-deco-tile\s*\{[\s\S]*margin-top:\s*auto/);
   assert.match(css, /\.game-vote-stack\s*\{[\s\S]*right:\s*12px/);
