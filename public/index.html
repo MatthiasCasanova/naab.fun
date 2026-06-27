@@ -385,11 +385,11 @@
                 <div class="profile-heading">
                   <span>01</span>
                   <div>
-                    <strong>Profil du joueur</strong>
+                    <strong>Nom du joueur</strong>
                     <small>Elle sera visible dans toute la room.</small>
                   </div>
                 </div>
-                <label for="nickname">Pseudonyme</label>
+                <label class="visually-hidden" for="nickname">Nom du joueur</label>
                 <input
                   id="nickname"
                   name="nickname"
@@ -400,8 +400,13 @@
                   placeholder="2 à 20 caractères"
                 >
 
-                <span class="field-label">Photo de profil</span>
-                <div id="avatar-picker" class="avatar-picker" role="radiogroup" aria-label="Choisir une photo de profil">
+                <div class="profile-heading avatar-heading">
+                  <span>02</span>
+                  <div>
+                    <strong>Icone du joueur</strong>
+                  </div>
+                </div>
+                <div id="avatar-picker" class="avatar-picker" role="radiogroup" aria-label="Choisir une icone de joueur">
                   <button class="avatar-option active avatar-comet" data-avatar="comet" type="button" role="radio" aria-checked="true" aria-label="Profil 01"><span class="avatar-image" aria-hidden="true"></span><span class="avatar-code">01</span></button>
                   <button class="avatar-option avatar-robot" data-avatar="robot" type="button" role="radio" aria-checked="false" aria-label="Profil 02"><span class="avatar-image" aria-hidden="true"></span><span class="avatar-code">02</span></button>
                   <button class="avatar-option avatar-wizard" data-avatar="wizard" type="button" role="radio" aria-checked="false" aria-label="Profil 03"><span class="avatar-image" aria-hidden="true"></span><span class="avatar-code">03</span></button>
@@ -435,11 +440,15 @@
               <div class="home-actions">
                 <article class="action-card action-card-create">
                   <div class="action-icon">
-                    <span class="action-step">02</span>
                     <svg class="icon"><use href="#icon-plus"></use></svg>
                   </div>
                   <div class="action-copy">
-                    <h3>Nouvelle room</h3>
+                    <div class="profile-heading action-heading">
+                      <span>03</span>
+                      <div>
+                        <strong>Nouvelle room</strong>
+                      </div>
+                    </div>
                     <p>Donne un nom à ton futur désastre collectif.</p>
                   </div>
                   <div class="create-room-row">
@@ -462,7 +471,6 @@
 
                 <article class="action-card action-card-join">
                   <div class="action-icon">
-                    <span class="action-step">03</span>
                     <svg class="icon"><use href="#icon-enter"></use></svg>
                   </div>
                   <div class="action-copy">

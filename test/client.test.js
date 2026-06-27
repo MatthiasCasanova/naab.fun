@@ -346,8 +346,11 @@ test("l'accueil propose les avatars et la room conserve une liste laterale", () 
   assert.doesNotMatch(html, /60 secondes/);
   assert.doesNotMatch(html, /id="sidebar-game-summary"/);
   assert.match(html, /id="game-selection-grid"/);
-  assert.match(html, /class="action-step">02</);
-  assert.match(html, /class="action-step">03</);
+  assert.match(html, /<strong>Nom du joueur<\/strong>/);
+  assert.match(html, /<strong>Icone du joueur<\/strong>/);
+  assert.match(html, /<span>03<\/span>[\s\S]*<strong>Nouvelle room<\/strong>/);
+  assert.doesNotMatch(html, />Pseudonyme</);
+  assert.doesNotMatch(html, /class="action-step"/);
   assert.match(css, /\.action-card h3\s*\{[\s\S]*overflow-wrap:\s*anywhere/);
 });
 
