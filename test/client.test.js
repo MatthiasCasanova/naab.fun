@@ -433,6 +433,9 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /grid-template-areas:\s*"players main chat"/);
   assert.match(css, /\.game-selection-grid/);
   assert.match(css, /\.lobby-center\s*\{[\s\S]*padding:\s*0/);
+  assert.match(css, /\.room-hero\s*\{[\s\S]*justify-content:\s*flex-start/);
+  assert.match(css, /\.room-hero::after\s*\{[\s\S]*margin-top:\s*auto/);
+  assert.match(css, /\.room-code-actions\s*\{[\s\S]*margin-top:\s*1\.1rem/);
   assert.match(css, /\.room-actions\s*\{[\s\S]*align-self:\s*end/);
   assert.match(css, /\.room-actions\s*\{[\s\S]*padding:\s*0/);
   assert.match(css, /\.room-card > \.view-art-room\s*\{[\s\S]*z-index:\s*0/);
@@ -442,6 +445,8 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.game-selection-heading h3\s*\{[\s\S]*position:\s*absolute/);
   assert.match(css, /\.game-selection-heading h3\s*\{[\s\S]*z-index:\s*0/);
   assert.match(css, /\.game-selection-heading h3 span\s*\{[\s\S]*display:\s*block/);
+  assert.match(css, /\.game-selection-heading::after\s*\{[\s\S]*margin-top:\s*8\.4rem/);
+  assert.match(css, /\.game-selection-deco-tile\s*\{[\s\S]*margin-top:\s*auto/);
   assert.match(css, /\.game-vote-stack\s*\{[\s\S]*right:\s*12px/);
   assert.match(css, /\.game-vote-avatar/);
   assert.match(css, /\.game-tile\.self-voted-only/);

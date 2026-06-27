@@ -4463,14 +4463,16 @@ canvas,
   grid-row: 1 / 4;
   flex-direction: column;
   align-items: stretch;
-  justify-content: space-between;
+  justify-content: flex-start;
   border-right: 1px solid rgba(243, 245, 251, 0.58);
   padding: 18px;
 }
 
 .room-hero::after {
   display: block;
+  width: 100%;
   height: 46%;
+  margin-top: auto;
   border: 1px solid rgba(243, 245, 251, 0.56);
   background:
     repeating-linear-gradient(90deg, #f3f5fb 0 0.34rem, transparent 0.34rem 0.74rem),
@@ -4488,6 +4490,7 @@ canvas,
 
 .room-code-actions {
   align-self: flex-start;
+  margin-top: 1.1rem;
 }
 
 .lobby-center {
@@ -4509,7 +4512,7 @@ canvas,
 .game-selection-heading {
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: flex-start;
   position: relative;
   overflow: hidden;
   border: 1px solid rgba(243, 245, 251, 0.58);
@@ -4528,7 +4531,9 @@ canvas,
 .game-selection-heading::after {
   display: block;
   order: 2;
-  height: 42%;
+  flex: 0 0 34%;
+  width: 100%;
+  margin-top: 8.4rem;
   background:
     conic-gradient(from 45deg, #f3f5fb 0 25%, transparent 0 50%, #f3f5fb 0 75%, transparent 0) 0 0 / 24px 24px;
   content: "";
@@ -4638,7 +4643,7 @@ canvas,
   order: 3;
   width: 100%;
   min-height: 9.6rem;
-  margin-top: 14px;
+  margin-top: auto;
   border-width: 1px;
 }
 
@@ -4972,6 +4977,10 @@ canvas,
 
   .room-code {
     font-size: 2.4rem;
+  }
+
+  .room-code-actions {
+    margin-top: 0;
   }
 
   .lobby-center,
