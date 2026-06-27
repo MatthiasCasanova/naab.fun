@@ -120,7 +120,9 @@ test("l'interface contient le lobby, le canvas, l'audio et les résultats", () =
   assert.match(app, /buildEndpointUrl\(serverUrl, "\/version"\)/);
   assert.match(app, /function loadAppVersion/);
   assert.match(css, /\.app-version\s*\{[\s\S]*right:\s*10px[\s\S]*bottom:\s*8px/);
-  assert.match(css, /\.home-version-tile strong\s*\{[\s\S]*font-size:\s*clamp\(1\.35rem,\s*2\.4vw,\s*2\.7rem\)/);
+  assert.match(css, /\.home-version-tile strong\s*\{[\s\S]*width:\s*100%/);
+  assert.match(css, /\.home-version-tile strong\s*\{[\s\S]*font-size:\s*clamp\(1\.1rem,\s*1\.65vw,\s*1\.85rem\)/);
+  assert.match(css, /\.home-version-tile strong\s*\{[\s\S]*white-space:\s*nowrap/);
 });
 
 test("normalizeVolume restaure la valeur par défaut et borne le volume", () => {
