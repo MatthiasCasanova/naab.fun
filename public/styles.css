@@ -4476,7 +4476,7 @@ canvas,
   grid-row: 1;
   align-content: stretch;
   gap: 0;
-  padding: 16px;
+  padding: 0;
 }
 
 .game-selection-panel {
@@ -4936,7 +4936,7 @@ canvas,
   }
 
   .lobby-center {
-    padding: 8px;
+    padding: 0;
   }
 
   .game-selection-panel {

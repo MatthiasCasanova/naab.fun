@@ -432,6 +432,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.doesNotMatch(server, new RegExp("setPlayer" + "Emo" + "te"));
   assert.match(css, /grid-template-areas:\s*"players main chat"/);
   assert.match(css, /\.game-selection-grid/);
+  assert.match(css, /\.lobby-center\s*\{[\s\S]*padding:\s*0/);
   assert.match(css, /\.game-vote-stack\s*\{[\s\S]*right:\s*12px/);
   assert.match(css, /\.game-vote-avatar/);
   assert.match(css, /\.game-tile\.self-voted-only/);
