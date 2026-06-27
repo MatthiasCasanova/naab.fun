@@ -1462,34 +1462,58 @@ label,
   min-height: inherit;
 }
 
-.selected-game-strip {
-  display: flex;
-  width: min(100%, 520px);
-  justify-self: center;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  border: 2px solid var(--frame);
-  border-radius: var(--panel-radius);
-  padding: 8px 14px;
-  background: var(--surface);
-}
-
-.game-selection-heading .selected-game-strip {
-  width: 100%;
+.game-selection-deco-tile {
+  position: relative;
+  display: grid;
+  min-height: 9.6rem;
   margin-top: 14px;
+  overflow: hidden;
+  border: 1px solid rgba(243, 245, 251, 0.58);
+  background:
+    linear-gradient(90deg, rgba(243, 245, 251, 0.06) 0 1px, transparent 1px 100%) 0 0 / 34px 100%,
+    linear-gradient(0deg, rgba(243, 245, 251, 0.045) 0 1px, transparent 1px 100%) 0 0 / 100% 34px,
+    rgba(6, 8, 15, 0.72);
 }
 
-.selected-game-strip span {
-  color: var(--muted);
-  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+.game-selection-deco-tile::before,
+.game-selection-deco-tile::after {
+  position: absolute;
+  content: "";
+}
+
+.game-selection-deco-tile::before {
+  inset: 14px 14px auto;
+  height: 42%;
+  border: 1px solid rgba(243, 245, 251, 0.68);
+}
+
+.game-selection-deco-tile::after {
+  right: 16px;
+  bottom: 16px;
+  left: 16px;
+  height: 18%;
+  background:
+    linear-gradient(90deg, rgba(243, 245, 251, 0.72), rgba(243, 245, 251, 0.18)),
+    repeating-linear-gradient(90deg, transparent 0 11px, rgba(6, 8, 15, 0.72) 11px 16px);
+}
+
+.game-selection-deco-tile span {
+  position: absolute;
+  z-index: 1;
+  color: rgba(243, 245, 251, 0.86);
   font-size: 0.68rem;
   font-weight: 950;
-  text-transform: uppercase;
+  letter-spacing: 0.12em;
 }
 
-.selected-game-strip strong {
-  color: var(--accent-yellow);
+.game-selection-deco-tile span:first-child {
+  top: 18px;
+  left: 18px;
+}
+
+.game-selection-deco-tile span:last-child {
+  right: 18px;
+  bottom: calc(18% + 26px);
 }
 
 .settings-footer {
@@ -3163,7 +3187,7 @@ label,
     line-height: 1.16;
   }
 
-  .selected-game-strip {
+  .game-selection-deco-tile {
     width: 100%;
     padding: 6px 10px;
   }
@@ -3433,7 +3457,7 @@ label,
   }
 
   .game-tile-empty,
-  .selected-game-strip {
+  .game-selection-deco-tile {
     display: none;
   }
 
@@ -4189,7 +4213,7 @@ canvas,
 
 .profile-setup,
 .action-card,
-.selected-game-strip,
+.game-selection-deco-tile,
 .settings-field,
 .paint-panel,
 .canvas-shell {
@@ -4568,14 +4592,12 @@ canvas,
   max-width: 18rem;
 }
 
-.selected-game-strip {
+.game-selection-deco-tile {
   order: 3;
   width: 100%;
   min-height: 9.6rem;
   margin-top: 14px;
-  align-items: flex-end;
   border-width: 1px;
-  padding: 14px;
 }
 
 .room-card > .message,
@@ -4941,10 +4963,9 @@ canvas,
     grid-auto-rows: minmax(7.6rem, 1fr);
   }
 
-  .selected-game-strip {
+  .game-selection-deco-tile {
     min-height: auto;
     margin-top: 10px;
-    align-items: center;
   }
 
   .game-tile:nth-child(1),

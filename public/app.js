@@ -145,7 +145,6 @@
     partyGameCheckboxes: Array.from(
       document.querySelectorAll("[data-party-game]")
     ),
-    selectedGameName: document.querySelector("#selected-game-name"),
     gameSelectionButtons: Array.from(
       document.querySelectorAll("[data-game-id]")
     ),
@@ -1642,9 +1641,6 @@
 
   function renderGameSelection(room) {
     const selectedGameId = getSelectedRoomGameId(room);
-    const selectedLabel = getRoomGameLabel(room);
-
-    elements.selectedGameName.textContent = selectedLabel;
 
     elements.gameSelectionButtons.forEach((button) => {
       const isSelected = button.dataset.gameId === selectedGameId;

@@ -391,8 +391,9 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.equal((html.match(/class="game-tile game-tile-empty/g) || []).length, 8);
   assert.match(
     html,
-    /class="game-selection-heading"[\s\S]*class="selected-game-strip"[\s\S]*id="game-selection-grid"/
+    /class="game-selection-heading"[\s\S]*class="game-selection-deco-tile"[\s\S]*id="game-selection-grid"/
   );
+  assert.doesNotMatch(html, /Jeu sélectionné/);
   assert.doesNotMatch(html, /id="sidebar-game-summary"/);
   assert.doesNotMatch(html, new RegExp("emo" + "te-option"));
   assert.doesNotMatch(html, new RegExp("emo" + "te-picker"));
@@ -447,7 +448,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   );
   assert.match(
     css,
-    /@media \(max-width: 560px\)\s*\{[\s\S]*\.game-tile-empty,\s*\.selected-game-strip\s*\{[\s\S]*display:\s*none/
+    /@media \(max-width: 560px\)\s*\{[\s\S]*\.game-tile-empty,\s*\.game-selection-deco-tile\s*\{[\s\S]*display:\s*none/
   );
   assert.match(css, /\.spell-kit-editor/);
   assert.match(css, /\.quote-audio-slots/);
