@@ -388,6 +388,11 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(html, /id="quote-audio-slots"/);
   assert.match(html, /data-quote-index="3"/);
   assert.match(html, /class="game-tile game-tile-empty"/);
+  assert.equal((html.match(/class="game-tile game-tile-empty/g) || []).length, 8);
+  assert.match(
+    html,
+    /class="game-selection-heading"[\s\S]*class="selected-game-strip"[\s\S]*id="game-selection-grid"/
+  );
   assert.doesNotMatch(html, /id="sidebar-game-summary"/);
   assert.doesNotMatch(html, new RegExp("emo" + "te-option"));
   assert.doesNotMatch(html, new RegExp("emo" + "te-picker"));

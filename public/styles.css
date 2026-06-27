@@ -1458,6 +1458,10 @@ label,
   filter: saturate(0.45);
 }
 
+.game-tile-blank {
+  min-height: inherit;
+}
+
 .selected-game-strip {
   display: flex;
   width: min(100%, 520px);
@@ -1469,6 +1473,11 @@ label,
   border-radius: var(--panel-radius);
   padding: 8px 14px;
   background: var(--surface);
+}
+
+.game-selection-heading .selected-game-strip {
+  width: 100%;
+  margin-top: 14px;
 }
 
 .selected-game-strip span {
@@ -4464,6 +4473,7 @@ canvas,
 
 .game-selection-heading::after {
   display: block;
+  order: 2;
   height: 42%;
   background:
     conic-gradient(from 45deg, #f3f5fb 0 25%, transparent 0 50%, #f3f5fb 0 75%, transparent 0) 0 0 / 24px 24px;
@@ -4559,9 +4569,13 @@ canvas,
 }
 
 .selected-game-strip {
+  order: 3;
   width: 100%;
-  border-top: 0;
-  padding: 9px 14px;
+  min-height: 9.6rem;
+  margin-top: 14px;
+  align-items: flex-end;
+  border-width: 1px;
+  padding: 14px;
 }
 
 .room-card > .message,
@@ -4925,6 +4939,12 @@ canvas,
   .game-selection-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-rows: minmax(7.6rem, 1fr);
+  }
+
+  .selected-game-strip {
+    min-height: auto;
+    margin-top: 10px;
+    align-items: center;
   }
 
   .game-tile:nth-child(1),
