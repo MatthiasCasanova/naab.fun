@@ -4484,7 +4484,7 @@ canvas,
 .room-code {
   overflow-wrap: anywhere;
   min-width: 0;
-  font-size: 2.55rem;
+  font-size: 1.9rem;
   line-height: 0.86;
   white-space: nowrap;
   text-transform: uppercase;
@@ -4994,7 +4994,7 @@ canvas,
   }
 
   .room-code {
-    font-size: 2.4rem;
+    font-size: 1.8rem;
   }
 
   .room-code-actions {

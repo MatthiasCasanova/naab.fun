@@ -439,6 +439,7 @@ test("la room expose le chat, la sélection de jeu et son nom d'hôte", () => {
   assert.match(css, /\.room-hero\s*\{[\s\S]*justify-content:\s*flex-start/);
   assert.match(css, /\.room-hero::after\s*\{[\s\S]*margin-top:\s*auto/);
   assert.match(css, /\.room-code-line\s*\{[\s\S]*justify-content:\s*space-between/);
+  assert.match(css, /\.room-code\s*\{[\s\S]*font-size:\s*1\.9rem/);
   assert.match(css, /\.room-code\s*\{[\s\S]*white-space:\s*nowrap/);
   assert.match(css, /\.room-code-actions\s*\{[\s\S]*position:\s*static/);
   assert.match(css, /\.room-actions\s*\{[\s\S]*align-self:\s*end/);
