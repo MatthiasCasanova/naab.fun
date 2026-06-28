@@ -5389,71 +5389,118 @@ canvas,
 }
 
 .home-illustration-board span:nth-child(1)::before {
-  background: repeating-radial-gradient(ellipse at 20% 50%, transparent 0 7px, #f3f5fb 8px 12px);
-  transform: rotate(-18deg) scale(1.15);
+  background:
+    repeating-radial-gradient(ellipse at 18% 68%, transparent 0 8px, #f3f5fb 9px 12px),
+    linear-gradient(140deg, transparent 0 58%, rgba(243, 245, 251, 0.9) 59% 62%, transparent 63%);
+  transform: rotate(-16deg) scale(1.18);
 }
 
 .home-illustration-board span:nth-child(2)::before {
-  background: repeating-linear-gradient(135deg, transparent 0 11px, #f3f5fb 12px 19px);
+  background:
+    conic-gradient(from 45deg, #f3f5fb 0 25%, transparent 0 50%, #f3f5fb 0 75%, transparent 0) 0 0 / 34px 34px,
+    linear-gradient(135deg, transparent 0 42%, #f3f5fb 43% 58%, transparent 59%);
+  transform: rotate(-4deg) scale(1.08);
 }
 
 .home-illustration-board span:nth-child(3)::before {
-  background: repeating-radial-gradient(circle at 64% 42%, transparent 0 8px, #f3f5fb 9px 13px);
+  inset: 10% 12%;
+  border: 12px solid #f3f5fb;
+  border-radius: 18% 82% 28% 72% / 72% 22% 78% 28%;
+  box-shadow:
+    38px -16px 0 -10px #f3f5fb,
+    -26px 34px 0 -12px #f3f5fb,
+    18px 56px 0 -16px #f3f5fb;
+  transform: rotate(12deg);
 }
 
 .home-illustration-board span:nth-child(4)::before {
   background:
-    radial-gradient(ellipse at 36% 30%, transparent 0 30%, #f3f5fb 31% 38%, transparent 39%),
-    repeating-linear-gradient(25deg, transparent 0 10px, #f3f5fb 11px 15px);
+    linear-gradient(112deg, transparent 0 22%, #f3f5fb 23% 29%, transparent 30% 49%, #f3f5fb 50% 59%, transparent 60%),
+    repeating-linear-gradient(24deg, transparent 0 10px, rgba(243, 245, 251, 0.62) 11px 14px);
+  clip-path: polygon(0 5%, 100% 0, 92% 20%, 100% 43%, 88% 61%, 100% 100%, 0 90%, 10% 62%, 0 39%, 12% 18%);
 }
 
 .home-illustration-board span:nth-child(5)::before {
-  background: repeating-linear-gradient(6deg, transparent 0 5px, #f3f5fb 6px 8px);
-  transform: skewX(-14deg);
+  background:
+    repeating-linear-gradient(92deg, #f3f5fb 0 5px, transparent 6px 15px),
+    repeating-linear-gradient(0deg, transparent 0 18px, rgba(243, 245, 251, 0.28) 19px 21px);
+  clip-path: polygon(8% 0, 88% 8%, 100% 34%, 84% 100%, 0 92%, 12% 62%, 2% 30%);
+  transform: rotate(7deg) scale(1.08);
 }
 
 .home-illustration-board span:nth-child(6)::before {
-  inset: 18% 8%;
-  border: 4px solid #f3f5fb;
+  inset: 14% 8%;
+  background:
+    radial-gradient(ellipse at 36% 42%, #f3f5fb 0 33%, transparent 34%),
+    radial-gradient(ellipse at 65% 50%, #f3f5fb 0 30%, transparent 31%),
+    radial-gradient(ellipse at 50% 58%, #f3f5fb 0 34%, transparent 35%);
+  filter: contrast(1.15);
+}
+
+.home-illustration-board span:nth-child(6)::after {
+  inset: 18% 18% 26% 20%;
+  border: 5px solid rgba(6, 8, 15, 0.98);
   border-radius: 50%;
-  box-shadow:
-    22px 10px 0 -8px #f3f5fb,
-    -24px 28px 0 -10px #f3f5fb,
-    38px 42px 0 -9px #f3f5fb;
+  transform: rotate(-12deg);
 }
 
 .home-illustration-board span:nth-child(7)::before {
-  inset: 8% 12%;
-  background: repeating-linear-gradient(0deg, #f3f5fb 0 6px, transparent 7px 15px);
-  border-radius: 42% 58% 48% 52%;
+  inset: 12% 17%;
+  background:
+    repeating-linear-gradient(0deg, #f3f5fb 0 7px, transparent 8px 16px);
+  border-radius: 48% 52% 44% 56% / 38% 60% 40% 62%;
+}
+
+.home-illustration-board span:nth-child(7)::after {
+  inset: 20% 28%;
+  border-left: 10px solid rgba(6, 8, 15, 0.96);
+  border-right: 10px solid rgba(6, 8, 15, 0.96);
+  transform: rotate(6deg);
 }
 
 .home-illustration-board span:nth-child(8)::before {
-  background: repeating-linear-gradient(0deg, #f3f5fb 0 8px, transparent 9px 25px);
-  transform: rotate(2deg) scale(1.08);
+  background:
+    linear-gradient(90deg, transparent 0 12%, rgba(243, 245, 251, 0.95) 13% 18%, transparent 19%),
+    repeating-linear-gradient(2deg, #f3f5fb 0 6px, transparent 8px 24px);
+  transform: rotate(3deg) scale(1.08);
 }
 
 .home-illustration-board span:nth-child(9)::before {
-  background: repeating-radial-gradient(ellipse at 48% 50%, transparent 0 5px, #f3f5fb 6px 9px);
-  clip-path: ellipse(42% 48% at 50% 50%);
+  inset: 10% 8%;
+  background:
+    repeating-linear-gradient(42deg, transparent 0 8px, #f3f5fb 9px 14px),
+    repeating-linear-gradient(132deg, transparent 0 11px, rgba(243, 245, 251, 0.8) 12px 15px);
+  clip-path: polygon(18% 0, 100% 12%, 78% 32%, 100% 58%, 72% 100%, 0 84%, 22% 55%, 0 24%);
 }
 
 .home-illustration-board span:nth-child(10)::before {
-  background: repeating-radial-gradient(circle at 42% 48%, transparent 0 9px, #f3f5fb 10px 16px);
-  transform: rotate(28deg) scale(1.25);
+  background:
+    radial-gradient(circle at 50% 50%, transparent 0 12%, #f3f5fb 13% 18%, transparent 19%),
+    repeating-radial-gradient(circle at 50% 50%, transparent 0 14px, #f3f5fb 15px 22px);
+  clip-path: ellipse(45% 47% at 50% 50%);
+  transform: rotate(8deg) scale(1.12);
 }
 
 .home-illustration-board span:nth-child(11)::before {
-  inset: 10% 28%;
+  inset: 8% 24%;
   background:
-    radial-gradient(circle at 50% 12%, #f3f5fb 0 18%, transparent 19%),
-    radial-gradient(circle at 42% 44%, #f3f5fb 0 20%, transparent 21%),
-    radial-gradient(circle at 56% 72%, #f3f5fb 0 24%, transparent 25%);
+    radial-gradient(ellipse at 48% 12%, #f3f5fb 0 18%, transparent 19%),
+    radial-gradient(ellipse at 58% 42%, #f3f5fb 0 21%, transparent 22%),
+    radial-gradient(ellipse at 44% 74%, #f3f5fb 0 26%, transparent 27%);
+}
+
+.home-illustration-board span:nth-child(11)::after {
+  inset: 18% 38%;
+  background: rgba(6, 8, 15, 0.94);
+  transform: skewY(-10deg);
 }
 
 .home-illustration-board span:nth-child(12)::before {
-  background: repeating-radial-gradient(ellipse at 35% 44%, transparent 0 8px, #f3f5fb 9px 13px);
-  transform: rotate(18deg) scale(1.2);
+  background:
+    repeating-linear-gradient(68deg, transparent 0 11px, #f3f5fb 12px 18px),
+    radial-gradient(ellipse at 28% 32%, #f3f5fb 0 16%, transparent 17%),
+    radial-gradient(ellipse at 72% 68%, #f3f5fb 0 18%, transparent 19%);
+  transform: rotate(-10deg) scale(1.16);
 }
 
 .home-deco-tile {
