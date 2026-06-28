@@ -72,6 +72,7 @@
   const AUDIO_DRAFT_SAVE_INTERVAL_MS = 800;
   const VERSION_REQUEST_TIMEOUT_MS = 5000;
   const DEFAULT_ROOM_NAME_PREFIX = "Room";
+  const AUTO_REFRESH_SOUND_URL = "./assets/sfx/lvl-up.mp3";
 
   const elements = {
     playLayout: document.querySelector("#play-layout"),
@@ -298,6 +299,7 @@
   let waveformResizeFrame = null;
   let effectsAudioContext = null;
   let effectsUnlocked = false;
+  let autoRefreshAudio = null;
   let lastTimerSoundSlot = null;
   let draftSaveTimer = null;
   let draftSaveGeneration = 0;
@@ -368,8 +370,10 @@
     elements.nickname.focus();
   }
 
-  function setMessage(element, message, type = "") {
-    if (message && type === "error") {
+  function setMessage(element, message, type = "", options = {}) {
+    if (message && options.sound === "auto-refresh") {
+      playAutoRefreshSound();
+    } else if (message && type === "error") {
       playSoundEffect("danger");
     } else if (message && type === "success") {
       playSoundEffect("confirm");
@@ -927,6 +931,25 @@
     envelope.connect(context.destination);
     oscillator.start(startAt);
     oscillator.stop(endAt + 0.02);
+  }
+
+  function playAutoRefreshSound() {
+    if (!effectsUnlocked || siteMuted || effectsVolume <= 0) {
+      return;
+    }
+
+    if (!autoRefreshAudio) {
+      autoRefreshAudio = new Audio(AUTO_REFRESH_SOUND_URL);
+      autoRefreshAudio.preload = "auto";
+    }
+
+    autoRefreshAudio.pause();
+    autoRefreshAudio.currentTime = 0;
+    autoRefreshAudio.volume = Math.max(0, Math.min(1, effectsVolume));
+    autoRefreshAudio.muted = siteMuted;
+    autoRefreshAudio.play().catch((error) => {
+      console.info("[audio] Son de reconnexion automatique bloqué :", error);
+    });
   }
 
   function playSoundEffect(name, intensity = 1) {
@@ -2067,7 +2090,8 @@
         setMessage(
           elements.homeMessage,
           `Reconnexion impossible : ${error.message}`,
-          "error"
+          "error",
+          { sound: "auto-refresh" }
         );
       }
     });
@@ -2084,7 +2108,8 @@
       setMessage(
         messageTarget,
         `Connexion Socket.IO impossible. Détail : ${detail}`,
-        "error"
+        "error",
+        { sound: "auto-refresh" }
       );
     });
 

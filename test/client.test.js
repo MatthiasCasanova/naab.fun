@@ -711,3 +711,28 @@ test("les commandes utilisent le sprite d'icones et des animations coherentes", 
   assert.match(css, /\.settings-choice:has\(input:checked\)::after/);
   assert.doesNotMatch(css, /button-glint/);
 });
+
+test("le son automatique de reconnexion utilise un MP3 dedie sans toucher au danger", () => {
+  const app = readPublicFile("app.js");
+
+  assert.ok(fs.existsSync(publicPath("assets", "sfx", "lvl-up.mp3")));
+  assert.match(
+    app,
+    /const AUTO_REFRESH_SOUND_URL = "\.\/assets\/sfx\/lvl-up\.mp3";/
+  );
+  assert.match(
+    app,
+    /function setMessage\(element, message, type = "", options = \{\}\)/
+  );
+  assert.match(app, /options\.sound === "auto-refresh"/);
+  assert.match(app, /function playAutoRefreshSound\(\)/);
+  assert.match(app, /new Audio\(AUTO_REFRESH_SOUND_URL\)/);
+  assert.match(
+    app,
+    /danger: \(\) =>\s*playSynthTone\(\{[\s\S]*frequency: 220,[\s\S]*type: "sawtooth"/
+  );
+  assert.match(
+    app,
+    /connect_error[\s\S]*\{ sound: "auto-refresh" \}/
+  );
+});
