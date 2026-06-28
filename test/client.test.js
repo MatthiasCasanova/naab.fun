@@ -518,6 +518,12 @@ test("l'accueil retire l'ancien surtitre et exploite le viewport", () => {
   const css = readPublicFile("styles.css");
 
   assert.doesNotMatch(html, />Téléphone créatif multijoueur</);
+  assert.doesNotMatch(html, />Prépare ton profil et lance la room</);
+  assert.match(html, /class="home-illustration-board"[\s\S]*(?:<span><\/span>[\s\S]*){12}/);
+  assert.match(css, /\.home-intro::before\s*\{[\s\S]*display:\s*none/);
+  assert.match(css, /\.home-intro::after\s*\{[\s\S]*display:\s*none/);
+  assert.match(css, /\.home-illustration-board\s*\{[\s\S]*grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\)/);
+  assert.match(css, /\.home-illustration-board span:nth-child\(12\)::before/);
   assert.match(css, /\.app-shell\s*\{[\s\S]*width:\s*100%/);
 });
 
